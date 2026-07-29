@@ -1,0 +1,82 @@
+[
+  {
+    "id": "ex-find-impl-trail-crossfile",
+    "kind": "find_implementations",
+    "target": { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
+    "prompt": "In this repository, find every class that implements the Trail interface defined in packages/excalidraw/animatedTrail.ts. Report the class name(s) and the file(s) they live in.",
+    "oracle": {
+      "mustMentionFiles": ["packages/excalidraw/laserTrails.ts", "packages/excalidraw/drawShapeTrail.ts"],
+      "mustMentionSymbols": ["AnimatedTrail", "LaserTrails", "DrawShapeTrail"]
+    }
+  },
+  {
+    "id": "ex-find-impl-deltacontainer-generic",
+    "kind": "find_implementations",
+    "target": { "symbol": "DeltaContainer", "file": "packages/element/src/delta.ts" },
+    "prompt": "In this repository, find every class that implements the generic DeltaContainer<T> interface defined in packages/element/src/delta.ts. Report the class name(s).",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/delta.ts"],
+      "mustMentionSymbols": ["AppStateDelta", "ElementsDelta"]
+    }
+  },
+  {
+    "id": "ex-references-pointfrom-highfanout",
+    "kind": "find_references",
+    "target": { "symbol": "pointFrom", "file": "packages/math/src/point.ts" },
+    "prompt": "In this repository, find files that call the pointFrom function defined in packages/math/src/point.ts. List at least 8 distinct calling files.",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/binding.ts", "packages/element/src/shape.ts", "packages/element/src/textElement.ts"],
+      "mustMentionSymbols": ["pointFrom"]
+    }
+  },
+  {
+    "id": "ex-references-getnondeletedelements-medfanout",
+    "kind": "find_references",
+    "target": { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" },
+    "prompt": "In this repository, find files that call the getNonDeletedElements function defined in packages/element/src/index.ts. List at least 5 distinct calling files.",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/Scene.ts", "packages/excalidraw/components/App.tsx"],
+      "mustMentionSymbols": ["getNonDeletedElements"]
+    }
+  },
+  {
+    "id": "ex-find-callers-mutateelement",
+    "kind": "find_callers",
+    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+    "prompt": "In this repository, find every function/file that calls mutateElement, defined in packages/element/src/mutateElement.ts. List the calling files.",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/binding.ts", "packages/element/src/dragElements.ts"],
+      "mustMentionSymbols": ["mutateElement"]
+    }
+  },
+  {
+    "id": "ex-find-callees-mutateelement",
+    "kind": "find_callees",
+    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+    "prompt": "In this repository, what other functions does mutateElement (defined in packages/element/src/mutateElement.ts) call internally? Name at least two.",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/mutateElement.ts"],
+      "mustMentionSymbols": ["isElbowArrow", "updateElbowArrowPoints"]
+    }
+  },
+  {
+    "id": "ex-deps-package-math-incoming",
+    "kind": "get_dependencies",
+    "target": { "symbol": "", "file": "packages/math/src/index.ts" },
+    "prompt": "In this repository, which files import from the @excalidraw/math package (packages/math/src/index.ts and its re-exports)? List at least 8 of them across different packages.",
+    "oracle": {
+      "mustMentionFiles": ["packages/element/src/mutateElement.ts", "packages/element/src/textElement.ts"],
+      "mustMentionSymbols": []
+    }
+  },
+  {
+    "id": "ex-outline-types-vs-i18n",
+    "kind": "get_file_outline",
+    "target": { "symbol": "", "file": "packages/excalidraw/types.ts" },
+    "prompt": "In this repository, list the exported interfaces from packages/excalidraw/types.ts, then contrast it with the exports of packages/excalidraw/i18n.ts (a much smaller file). Report both lists.",
+    "oracle": {
+      "mustMentionFiles": ["packages/excalidraw/types.ts", "packages/excalidraw/i18n.ts"],
+      "mustMentionSymbols": ["AppState", "ExcalidrawImperativeAPI", "Language"]
+    }
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "task-tracker-mcp",
+    "kind": "local",
+    "path": "/Users/Valentin_Taiurskii/Projects/ClaudeProjects/task-tracker-mcp",
+    "language": "ts"
+  },
+  {
+    "id": "excalidraw",
+    "kind": "local",
+    "path": "/Users/Valentin_Taiurskii/Projects/excalidraw",
+    "language": "ts"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "tt-find-impl-completionverifier",
+    "kind": "find_implementations",
+    "target": { "symbol": "CompletionVerifier", "file": "src/domain/verification.ts" },
+    "prompt": "In this repository, find every class that implements the CompletionVerifier interface. Report the class name(s) and the file(s) they live in.",
+    "oracle": {
+      "mustMentionFiles": ["src/domain/verification.ts"],
+      "mustMentionSymbols": ["GitDiffCompletionVerifier"]
+    }
+  },
+  {
+    "id": "tt-find-impl-budgetestimator",
+    "kind": "find_implementations",
+    "target": { "symbol": "BudgetEstimator", "file": "src/domain/budget.ts" },
+    "prompt": "In this repository, find every class that implements the BudgetEstimator interface. Report the class name(s) and the file(s) they live in.",
+    "oracle": {
+      "mustMentionFiles": ["src/domain/budget.ts"],
+      "mustMentionSymbols": ["HeuristicBudgetEstimator"]
+    }
+  },
+  {
+    "id": "tt-deps-incoming-db-connection",
+    "kind": "get_dependencies",
+    "target": { "symbol": "", "file": "src/db/connection.ts" },
+    "prompt": "In this repository, which files import from src/db/connection.ts? List at least 5 of them.",
+    "oracle": {
+      "mustMentionFiles": ["src/domain/tasks.ts"],
+      "mustMentionSymbols": []
+    }
+  },
+  {
+    "id": "tt-references-requiretask",
+    "kind": "find_references",
+    "target": { "symbol": "requireTask", "file": "src/domain/tasks.ts" },
+    "prompt": "In this repository, find every place that calls the requireTask function defined in src/domain/tasks.ts. List the calling files.",
+    "oracle": {
+      "mustMentionFiles": ["src/domain/tasks.ts"],
+      "mustMentionSymbols": ["requireTask"]
+    }
+  },
+  {
+    "id": "tt-outline-lifecycle-vs-small",
+    "kind": "get_file_outline",
+    "target": { "symbol": "", "file": "src/domain/lifecycle.ts" },
+    "prompt": "In this repository, list the exported functions and interfaces from src/domain/lifecycle.ts, then contrast it with the exports of src/domain/handoffNotes.ts (a much smaller file). Report both lists.",
+    "oracle": {
+      "mustMentionFiles": ["src/domain/lifecycle.ts", "src/domain/handoffNotes.ts"],
+      "mustMentionSymbols": ["ReleaseTaskInput", "HandoffNote"]
+    }
+  }
+]

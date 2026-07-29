@@ -1,0 +1,22 @@
+{
+  "name": "g-mesh-bench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Benchmark suite measuring g-mesh's effectiveness: token economy, search latency, and cold-start indexing time.",
+  "scripts": {
+    "token-economy": "tsx harness/token-economy.ts",
+    "search-latency": "tsx harness/search-latency.ts",
+    "cold-start": "tsx harness/cold-start.ts",
+    "report": "tsx harness/report.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

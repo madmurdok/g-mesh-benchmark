@@ -1,0 +1,38 @@
+[
+  {
+    "taskId": "ex-find-impl-trail-crossfile",
+    "corpusId": "excalidraw",
+    "arm": "gmesh",
+    "repetition": 1,
+    "timestamp": "2026-07-29T16:10:10.943Z",
+    "model": "claude-sonnet-5",
+    "inputTokens": 6,
+    "outputTokens": 328,
+    "cacheReadTokens": 34003,
+    "cacheCreationTokens": 17626,
+    "numTurns": 3,
+    "durationMs": 7655,
+    "costUsd": 0.12152090000000002,
+    "resultText": "Реализации интерфейса `Trail` (packages/excalidraw/animatedTrail.ts):\n\n1. **`LaserTrails`** — `packages/excalidraw/laserTrails.ts`\n2. **`DrawShapeTrail`** — `packages/excalidraw/drawShapeTrail.ts`\n3. **`AnimatedTrail`** — `packages/excalidraw/animatedTrail.ts` (сам базовый класс)",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-find-impl-trail-crossfile",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-07-29T16:10:10.943Z",
+    "model": "claude-sonnet-5",
+    "inputTokens": 4,
+    "outputTokens": 468,
+    "cacheReadTokens": 21159,
+    "cacheCreationTokens": 9167,
+    "numTurns": 3,
+    "durationMs": 5602,
+    "costUsd": 0.06902269999999999,
+    "resultText": "Найдены три класса, реализующих интерфейс `Trail`:\n\n1. **`AnimatedTrail`** — `packages/excalidraw/animatedTrail.ts:30`\n2. **`DrawShapeTrail`** — `packages/excalidraw/drawShapeTrail.ts:12`\n3. **`LaserTrails`** — `packages/excalidraw/laserTrails.ts:12`",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

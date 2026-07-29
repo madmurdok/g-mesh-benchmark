@@ -1,0 +1,20 @@
+[
+  {
+    "corpusId": "task-tracker-mcp",
+    "timestamp": "2026-07-29T12:53:08.418Z",
+    "locCount": 7781,
+    "fileCount": 48,
+    "cloneDurationMs": 679.8143759965897,
+    "indexDurationMs": 1403.7331620007753,
+    "totalDurationMs": 2083.547537997365
+  },
+  {
+    "corpusId": "excalidraw",
+    "timestamp": "2026-07-29T12:53:08.418Z",
+    "locCount": 188645,
+    "fileCount": 654,
+    "cloneDurationMs": 750.8201339989901,
+    "indexDurationMs": 7214.233963996172,
+    "totalDurationMs": 7965.054097995162
+  }
+]
