@@ -263,6 +263,44 @@ export function computeCorrectnessTable(runs: TokenEconomyRun[]): CorrectnessRow
   return rows;
 }
 
+export interface CategoryTokenRow {
+  category: string;
+  gmeshMeanTokens: number;
+  baselineMeanTokens: number;
+  savingsPct: number;
+  pairCount: number;
+}
+
+/**
+ * Paired gmesh-vs-baseline token savings by category — same pairing
+ * discipline as pairedTokenTotals/pairedArmsTokenTotals (only (taskId,
+ * repetition) pairs where both arms ran ok AND passed oracle, summed then
+ * divided by pairCount), just scoped to one category's runs at a time instead
+ * of summed across every task. Exists because the blended, all-tasks savings
+ * % (computeAggregate/pairedTokenTotals) hides categories like "multihop"
+ * where g-mesh's turn-count advantage is largest, diluted by easier
+ * categories where a fixed per-turn MCP tool-schema cost can outweigh it. A
+ * category with zero qualifying pairs is omitted rather than emitted as 0%.
+ */
+export function computeCategoryTokenTable(runs: TokenEconomyRun[]): CategoryTokenRow[] {
+  const categories = [...new Set(runs.map((r) => r.category ?? UNCATEGORIZED))].sort();
+
+  const rows: CategoryTokenRow[] = [];
+  for (const category of categories) {
+    const categoryRuns = runs.filter((r) => (r.category ?? UNCATEGORIZED) === category);
+    const paired = pairedArmsTokenTotals(categoryRuns, "gmesh", "baseline");
+    if (paired.pairCount === 0) continue;
+    rows.push({
+      category,
+      gmeshMeanTokens: paired.totalA / paired.pairCount,
+      baselineMeanTokens: paired.totalB / paired.pairCount,
+      savingsPct: paired.totalB > 0 ? ((paired.totalB - paired.totalA) / paired.totalB) * 100 : 0,
+      pairCount: paired.pairCount,
+    });
+  }
+  return rows;
+}
+
 export interface TaskArmCell {
   arm: Arm;
   /** null when no run of this arm for this task finished ok (see groupLength to tell "none attempted" from "all failed"). */
