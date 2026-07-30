@@ -11,5 +11,5 @@
     "noUncheckedIndexedAccess": true,
     "outDir": "dist"
   },
-  "include": ["harness/**/*.ts"]
+  "include": ["harness/**/*.ts", "scripts/**/*.ts"]
 }

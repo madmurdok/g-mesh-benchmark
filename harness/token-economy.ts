@@ -1,39 +1,100 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
 import { resolveWarm } from "./lib/corpusResolver.js";
-import { buildBaselineArmConfig, buildGmeshArmConfig, gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
+import { renderHtmlReport } from "./lib/htmlReport.js";
+import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
+import { gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
-import type { BenchTask, CorpusEntry } from "./lib/types.js";
+import { computeTaskDefHash } from "./lib/taskDefHash.js";
+import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
+import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const MODEL = "claude-sonnet-5";
-const MAX_BUDGET_USD = 1.0;
-const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
-const BASELINE_TOOLS = "Read,Grep,Glob";
+/**
+ * A judge-mode oracle grades the arm's answer with a second, independent
+ * `claude -p` call (lib/judge.ts), capped on its own by JUDGE_MAX_BUDGET_USD.
+ * Each cap is enforced inside a separate CLI invocation, so until now nothing
+ * bounded the *pair*: a single (task, rep, arm) run could spend MAX_BUDGET_USD
+ * on the arm and then quietly spend more on grading, outside the harness's
+ * budget logic entirely.
+ *
+ * The ceiling is the sum of the two per-call caps rather than something
+ * tighter on purpose: any run that respected both individual caps must fall
+ * under it, so crossing it means a cap was overshot (or a call was made that
+ * this accounting doesn't know about) — not that the run was legitimately
+ * expensive. That makes it a real invariant rather than a second throttle.
+ */
+export const MAX_COMBINED_BUDGET_USD = MAX_BUDGET_USD + JUDGE_MAX_BUDGET_USD;
 
-type Arm = "gmesh" | "baseline";
+/**
+ * "skipped" is produced only by session-economy.ts, which aborts the rest of a
+ * chained session once one call in it fails — every later task in that chain
+ * is recorded as skipped rather than silently omitted, so the run set says
+ * *why* a measurement is missing. token-economy.ts itself never emits it, and
+ * every consumer tests `status === "ok"` rather than switching exhaustively,
+ * so the extra member changes nothing downstream.
+ */
+export type RunStatus = "ok" | "error" | "budget_exceeded" | "skipped";
 
-interface TokenEconomyRun {
+export interface TokenEconomyRun {
   taskId: string;
   corpusId: string;
   arm: Arm;
   repetition: number;
   timestamp: string;
   model: string;
+  /** Task-authoring metadata, copied through for report.ts grouping; absent on pre-v2 tasks that declare neither. */
+  category?: TaskCategory;
+  expectedWinner?: ExpectedWinner;
+  /** Fingerprint of the full task definition (see lib/taskDefHash.ts) this run was graded against — lets report.ts detect runs whose task prompt/oracle has since been edited. Absent on runs recorded before this field existed. */
+  taskDefHash: string;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
   numTurns: number;
   durationMs: number;
+  /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
+  /** Grading spend for this run: >0 only for judge-mode oracles, 0 otherwise. Never merged into costUsd. */
+  judgeCostUsd: number;
   resultText: string;
   oraclePassed: boolean;
-  status: "ok" | "error" | "budget_exceeded";
+  /** Judge's one-line rationale, judge mode only — kept so a judge verdict can be audited after the fact. */
+  judgeReason?: string;
+  status: RunStatus;
+}
+
+/**
+ * Status of one (task, rep, arm) run once grading spend is taken into account.
+ *
+ * This is the only place arm and judge cost are added together, and only to
+ * decide whether the pair blew MAX_COMBINED_BUDGET_USD — the two stay separate
+ * in the record, because judge cost is grading infrastructure and folding it
+ * into either arm's number would corrupt the gmesh/baseline comparison.
+ *
+ * Trade-off: flagging an otherwise-successful arm call as "budget_exceeded"
+ * discards its measurement downstream (report.ts aggregates status === "ok"
+ * runs only). That's deliberate — a run that overshot a cap is anomalous, and
+ * silently averaging it into the headline token number is exactly the failure
+ * this accounting exists to catch.
+ *
+ * Pure and exported so the budget_exceeded path is testable without spending
+ * real API money (see harness/budgetAccounting.test.ts).
+ */
+export function combinedBudgetStatus(armStatus: RunStatus, armCostUsd: number, judgeCostUsd: number): RunStatus {
+  // A run that already failed keeps its own, more specific status.
+  if (armStatus !== "ok") return armStatus;
+  // Strict >: landing exactly on the ceiling is still within budget.
+  if (armCostUsd + judgeCostUsd > MAX_COMBINED_BUDGET_USD) return "budget_exceeded";
+  return "ok";
 }
 
 const REPETITION_PRESETS = { low: 1, normal: 3, max: 5 } as const;
@@ -65,17 +126,6 @@ function requestedTaskIds(): string[] {
   return process.argv.slice(2);
 }
 
-async function loadRegistry(): Promise<CorpusEntry[]> {
-  const raw = await readFile(path.join(ROOT, "corpora/registry.json"), "utf8");
-  return JSON.parse(raw);
-}
-
-async function loadTasks(corpusId: string): Promise<BenchTask[]> {
-  const tasksPath = path.join(ROOT, "corpora", corpusId, "tasks.json");
-  if (!existsSync(tasksPath)) return [];
-  return JSON.parse(await readFile(tasksPath, "utf8"));
-}
-
 async function runArm(
   cwd: string,
   task: BenchTask,
@@ -86,13 +136,28 @@ async function runArm(
 ): Promise<TokenEconomyRun> {
   const result = await runClaude({
     cwd,
-    prompt: task.prompt,
-    mcpConfig: arm === "gmesh" ? buildGmeshArmConfig() : buildBaselineArmConfig(),
-    tools: arm === "gmesh" ? GMESH_TOOLS : BASELINE_TOOLS,
+    prompt: armPrompt(task.prompt, arm),
+    mcpConfig: armMcpConfig(arm),
+    tools: armTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
-  const oracle = checkOracle(result.resultText, task.oracle);
+  // Grading a failed arm run is pointless and, in judge mode, not free:
+  // runClaude returns an empty resultText for both "error" and
+  // "budget_exceeded", so every oracle mode scores it as a miss anyway — but a
+  // judge would first pay for a real API call to say so. Skipping it is the
+  // prospective half of the combined budget bound; combinedBudgetStatus below
+  // is the retrospective half.
+  const oracle = result.status === "ok" ? await checkOracle(result.resultText, task.oracle) : undefined;
+  const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
+  const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
+  if (status === "budget_exceeded" && result.status === "ok") {
+    console.warn(
+      `  ! ${task.id} (${arm}, rep ${repetition}): arm $${result.costUsd.toFixed(4)} + judge ` +
+        `$${judgeCostUsd.toFixed(4)} exceeds the combined ceiling $${MAX_COMBINED_BUDGET_USD.toFixed(4)}; ` +
+        `recording this run as budget_exceeded.`,
+    );
+  }
   return {
     taskId: task.id,
     corpusId,
@@ -100,6 +165,9 @@ async function runArm(
     repetition,
     timestamp,
     model: MODEL,
+    category: task.category,
+    expectedWinner: task.expectedWinner,
+    taskDefHash: computeTaskDefHash(task),
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
     cacheReadTokens: result.usage.cacheReadTokens,
@@ -107,10 +175,47 @@ async function runArm(
     numTurns: result.numTurns,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
+    judgeCostUsd,
     resultText: result.resultText,
-    oraclePassed: oracle.passed,
-    status: result.status,
+    oraclePassed: oracle?.passed ?? false,
+    judgeReason: oracle?.reason,
+    status,
   };
+}
+
+/**
+ * G_MESH_BENCH_HTML_NARRATIVE=yes|no gates the extra `claude -p` call that
+ * turns computeAnalysis()'s bullets into prose for the HTML report. Default
+ * yes when unset, so a plain `npm run token-economy` gets a narrative without
+ * extra flags — set to "no" to skip the call entirely (no spend, no API
+ * dependency) for a fast/offline/CI-only report. Same parsing style as
+ * shouldWarmCache() above.
+ */
+function shouldGenerateNarrative(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
+  if (envOverride === undefined) return true;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_HTML_NARRATIVE value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * G_MESH_BENCH_INCLUDE_TRUSTED=yes|no gates the third `gmesh-trusted` arm.
+ *
+ * Default no: the run is then byte-for-byte what it was before this arm
+ * existed — same two arms, same output shape, same spend. Set to yes to also
+ * run gmesh-trusted for every (task, repetition), which adds a full third arm
+ * call to each one (~1.5x the API spend of the usual two-arm run). Same
+ * parsing style as shouldWarmCache()/shouldGenerateNarrative().
+ */
+function shouldIncludeTrustedArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_TRUSTED;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_TRUSTED value "${envOverride}"; expected "yes" or "no".`);
 }
 
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
@@ -154,8 +259,8 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
   const result = await runClaude({
     cwd,
     prompt: WARMUP_PROMPT,
-    mcpConfig: arm === "gmesh" ? buildGmeshArmConfig() : buildBaselineArmConfig(),
-    tools: arm === "gmesh" ? GMESH_TOOLS : BASELINE_TOOLS,
+    mcpConfig: armMcpConfig(arm),
+    tools: armTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
@@ -167,6 +272,13 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
   }
 }
 
+/**
+ * Two calls, not three, even when gmesh-trusted is enabled: what gets warmed
+ * is the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
+ * gmesh's (same MCP config, same tool list) — the arms differ only after that
+ * prefix, in the user prompt. A third warm-up would spend money to warm a
+ * cache entry that is already warm.
+ */
 async function warmCache(cwd: string): Promise<void> {
   console.log("Warming prompt cache: gmesh arm...");
   await warmArm(cwd, "gmesh");
@@ -214,6 +326,16 @@ async function main() {
   const reps = repetitionCount();
   console.log(`Repetitions per (task, arm): ${reps}`);
 
+  // Only ever logged when the flag is on, so a default run's output is
+  // unchanged from before the third arm existed.
+  const arms: Arm[] = shouldIncludeTrustedArm() ? ["gmesh", "baseline", "gmesh-trusted"] : ["gmesh", "baseline"];
+  if (arms.includes("gmesh-trusted")) {
+    console.log(
+      `G_MESH_BENCH_INCLUDE_TRUSTED=yes — arms per (task, rep): ${arms.join(", ")}. ` +
+        `The extra arm is a full third run of every task: expect ~1.5x the API spend of a two-arm run.`,
+    );
+  }
+
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
     const tasks =
@@ -223,10 +345,10 @@ async function main() {
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
-        console.log(`[${corpus.id}] ${task.id}: gmesh arm (rep ${rep}/${reps})...`);
-        runs.push(await runArm(cwd, task, corpus.id, "gmesh", rep, timestamp));
-        console.log(`[${corpus.id}] ${task.id}: baseline arm (rep ${rep}/${reps})...`);
-        runs.push(await runArm(cwd, task, corpus.id, "baseline", rep, timestamp));
+        for (const arm of arms) {
+          console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
+          runs.push(await runArm(cwd, task, corpus.id, arm, rep, timestamp));
+        }
       }
     }
   }
@@ -236,6 +358,48 @@ async function main() {
   const outPath = path.join(resultsDir, `${timestamp.replace(/[:.]/g, "-")}.json`);
   await writeFile(outPath, JSON.stringify(runs, null, 2));
   console.log(`Wrote ${runs.length} run records to ${outPath}`);
+
+  // Reported separately from arm spend, never summed with it, so grading cost
+  // is visible as its own line item rather than hiding inside the comparison.
+  const armSpend = runs.reduce((sum, r) => sum + r.costUsd, 0);
+  const judgeSpend = runs.reduce((sum, r) => sum + r.judgeCostUsd, 0);
+
+  // Narrative spend is a third, separate line item — same "own budget, never
+  // summed into costUsd" pattern as judge spend above. 0 when the narrative
+  // is disabled or the call failed, never merged into armSpend/judgeSpend.
+  let narrativeSpend = 0;
+  let narrativeText: string | null = null;
+  if (shouldGenerateNarrative()) {
+    const correctnessTable = computeCorrectnessTable(runs);
+    const taskTable = computeTaskTable(runs);
+    const aggregate = computeAggregate(runs);
+    const paired = pairedTokenTotals(runs);
+    const bullets = computeAnalysis(runs, correctnessTable, taskTable, aggregate, paired);
+    const narrative = await generateNarrative(bullets, aggregate);
+    narrativeText = narrative?.text ?? null;
+    narrativeSpend = narrative?.costUsd ?? 0;
+  }
+
+  const html = renderHtmlReport(runs, { title: "g-mesh-bench token-economy run", narrative: narrativeText });
+  const htmlDir = path.join(ROOT, "results/html");
+  await mkdir(htmlDir, { recursive: true });
+  const htmlPath = path.join(htmlDir, `${timestamp.replace(/[:.]/g, "-")}.html`);
+  await writeFile(htmlPath, html);
+  console.log(`Wrote HTML report to ${htmlPath}`);
+
+  console.log(
+    `Arm spend: $${armSpend.toFixed(4)} | judge (grading) spend: $${judgeSpend.toFixed(4)} | narrative spend: $${narrativeSpend.toFixed(4)}`,
+  );
+  const overBudget = runs.filter((r) => r.status === "budget_exceeded").length;
+  if (overBudget > 0) console.log(`Runs recorded as budget_exceeded: ${overBudget}`);
 }
 
-main();
+/**
+ * Only auto-run when this file is the process entry point, so the module can be
+ * imported (harness/budgetAccounting.test.ts imports combinedBudgetStatus)
+ * without kicking off a real, API-spending benchmark. `npm run token-economy`
+ * is unaffected: tsx sets argv[1] to this file's path.
+ */
+if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -2,9 +2,13 @@
   {
     "id": "ex-find-impl-trail-crossfile",
     "kind": "find_implementations",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
     "target": { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
-    "prompt": "In this repository, find every class that implements the Trail interface defined in packages/excalidraw/animatedTrail.ts. Report the class name(s) and the file(s) they live in.",
+    "prompt": "In this repository, find every class that implements the Trail interface. Report the class name(s) and the file(s) they live in.",
     "oracle": {
+      "mode": "substring",
       "mustMentionFiles": ["packages/excalidraw/laserTrails.ts", "packages/excalidraw/drawShapeTrail.ts"],
       "mustMentionSymbols": ["AnimatedTrail", "LaserTrails", "DrawShapeTrail"]
     }
@@ -12,71 +16,403 @@
   {
     "id": "ex-find-impl-deltacontainer-generic",
     "kind": "find_implementations",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
     "target": { "symbol": "DeltaContainer", "file": "packages/element/src/delta.ts" },
-    "prompt": "In this repository, find every class that implements the generic DeltaContainer<T> interface defined in packages/element/src/delta.ts. Report the class name(s).",
+    "prompt": "In this repository, find every class that implements the generic DeltaContainer<T> interface. Report the class name(s).",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/delta.ts"],
+      "mode": "substring",
       "mustMentionSymbols": ["AppStateDelta", "ElementsDelta"]
     }
   },
   {
     "id": "ex-references-pointfrom-highfanout",
     "kind": "find_references",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
     "target": { "symbol": "pointFrom", "file": "packages/math/src/point.ts" },
-    "prompt": "In this repository, find files that call the pointFrom function defined in packages/math/src/point.ts. List at least 8 distinct calling files.",
+    "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 8 distinct files that call it. Give each file's full repo-relative path.",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/binding.ts", "packages/element/src/shape.ts", "packages/element/src/textElement.ts"],
-      "mustMentionSymbols": ["pointFrom"]
+      "mode": "pool",
+      "candidatePool": [
+        "packages/common/src/points.ts",
+        "packages/element/src/arrows/focus.ts",
+        "packages/element/src/binding.ts",
+        "packages/element/src/bounds.ts",
+        "packages/element/src/collision.ts",
+        "packages/element/src/convertToShape.ts",
+        "packages/element/src/cropElement.ts",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/flowchart.ts",
+        "packages/element/src/frame.ts",
+        "packages/element/src/heading.ts",
+        "packages/element/src/linearElementEditor.ts",
+        "packages/element/src/renderElement.ts",
+        "packages/element/src/resizeElements.ts",
+        "packages/element/src/resizeTest.ts",
+        "packages/element/src/shape.ts",
+        "packages/element/src/textElement.ts",
+        "packages/element/src/transform.ts",
+        "packages/element/src/transformHandles.ts",
+        "packages/element/src/utils.ts",
+        "packages/element/src/visualdebug.ts",
+        "packages/excalidraw/actions/actionFinalize.tsx",
+        "packages/excalidraw/actions/actionProperties.tsx",
+        "packages/excalidraw/charts/charts.helpers.ts",
+        "packages/excalidraw/charts/charts.line.ts",
+        "packages/excalidraw/charts/charts.radar.ts",
+        "packages/excalidraw/components/App.arrowText.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/ConvertElementTypePopup.tsx",
+        "packages/excalidraw/components/Stats/MultiDimension.tsx",
+        "packages/excalidraw/components/Stats/MultiPosition.tsx",
+        "packages/excalidraw/components/Stats/Position.tsx",
+        "packages/excalidraw/components/Stats/utils.ts",
+        "packages/excalidraw/components/hyperlink/Hyperlink.tsx",
+        "packages/excalidraw/components/hyperlink/helpers.ts",
+        "packages/excalidraw/data/restore.ts",
+        "packages/excalidraw/drawShapeTrail.ts",
+        "packages/excalidraw/eraser/index.ts",
+        "packages/excalidraw/lasso/index.ts",
+        "packages/excalidraw/renderer/interactiveScene.ts",
+        "packages/excalidraw/renderer/renderSnaps.ts",
+        "packages/excalidraw/snapping.ts",
+        "packages/excalidraw/textAutoResizeHandle.ts",
+        "packages/excalidraw/viewport.ts",
+        "packages/excalidraw/wysiwyg/textWysiwyg.tsx",
+        "packages/math/src/curve.ts",
+        "packages/math/src/ellipse.ts",
+        "packages/math/src/line.ts",
+        "packages/math/src/pca.ts",
+        "packages/math/src/rectangle.ts",
+        "packages/utils/src/shape.ts"
+      ],
+      "minMatches": 8
     }
   },
   {
     "id": "ex-references-getnondeletedelements-medfanout",
     "kind": "find_references",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
     "target": { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" },
-    "prompt": "In this repository, find files that call the getNonDeletedElements function defined in packages/element/src/index.ts. List at least 5 distinct calling files.",
+    "prompt": "In this repository, find the standalone getNonDeletedElements helper function — not the same-named method on the Scene class — and list at least 5 distinct files that call it. Give each file's full repo-relative path.",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/Scene.ts", "packages/excalidraw/components/App.tsx"],
-      "mustMentionSymbols": ["getNonDeletedElements"]
+      "mode": "pool",
+      "candidatePool": [
+        "excalidraw-app/components/AI.tsx",
+        "excalidraw-app/data/LocalData.ts",
+        "packages/element/src/align.ts",
+        "packages/element/src/distribute.ts",
+        "packages/element/src/frame.ts",
+        "packages/element/src/zindex.ts",
+        "packages/excalidraw/actions/actionAlign.tsx",
+        "packages/excalidraw/actions/actionCanvas.tsx",
+        "packages/excalidraw/actions/actionDeleteSelected.tsx",
+        "packages/excalidraw/actions/actionDistribute.tsx",
+        "packages/excalidraw/actions/actionDuplicateSelection.tsx",
+        "packages/excalidraw/actions/actionElementLock.ts",
+        "packages/excalidraw/actions/actionFlip.ts",
+        "packages/excalidraw/actions/actionFrame.ts",
+        "packages/excalidraw/actions/actionGroup.tsx",
+        "packages/excalidraw/actions/actionLink.tsx",
+        "packages/excalidraw/actions/actionProperties.tsx",
+        "packages/excalidraw/actions/actionSelectAll.ts",
+        "packages/excalidraw/components/Stats/Dimension.tsx",
+        "packages/excalidraw/components/Stats/MultiDimension.tsx",
+        "packages/excalidraw/components/Stats/utils.ts",
+        "packages/excalidraw/data/index.ts",
+        "packages/excalidraw/data/restore.ts",
+        "packages/excalidraw/index.tsx",
+        "packages/utils/src/export.ts"
+      ],
+      "minMatches": 4
     }
   },
   {
     "id": "ex-find-callers-mutateelement",
     "kind": "find_callers",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
     "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-    "prompt": "In this repository, find every function/file that calls mutateElement, defined in packages/element/src/mutateElement.ts. List the calling files.",
+    "prompt": "In this repository, find the mutateElement function and list at least 8 distinct files that call it. Give each file's full repo-relative path.",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/binding.ts", "packages/element/src/dragElements.ts"],
-      "mustMentionSymbols": ["mutateElement"]
+      "mode": "pool",
+      "candidatePool": [
+        "packages/element/src/Scene.ts",
+        "packages/element/src/binding.ts",
+        "packages/element/src/delta.ts",
+        "packages/element/src/flowchart.ts",
+        "packages/element/src/fractionalIndex.ts",
+        "packages/element/src/frame.ts",
+        "packages/element/src/linearElementEditor.ts",
+        "packages/excalidraw/actions/actionFrame.ts",
+        "packages/excalidraw/clipboard.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/ConvertElementTypePopup.tsx",
+        "packages/excalidraw/components/LayerUI.tsx",
+        "packages/excalidraw/index.tsx"
+      ],
+      "minMatches": 6
     }
   },
   {
     "id": "ex-find-callees-mutateelement",
     "kind": "find_callees",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
     "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-    "prompt": "In this repository, what other functions does mutateElement (defined in packages/element/src/mutateElement.ts) call internally? Name at least two.",
+    "prompt": "In this repository, what other functions does the mutateElement function call internally? Name at least two.",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/mutateElement.ts"],
-      "mustMentionSymbols": ["isElbowArrow", "updateElbowArrowPoints"]
+      "mode": "pool",
+      "candidatePool": [
+        "isElbowArrow",
+        "updateElbowArrowPoints",
+        "getSizeFromPoints",
+        "ShapeCache",
+        "randomInteger",
+        "getUpdatedTimestamp"
+      ],
+      "minMatches": 2
     }
   },
   {
     "id": "ex-deps-package-math-incoming",
     "kind": "get_dependencies",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
     "target": { "symbol": "", "file": "packages/math/src/index.ts" },
-    "prompt": "In this repository, which files import from the @excalidraw/math package (packages/math/src/index.ts and its re-exports)? List at least 8 of them across different packages.",
+    "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 8 of them across different packages, giving each file's full repo-relative path.",
     "oracle": {
-      "mustMentionFiles": ["packages/element/src/mutateElement.ts", "packages/element/src/textElement.ts"],
-      "mustMentionSymbols": []
+      "mode": "pool",
+      "candidatePool": [
+        "excalidraw-app/components/DebugCanvas.tsx",
+        "packages/common/src/colors.ts",
+        "packages/common/src/points.ts",
+        "packages/common/src/utils.ts",
+        "packages/element/src/arrowEndpointText.ts",
+        "packages/element/src/arrows/focus.ts",
+        "packages/element/src/binding.ts",
+        "packages/element/src/bounds.ts",
+        "packages/element/src/collision.ts",
+        "packages/element/src/convertToShape.ts",
+        "packages/element/src/cropElement.ts",
+        "packages/element/src/distance.ts",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/flowchart.ts",
+        "packages/element/src/frame.ts",
+        "packages/element/src/heading.ts",
+        "packages/element/src/linearElementEditor.ts",
+        "packages/element/src/mutateElement.ts",
+        "packages/element/src/newElement.ts",
+        "packages/element/src/renderElement.ts",
+        "packages/element/src/resizeElements.ts",
+        "packages/element/src/resizeTest.ts",
+        "packages/element/src/shape.ts",
+        "packages/element/src/sizeHelpers.ts",
+        "packages/element/src/textElement.ts",
+        "packages/element/src/transform.ts",
+        "packages/element/src/transformHandles.ts",
+        "packages/element/src/typeChecks.ts",
+        "packages/element/src/types.ts",
+        "packages/element/src/utils.ts",
+        "packages/element/src/visualdebug.ts",
+        "packages/element/src/zindex.ts",
+        "packages/excalidraw/actions/actionBoundText.tsx",
+        "packages/excalidraw/actions/actionFinalize.tsx",
+        "packages/excalidraw/actions/actionProperties.tsx",
+        "packages/excalidraw/charts/charts.constants.ts",
+        "packages/excalidraw/charts/charts.helpers.ts",
+        "packages/excalidraw/charts/charts.line.ts",
+        "packages/excalidraw/charts/charts.radar.ts",
+        "packages/excalidraw/components/App.arrowText.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/App.viewport.ts",
+        "packages/excalidraw/components/ConvertElementTypePopup.tsx",
+        "packages/excalidraw/components/Popover.tsx",
+        "packages/excalidraw/components/Stats/Angle.tsx",
+        "packages/excalidraw/components/Stats/Dimension.tsx",
+        "packages/excalidraw/components/Stats/MultiAngle.tsx",
+        "packages/excalidraw/components/Stats/MultiDimension.tsx",
+        "packages/excalidraw/components/Stats/MultiPosition.tsx",
+        "packages/excalidraw/components/Stats/Position.tsx",
+        "packages/excalidraw/components/Stats/index.tsx",
+        "packages/excalidraw/components/Stats/utils.ts",
+        "packages/excalidraw/components/TTDDialog/hooks/useTextGeneration.ts",
+        "packages/excalidraw/components/hyperlink/Hyperlink.tsx",
+        "packages/excalidraw/components/hyperlink/helpers.ts",
+        "packages/excalidraw/components/positionElementBesideCursor.ts",
+        "packages/excalidraw/data/restore.ts",
+        "packages/excalidraw/drawShapeTrail.ts",
+        "packages/excalidraw/eraser/index.ts",
+        "packages/excalidraw/lasso/index.ts",
+        "packages/excalidraw/lasso/utils.ts",
+        "packages/excalidraw/renderer/interactiveScene.ts",
+        "packages/excalidraw/renderer/renderSnaps.ts",
+        "packages/excalidraw/scene/normalize.ts",
+        "packages/excalidraw/snapping.ts",
+        "packages/excalidraw/textAutoResizeHandle.ts",
+        "packages/excalidraw/types.ts",
+        "packages/excalidraw/viewport.ts",
+        "packages/excalidraw/wysiwyg/textWysiwyg.tsx",
+        "packages/utils/src/shape.ts"
+      ],
+      "minMatches": 8
     }
   },
   {
     "id": "ex-outline-types-vs-i18n",
     "kind": "get_file_outline",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": true,
     "target": { "symbol": "", "file": "packages/excalidraw/types.ts" },
     "prompt": "In this repository, list the exported interfaces from packages/excalidraw/types.ts, then contrast it with the exports of packages/excalidraw/i18n.ts (a much smaller file). Report both lists.",
     "oracle": {
+      "mode": "substring",
       "mustMentionFiles": ["packages/excalidraw/types.ts", "packages/excalidraw/i18n.ts"],
       "mustMentionSymbols": ["AppState", "ExcalidrawImperativeAPI", "Language"]
+    }
+  },
+  {
+    "id": "ex-control-analytics-track-categories",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "trackEvent", "file": "packages/excalidraw/analytics.ts" },
+    "prompt": "In this repository, find the small analytics-tracking helper function named trackEvent. Which event categories does it actually forward to tracking, and name at least two separate conditions under which it returns early without sending anything (i.e., silently no-ops)?",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["command_palette", "export"]
+    }
+  },
+  {
+    "id": "ex-control-shortcut-key-tokens",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "getShortcutKey", "file": "packages/excalidraw/shortcut.ts" },
+    "prompt": "In this repository, find the small helper function getShortcutKey that converts a shortcut-key description string into its translated display form. List at least 4 of the distinct keyword tokens (modifier or special key names) it recognizes and replaces.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": ["Alt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Escape", "Spacebar", "Delete"],
+      "minMatches": 4
+    }
+  },
+  {
+    "id": "ex-ambiguous-clamp-math-utils",
+    "kind": "find_references",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "clamp", "file": "packages/math/src/utils.ts" },
+    "prompt": "In this repository, there is more than one function named clamp. Find the general-purpose numeric clamp(value, min, max) helper that the main math package exports for general use — not any package-local copy meant only for that package's own internal use — and list at least 6 distinct files elsewhere in the codebase that call it.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "packages/common/src/colors.ts",
+        "packages/element/src/binding.ts",
+        "packages/element/src/cropElement.ts",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/flowchart.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/App.viewport.ts",
+        "packages/excalidraw/components/Popover.tsx",
+        "packages/excalidraw/components/Stats/Dimension.tsx",
+        "packages/excalidraw/components/Stats/Position.tsx",
+        "packages/excalidraw/components/positionElementBesideCursor.ts",
+        "packages/excalidraw/drawShapeTrail.ts",
+        "packages/excalidraw/renderer/interactiveScene.ts",
+        "packages/excalidraw/scene/normalize.ts",
+        "packages/excalidraw/viewport.ts"
+      ],
+      "minMatches": 6
+    }
+  },
+  {
+    "id": "ex-ambiguous-exporttosvg-public-api",
+    "kind": "find_references",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "exportToSvg", "file": "packages/utils/src/export.ts" },
+    "prompt": "In this repository, there are two different functions named exportToSvg: an internal one, and a public-API wrapper (in the utils package) that calls the internal one and does its own extra work. Find the public-API wrapper specifically and list every file that calls it, other than where it's defined.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "packages/excalidraw/components/PublishLibrary.tsx",
+        "packages/excalidraw/hooks/useLibraryItemSvg.ts",
+        "packages/excalidraw/index.tsx"
+      ],
+      "minMatches": 2
+    }
+  },
+  {
+    "id": "ex-multihop-mutateelement-nondeleted-callers",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+        { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" }
+      ]
+    },
+    "prompt": "In this repository, first find every file that calls the standalone mutateElement function exported by the element package — the helper that applies an in-place update to a single element and bumps its version — as opposed to the same-named method on the Scene class. Then, considering only those files, report which of them also call the standalone getNonDeletedElements helper exported by that same package, as opposed to the same-named Scene method or a module-local helper of the same name. A file that only re-exports one of these symbols without calling it does not count. Your final answer must list only the files that satisfy both conditions, each as a full repo-relative path.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: which files in the Excalidraw repo call BOTH the standalone mutateElement function exported by the element package AND the standalone getNonDeletedElements function exported by that same package. Ground truth: exactly two files — packages/element/src/frame.ts and packages/excalidraw/actions/actionFrame.ts. PASS only if the answer's final list of files is exactly those two. FAIL if either is missing from the final list, or if the final list contains any other file. Files that the answer explicitly rules out or presents as excluded do not count as part of its final list. Wrong entries that must FAIL if presented as part of the answer: packages/excalidraw/clipboard.ts, packages/element/src/Scene.ts, packages/element/src/binding.ts, packages/element/src/linearElementEditor.ts and packages/excalidraw/components/App.tsx (these call mutateElement, but reach getNonDeletedElements only as the Scene class method or a module-local helper of the same name, or not at all); packages/excalidraw/index.tsx (it re-exports both symbols and calls neither); and files such as packages/excalidraw/actions/actionProperties.tsx, actionFlip.ts, actionDeleteSelected.tsx or anything under packages/excalidraw/components/Stats/ (these call getNonDeletedElements but not the standalone mutateElement). Formatting, ordering, prose and extra correct commentary do not matter."
+    }
+  },
+  {
+    "id": "ex-multihop-trail-impl-pointfrom",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
+        { "symbol": "pointFrom", "file": "packages/math/src/point.ts" }
+      ]
+    },
+    "prompt": "In this repository, first find every class that implements the Trail interface, including classes that only get it indirectly by extending another Trail implementation. Then, of those classes, report which ones are defined in a file that also calls pointFrom (the helper that constructs a 2D point value) and which ones are not. Name the classes on both sides of that split.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The answer is about classes implementing the Trail interface in the Excalidraw repo, split by whether the class's own file calls pointFrom. Ground truth: exactly five classes implement Trail — AnimatedTrail, LaserTrails, DrawShapeTrail (all three declare `implements Trail`), plus EraserTrail and LassoTrail (which implement it indirectly by extending AnimatedTrail). Of these, the files defining DrawShapeTrail, EraserTrail and LassoTrail call pointFrom; the files defining AnimatedTrail and LaserTrails do not. PASS only if the answer names DrawShapeTrail, EraserTrail and LassoTrail as the ones whose files call pointFrom AND states that AnimatedTrail and LaserTrails do not. FAIL if it omits any of DrawShapeTrail/EraserTrail/LassoTrail from the calling side, if it claims AnimatedTrail or LaserTrails calls pointFrom, or if it presents some class other than these five as a Trail implementation. Wording, ordering, and extra correct detail such as file paths or line numbers do not matter."
+    }
+  },
+  {
+    "id": "ex-multihop-mutateelement-sizehelper-transitive",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+        { "symbol": "getSizeFromPoints", "file": "packages/common/src/points.ts" }
+      ]
+    },
+    "prompt": "In this repository, start from mutateElement — the helper that applies an in-place update to a single element and bumps its version. When the update changes an element's points, it delegates to a small helper imported from another workspace package to derive the element's width and height from that points array. Name that helper, then list every other file in the repository that calls the same helper, excluding the file that defines it and excluding mutateElement's own file. Give full repo-relative paths.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "getSizeFromPoints",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/transform.ts",
+        "packages/excalidraw/data/restore.ts"
+      ],
+      "minMatches": 4
     }
   }
 ]
