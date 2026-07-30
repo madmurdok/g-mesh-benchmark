@@ -4,8 +4,11 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { resolveWarm } from "./lib/corpusResolver.js";
+import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
+import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
 import type { BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
@@ -34,7 +37,7 @@ const BASELINE_TOOLS = "Read,Grep,Glob";
 type Arm = "gmesh" | "baseline";
 type RunStatus = "ok" | "error" | "budget_exceeded";
 
-interface TokenEconomyRun {
+export interface TokenEconomyRun {
   taskId: string;
   corpusId: string;
   arm: Arm;
@@ -182,6 +185,23 @@ async function runArm(
   };
 }
 
+/**
+ * G_MESH_BENCH_HTML_NARRATIVE=yes|no gates the extra `claude -p` call that
+ * turns computeAnalysis()'s bullets into prose for the HTML report. Default
+ * yes when unset, so a plain `npm run token-economy` gets a narrative without
+ * extra flags — set to "no" to skip the call entirely (no spend, no API
+ * dependency) for a fast/offline/CI-only report. Same parsing style as
+ * shouldWarmCache() above.
+ */
+function shouldGenerateNarrative(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
+  if (envOverride === undefined) return true;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_HTML_NARRATIVE value "${envOverride}"; expected "yes" or "no".`);
+}
+
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
 
 /**
@@ -310,7 +330,33 @@ async function main() {
   // is visible as its own line item rather than hiding inside the comparison.
   const armSpend = runs.reduce((sum, r) => sum + r.costUsd, 0);
   const judgeSpend = runs.reduce((sum, r) => sum + r.judgeCostUsd, 0);
-  console.log(`Arm spend: $${armSpend.toFixed(4)} | judge (grading) spend: $${judgeSpend.toFixed(4)}`);
+
+  // Narrative spend is a third, separate line item — same "own budget, never
+  // summed into costUsd" pattern as judge spend above. 0 when the narrative
+  // is disabled or the call failed, never merged into armSpend/judgeSpend.
+  let narrativeSpend = 0;
+  let narrativeText: string | null = null;
+  if (shouldGenerateNarrative()) {
+    const correctnessTable = computeCorrectnessTable(runs);
+    const taskTable = computeTaskTable(runs);
+    const aggregate = computeAggregate(runs);
+    const paired = pairedTokenTotals(runs);
+    const bullets = computeAnalysis(runs, correctnessTable, taskTable, aggregate, paired);
+    const narrative = await generateNarrative(bullets, aggregate);
+    narrativeText = narrative?.text ?? null;
+    narrativeSpend = narrative?.costUsd ?? 0;
+  }
+
+  const html = renderHtmlReport(runs, { title: "g-mesh-bench token-economy run", narrative: narrativeText });
+  const htmlDir = path.join(ROOT, "results/html");
+  await mkdir(htmlDir, { recursive: true });
+  const htmlPath = path.join(htmlDir, `${timestamp.replace(/[:.]/g, "-")}.html`);
+  await writeFile(htmlPath, html);
+  console.log(`Wrote HTML report to ${htmlPath}`);
+
+  console.log(
+    `Arm spend: $${armSpend.toFixed(4)} | judge (grading) spend: $${judgeSpend.toFixed(4)} | narrative spend: $${narrativeSpend.toFixed(4)}`,
+  );
   const overBudget = runs.filter((r) => r.status === "budget_exceeded").length;
   if (overBudget > 0) console.log(`Runs recorded as budget_exceeded: ${overBudget}`);
 }
