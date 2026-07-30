@@ -1,0 +1,42 @@
+[
+  {
+    "taskId": "tt-find-impl-completionverifier",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh",
+    "repetition": 1,
+    "timestamp": "2026-07-30T15:27:28.968Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "inputTokens": 6,
+    "outputTokens": 271,
+    "cacheReadTokens": 49900,
+    "cacheCreationTokens": 517,
+    "numTurns": 3,
+    "durationMs": 9043,
+    "costUsd": 0.022789999999999998,
+    "judgeCostUsd": 0,
+    "resultText": "Найден один класс, реализующий интерфейс `CompletionVerifier`:\n\n- **`GitDiffCompletionVerifier`** — `src/domain/verification.ts:25`\n\nСам интерфейс `CompletionVerifier` определён там же, в `src/domain/verification.ts:13`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-find-impl-completionverifier",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-07-30T15:27:28.968Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "inputTokens": 6,
+    "outputTokens": 385,
+    "cacheReadTokens": 44056,
+    "cacheCreationTokens": 613,
+    "numTurns": 3,
+    "durationMs": 10473,
+    "costUsd": 0.0233178,
+    "judgeCostUsd": 0,
+    "resultText": "Один класс: `GitDiffCompletionVerifier` в `src/domain/verification.ts:26`, реализует интерфейс `CompletionVerifier` (там же, `src/domain/verification.ts:14`). Других реализаций нет.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

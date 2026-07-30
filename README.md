@@ -20,6 +20,10 @@ Tracks three metrics, kept strictly separate — never merged into one report:
 - `harness/` — the three experiment runners plus shared `lib/` helpers.
 - `results/<experiment>/` — one timestamped JSON file per run, kept forever for
   trend comparison.
+- `results/html/` — one self-contained HTML report (charts + tables + written
+  analysis) per `token-economy` run, timestamped the same way as its JSON
+  sibling and kept forever alongside it. `npm run report` additionally writes
+  `results/html/cumulative.html`, overwritten every run (gitignored, not kept).
 
 ## Running an experiment
 
@@ -39,6 +43,12 @@ tokens per run — see the design doc's failure-modes section for budget caps.
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
 - `npm run token-economy -- <taskId...>` — run only the named task(s) instead of the
   full registry, e.g. `npm run token-economy -- ex-find-impl-trail-crossfile`.
+- `G_MESH_BENCH_WARM_CACHE=yes|no` — skip the interactive cache warm-up prompt
+  for scripted/CI invocations.
+- `G_MESH_BENCH_HTML_NARRATIVE=yes|no` — whether to spend one extra cheap-model
+  call generating a plain-English summary paragraph for the HTML report
+  (default `yes`; `no` skips the call entirely, no spend). Applies to both
+  `token-economy` (per-run report) and `report` (cumulative report).
 
 ## Authoring `mode: "pool"` oracle tasks
 
