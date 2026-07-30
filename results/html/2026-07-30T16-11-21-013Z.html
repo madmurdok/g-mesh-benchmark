@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run</h1>
+  <p class="timestamp">Generated 2026-07-30T16:15:57.427Z &middot; run timestamp 2026-07-30T16:11:21.013Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-119.3%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-119.3% (n=1)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$1.2511</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0332</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">1/1</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">1/1</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="233" height="250" rx="4" class="bar-gmesh"><title>gmesh, multi-hop: 1/1</title></rect><text x="176.5" y="28" class="bar-label" text-anchor="middle">1/1</text><rect x="295" y="34" width="233" height="250" rx="4" class="bar-baseline"><title>baseline, multi-hop: 1/1</title></rect><text x="411.5" y="28" class="bar-label" text-anchor="middle">1/1</text><text x="294" y="304" class="axis-label" text-anchor="middle">multi-hop</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>multi-hop</td><td>gmesh</td><td>1/1</td><td>100%</td></tr><tr><td>multi-hop</td><td>baseline</td><td>1/1</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 78" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="62" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>ex-multihop-mutateelement-nondeleted-callers</title>ex-multihop-mutateelement-n…</text><rect x="220" y="21" width="450" height="17" rx="4" class="bar-gmesh"><title>gmesh, ex-multihop-mutateelement-nondeleted-callers: 612068 tokens</title></rect><text x="676" y="33.5" class="bar-label" text-anchor="start">612068</text><rect x="220" y="40" width="205.1992589058732" height="17" rx="4" class="bar-baseline"><title>baseline, ex-multihop-mutateelement-nondeleted-callers: 279102 tokens</title></rect><text x="431.1992589058732" y="52.5" class="bar-label" text-anchor="start">279102</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>ex-multihop-mutateelement-nondeleted-callers</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>612068</td><td>612068</td><td>612068</td><td>1/1</td></tr><tr><td>ex-multihop-mutateelement-nondeleted-callers</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>279102</td><td>279102</td><td>279102</td><td>1/1</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Expected-winner check: 0/1 tasks with a declared expected winner matched the observed lower-token arm; mismatches: ex-multihop-mutateelement-nondeleted-callers.</li>
+    <li>Bottom line: across 1 compared tasks, gmesh used -119.3% fewer tokens (unconditional), -119.3% fewer paired (n=1). Oracle pass rate — gmesh: 1/1 (100%), baseline: 1/1 (100%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="narrative-text">This benchmark compared g-mesh and grep/Read/Glob baseline approaches on a single task: finding non-deleted callers in a multi-hop scenario. Both tools achieved identical oracle pass rates of 100%, successfully completing the navigation challenge.</p><p class="narrative-text">However, g-mesh consumed substantially more tokens than the baseline approach. The baseline used 279,102 tokens on average, while g-mesh used 612,068 tokens—a difference representing a 119.3% token increase for g-mesh. In practical terms, g-mesh required more than twice the computational resources to reach the same solution quality.</p><p class="narrative-text">The benchmark&#39;s expected-winner prediction did not match observed results. The task was expected to favor one approach, but actual token consumption contradicted this forecast, suggesting the prediction model may not accurately capture real-world performance characteristics for this type of code navigation work.</p><p class="narrative-text">The sample size of one task is noteworthy. This single comparison provides limited evidence for making adoption decisions. The identical pass rates indicate both approaches are equally capable at successfully completing the navigation work, but the token efficiency gap favors the simpler baseline method in this instance. Broader testing across diverse task types and complexity levels would be needed to determine whether this result generalizes or represents an outlier case where g-mesh&#39;s overhead outweighs potential benefits.</p>
+</div>
+</body>
+</html>
