@@ -1,0 +1,42 @@
+[
+  {
+    "taskId": "tt-deps-incoming-db-connection",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh",
+    "repetition": 1,
+    "timestamp": "2026-07-30T12:55:28.585Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "inputTokens": 10,
+    "outputTokens": 740,
+    "cacheReadTokens": 68791,
+    "cacheCreationTokens": 18824,
+    "numTurns": 7,
+    "durationMs": 17730,
+    "costUsd": 0.14534429999999998,
+    "judgeCostUsd": 0,
+    "resultText": "Модуль подключения к БД — `src/db/connection.ts` (функция `openDatabase`, использующая `better-sqlite3`). Импортируется в 37 файлах; вот минимум 5 из них (не тестовых):\n\n- `src/index.ts`\n- `src/mcp/server.ts`\n- `src/dashboard/server.ts`\n- `src/cli/status.ts`\n- `src/domain/tasks.ts`\n- `src/domain/board.ts`\n- `src/domain/projects.ts`",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-deps-incoming-db-connection",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-07-30T12:55:28.585Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "inputTokens": 8,
+    "outputTokens": 809,
+    "cacheReadTokens": 51579,
+    "cacheCreationTokens": 10212,
+    "numTurns": 6,
+    "durationMs": 18033,
+    "costUsd": 0.0895427,
+    "judgeCostUsd": 0,
+    "resultText": "Модуль `src/db/connection.ts` (функция `openDatabase`) — центральный код инициализации SQLite-соединения.\n\nФайлы, импортирующие из него (в `src/`):\n- `src/index.ts`\n- `src/dashboard/server.ts`\n- `src/cli/status.ts`\n- `src/domain/tasks.ts`\n- `src/domain/board.ts`\n- `src/domain/projects.ts`\n- `src/domain/releases.ts`\n- `src/domain/epics.ts`\n- `src/domain/dependencies.ts`\n- `src/domain/lifecycle.ts`\n- `src/domain/status.ts`\n\nПлюс много тестов (`tests/*.test.ts`), которые тоже используют `openDatabase`.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]
