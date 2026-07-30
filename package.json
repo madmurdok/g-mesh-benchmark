@@ -9,6 +9,7 @@
     "search-latency": "tsx harness/search-latency.ts",
     "cold-start": "tsx harness/cold-start.ts",
     "report": "tsx harness/report.ts",
+    "candidate-pool": "tsx scripts/computeCandidatePool.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "ts-morph": "^28.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
