@@ -78,5 +78,33 @@
       "mustMentionFiles": ["packages/excalidraw/types.ts", "packages/excalidraw/i18n.ts"],
       "mustMentionSymbols": ["AppState", "ExcalidrawImperativeAPI", "Language"]
     }
+  },
+  {
+    "id": "ex-control-analytics-track-categories",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "trackEvent", "file": "packages/excalidraw/analytics.ts" },
+    "prompt": "In this repository, find the small analytics-tracking helper function named trackEvent. Which event categories does it actually forward to tracking, and name at least two separate conditions under which it returns early without sending anything (i.e., silently no-ops)?",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": ["packages/excalidraw/analytics.ts"],
+      "mustMentionSymbols": ["command_palette", "export"]
+    }
+  },
+  {
+    "id": "ex-control-shortcut-key-tokens",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "getShortcutKey", "file": "packages/excalidraw/shortcut.ts" },
+    "prompt": "In this repository, find the small helper function getShortcutKey that converts a shortcut-key description string into its translated display form. List at least 4 of the distinct keyword tokens (modifier or special key names) it recognizes and replaces.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": ["Alt", "Opt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Esc", "Escape", "Space", "Spacebar", "Del", "Delete"],
+      "minMatches": 4
+    }
   }
 ]
