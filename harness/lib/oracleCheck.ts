@@ -5,6 +5,12 @@ export interface OracleCheckResult {
   passed: boolean;
   missed: string[];
   reason?: string;
+  /**
+   * judge mode only: what the grading call itself cost. Reported so the caller
+   * can bound and record it; it is grading infrastructure and must never be
+   * folded into the graded arm's own cost/token numbers.
+   */
+  judgeCostUsd?: number;
 }
 
 function checkSubstring(resultText: string, oracle: Oracle): OracleCheckResult {
@@ -24,10 +30,10 @@ function checkPool(resultText: string, oracle: Oracle): OracleCheckResult {
 
 async function checkJudge(resultText: string, oracle: Oracle): Promise<OracleCheckResult> {
   if (!oracle.rubric) {
-    return { passed: false, missed: [], reason: 'judge mode requires oracle.rubric' };
+    return { passed: false, missed: [], reason: 'judge mode requires oracle.rubric', judgeCostUsd: 0 };
   }
   const verdict = await judgeAnswer(resultText, oracle.rubric);
-  return { passed: verdict.passed, missed: [], reason: verdict.reason };
+  return { passed: verdict.passed, missed: [], reason: verdict.reason, judgeCostUsd: verdict.costUsd };
 }
 
 /**

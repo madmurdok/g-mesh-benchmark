@@ -7,7 +7,8 @@ import { buildBaselineArmConfig } from "./mcpConfig.js";
  * under test never silently changes what grades it.
  */
 const JUDGE_MODEL = "claude-haiku-4-5";
-const JUDGE_MAX_BUDGET_USD = 0.05;
+/** Exported so token-economy.ts can bound arm+judge spend against the same number, instead of duplicating it. */
+export const JUDGE_MAX_BUDGET_USD = 0.05;
 
 export interface JudgeResult {
   passed: boolean;
