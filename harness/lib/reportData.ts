@@ -83,6 +83,45 @@ export function pairedTokenTotals(runs: TokenEconomyRun[]): { totalGmesh: number
   return { totalGmesh, totalBaseline, pairCount };
 }
 
+/**
+ * Splits historical runs into those graded against the task definition as it
+ * exists today ("current") and everything else ("stale") — a run with no
+ * `taskDefHash` (recorded before that field existed), a hash that doesn't
+ * match the task's current definition (the prompt/oracle was edited since),
+ * or a `taskId` no longer present in the registry at all (task
+ * removed/renamed). See docs/results/v0.2.0-realistic-tasks-findings.md,
+ * "Stale run-record contamination in the cumulative report" for the bug this
+ * exists to fix — report.ts aggregated pre-edit and post-edit runs together
+ * under the same task id with no way to tell them apart.
+ */
+export function partitionByCurrentDef(
+  runs: TokenEconomyRun[],
+  currentHashByTaskId: Map<string, string>,
+): { current: TokenEconomyRun[]; stale: TokenEconomyRun[] } {
+  const current: TokenEconomyRun[] = [];
+  const stale: TokenEconomyRun[] = [];
+  for (const run of runs) {
+    const currentHash = currentHashByTaskId.get(run.taskId);
+    if (run.taskDefHash && currentHash !== undefined && run.taskDefHash === currentHash) {
+      current.push(run);
+    } else {
+      stale.push(run);
+    }
+  }
+  return { current, stale };
+}
+
+/** Stale-run counts grouped by taskId, sorted by taskId ascending — the "Excluded as stale" report section's data source. */
+export function computeStaleSummary(stale: TokenEconomyRun[]): { taskId: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const run of stale) {
+    counts.set(run.taskId, (counts.get(run.taskId) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([taskId, count]) => ({ taskId, count }))
+    .sort((a, b) => a.taskId.localeCompare(b.taskId));
+}
+
 export const UNCATEGORIZED = "uncategorized (pre-v2)";
 
 export interface CorrectnessRow {

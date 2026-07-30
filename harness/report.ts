@@ -7,13 +7,36 @@ import {
   computeAggregate,
   computeAnalysis,
   computeCorrectnessTable,
+  computeStaleSummary,
   computeTaskTable,
   loadRuns,
   pairedTokenTotals,
+  partitionByCurrentDef,
 } from "./lib/reportData.js";
+import { computeTaskDefHash } from "./lib/taskDefHash.js";
+import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { TokenEconomyRun } from "./token-economy.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Fingerprints every task currently in the registry, keyed by task id — the
+ * "ground truth" a historical run's own taskDefHash is compared against to
+ * decide whether it's still trustworthy. See partitionByCurrentDef in
+ * lib/reportData.ts and docs/results/v0.2.0-realistic-tasks-findings.md's
+ * "Stale run-record contamination" section for why this exists.
+ */
+async function buildCurrentHashByTaskId(): Promise<Map<string, string>> {
+  const registry = await loadRegistry();
+  const map = new Map<string, string>();
+  for (const corpus of registry) {
+    const tasks = await loadTasks(corpus.id);
+    for (const task of tasks) {
+      map.set(task.id, computeTaskDefHash(task));
+    }
+  }
+  return map;
+}
 
 /**
  * G_MESH_BENCH_HTML_NARRATIVE=yes|no gates the extra `claude -p` call that
@@ -48,10 +71,45 @@ function printCorrectness(runs: TokenEconomyRun[]): void {
   console.log("");
 }
 
+/**
+ * Printed right after the correctness table, before the token-economy table
+ * — only when something was actually excluded (never in --all mode). See
+ * docs/results/v0.2.0-realistic-tasks-findings.md, "Stale run-record
+ * contamination" for the bug this is surfacing.
+ */
+function printStaleSummary(stale: TokenEconomyRun[]): void {
+  if (stale.length === 0) return;
+  const summary = computeStaleSummary(stale);
+
+  console.log("# Excluded as stale\n");
+  console.log(
+    `${stale.length} run(s) across ${summary.length} task(s) excluded — graded against a superseded task\n` +
+      `definition. Re-run \`npm run token-economy\` to refresh, or pass --all to\n` +
+      `include them anyway.\n`,
+  );
+  console.log("| Task | Excluded runs |");
+  console.log("|---|---|");
+  for (const row of summary) {
+    console.log(`| ${row.taskId} | ${row.count} |`);
+  }
+  console.log("");
+}
+
 async function reportTokenEconomy(): Promise<void> {
-  const runs = await loadRuns<TokenEconomyRun>(path.join(ROOT, "results"), "token-economy");
+  const allRuns = await loadRuns<TokenEconomyRun>(path.join(ROOT, "results"), "token-economy");
+
+  const useAll = process.argv.includes("--all");
+  let runs = allRuns;
+  let stale: TokenEconomyRun[] = [];
+  if (!useAll) {
+    const currentHashByTaskId = await buildCurrentHashByTaskId();
+    const partitioned = partitionByCurrentDef(allRuns, currentHashByTaskId);
+    runs = partitioned.current;
+    stale = partitioned.stale;
+  }
 
   printCorrectness(runs);
+  if (!useAll) printStaleSummary(stale);
 
   const taskTable = computeTaskTable(runs);
 
@@ -108,7 +166,11 @@ async function reportTokenEconomy(): Promise<void> {
 }
 
 async function main() {
-  const experiment = process.argv[2] ?? "token-economy";
+  // process.argv[2] is normally the experiment name, but `--all` (see
+  // reportTokenEconomy) is also passed positionally there (`npm run report --
+  // --all`) — skip flag-shaped args when picking the experiment so `--all`
+  // alone doesn't get misread as an unknown experiment name.
+  const experiment = process.argv.slice(2).find((arg) => !arg.startsWith("--")) ?? "token-economy";
   if (experiment === "token-economy") {
     await reportTokenEconomy();
     return;

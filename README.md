@@ -50,6 +50,14 @@ tokens per run — see the design doc's failure-modes section for budget caps.
   (default `yes`; `no` skips the call entirely, no spend). Applies to both
   `token-economy` (per-run report) and `report` (cumulative report).
 
+By default, `npm run report` only compares runs graded against each task's
+*current* prompt/oracle definition — a run recorded before a task was edited
+is excluded and listed in an "Excluded as stale" section instead of silently
+blended into the aggregate (see `docs/results/v0.2.0-realistic-tasks-findings.md`'s
+"Stale run-record contamination" section for the bug this fixes). Pass
+`npm run report -- --all` to include every run regardless of staleness,
+reproducing the old unscoped behavior.
+
 ## Authoring `mode: "pool"` oracle tasks
 
 Tasks whose answer is an enumerable set of files ("list at least N callers/

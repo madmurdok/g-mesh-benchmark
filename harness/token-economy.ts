@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,9 @@ import { buildBaselineArmConfig, buildGmeshArmConfig, gmeshBinaryPath } from "./
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
-import type { BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
+import { computeTaskDefHash } from "./lib/taskDefHash.js";
+import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
+import type { BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODEL = "claude-sonnet-5";
@@ -47,6 +49,8 @@ export interface TokenEconomyRun {
   /** Task-authoring metadata, copied through for report.ts grouping; absent on pre-v2 tasks that declare neither. */
   category?: TaskCategory;
   expectedWinner?: ExpectedWinner;
+  /** Fingerprint of the full task definition (see lib/taskDefHash.ts) this run was graded against — lets report.ts detect runs whose task prompt/oracle has since been edited. Absent on runs recorded before this field existed. */
+  taskDefHash: string;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
@@ -118,17 +122,6 @@ function requestedTaskIds(): string[] {
   return process.argv.slice(2);
 }
 
-async function loadRegistry(): Promise<CorpusEntry[]> {
-  const raw = await readFile(path.join(ROOT, "corpora/registry.json"), "utf8");
-  return JSON.parse(raw);
-}
-
-async function loadTasks(corpusId: string): Promise<BenchTask[]> {
-  const tasksPath = path.join(ROOT, "corpora", corpusId, "tasks.json");
-  if (!existsSync(tasksPath)) return [];
-  return JSON.parse(await readFile(tasksPath, "utf8"));
-}
-
 async function runArm(
   cwd: string,
   task: BenchTask,
@@ -170,6 +163,7 @@ async function runArm(
     model: MODEL,
     category: task.category,
     expectedWinner: task.expectedWinner,
+    taskDefHash: computeTaskDefHash(task),
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
     cacheReadTokens: result.usage.cacheReadTokens,
