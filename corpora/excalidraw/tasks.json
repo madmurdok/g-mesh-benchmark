@@ -305,7 +305,7 @@
     "prompt": "In this repository, find the small helper function getShortcutKey that converts a shortcut-key description string into its translated display form. List at least 4 of the distinct keyword tokens (modifier or special key names) it recognizes and replaces.",
     "oracle": {
       "mode": "pool",
-      "candidatePool": ["Alt", "Opt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Esc", "Escape", "Space", "Spacebar", "Del", "Delete"],
+      "candidatePool": ["Alt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Escape", "Spacebar", "Delete"],
       "minMatches": 4
     }
   }
