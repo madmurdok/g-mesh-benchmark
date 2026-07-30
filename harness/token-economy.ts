@@ -4,18 +4,35 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { resolveWarm } from "./lib/corpusResolver.js";
+import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, gmeshBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
-import type { BenchTask, CorpusEntry } from "./lib/types.js";
+import type { BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODEL = "claude-sonnet-5";
 const MAX_BUDGET_USD = 1.0;
+/**
+ * A judge-mode oracle grades the arm's answer with a second, independent
+ * `claude -p` call (lib/judge.ts), capped on its own by JUDGE_MAX_BUDGET_USD.
+ * Each cap is enforced inside a separate CLI invocation, so until now nothing
+ * bounded the *pair*: a single (task, rep, arm) run could spend MAX_BUDGET_USD
+ * on the arm and then quietly spend more on grading, outside the harness's
+ * budget logic entirely.
+ *
+ * The ceiling is the sum of the two per-call caps rather than something
+ * tighter on purpose: any run that respected both individual caps must fall
+ * under it, so crossing it means a cap was overshot (or a call was made that
+ * this accounting doesn't know about) — not that the run was legitimately
+ * expensive. That makes it a real invariant rather than a second throttle.
+ */
+const MAX_COMBINED_BUDGET_USD = MAX_BUDGET_USD + JUDGE_MAX_BUDGET_USD;
 const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
 const BASELINE_TOOLS = "Read,Grep,Glob";
 
 type Arm = "gmesh" | "baseline";
+type RunStatus = "ok" | "error" | "budget_exceeded";
 
 interface TokenEconomyRun {
   taskId: string;
@@ -24,16 +41,49 @@ interface TokenEconomyRun {
   repetition: number;
   timestamp: string;
   model: string;
+  /** Task-authoring metadata, copied through for report.ts grouping; absent on pre-v2 tasks that declare neither. */
+  category?: TaskCategory;
+  expectedWinner?: ExpectedWinner;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
   numTurns: number;
   durationMs: number;
+  /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
+  /** Grading spend for this run: >0 only for judge-mode oracles, 0 otherwise. Never merged into costUsd. */
+  judgeCostUsd: number;
   resultText: string;
   oraclePassed: boolean;
-  status: "ok" | "error" | "budget_exceeded";
+  /** Judge's one-line rationale, judge mode only — kept so a judge verdict can be audited after the fact. */
+  judgeReason?: string;
+  status: RunStatus;
+}
+
+/**
+ * Status of one (task, rep, arm) run once grading spend is taken into account.
+ *
+ * This is the only place arm and judge cost are added together, and only to
+ * decide whether the pair blew MAX_COMBINED_BUDGET_USD — the two stay separate
+ * in the record, because judge cost is grading infrastructure and folding it
+ * into either arm's number would corrupt the gmesh/baseline comparison.
+ *
+ * Trade-off: flagging an otherwise-successful arm call as "budget_exceeded"
+ * discards its measurement downstream (report.ts aggregates status === "ok"
+ * runs only). That's deliberate — a run that overshot a cap is anomalous, and
+ * silently averaging it into the headline token number is exactly the failure
+ * this accounting exists to catch.
+ *
+ * Pure and exported so the budget_exceeded path is testable without spending
+ * real API money (see harness/budgetAccounting.test.ts).
+ */
+export function combinedBudgetStatus(armStatus: RunStatus, armCostUsd: number, judgeCostUsd: number): RunStatus {
+  // A run that already failed keeps its own, more specific status.
+  if (armStatus !== "ok") return armStatus;
+  // Strict >: landing exactly on the ceiling is still within budget.
+  if (armCostUsd + judgeCostUsd > MAX_COMBINED_BUDGET_USD) return "budget_exceeded";
+  return "ok";
 }
 
 const REPETITION_PRESETS = { low: 1, normal: 3, max: 5 } as const;
@@ -92,7 +142,22 @@ async function runArm(
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
-  const oracle = checkOracle(result.resultText, task.oracle);
+  // Grading a failed arm run is pointless and, in judge mode, not free:
+  // runClaude returns an empty resultText for both "error" and
+  // "budget_exceeded", so every oracle mode scores it as a miss anyway — but a
+  // judge would first pay for a real API call to say so. Skipping it is the
+  // prospective half of the combined budget bound; combinedBudgetStatus below
+  // is the retrospective half.
+  const oracle = result.status === "ok" ? await checkOracle(result.resultText, task.oracle) : undefined;
+  const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
+  const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
+  if (status === "budget_exceeded" && result.status === "ok") {
+    console.warn(
+      `  ! ${task.id} (${arm}, rep ${repetition}): arm $${result.costUsd.toFixed(4)} + judge ` +
+        `$${judgeCostUsd.toFixed(4)} exceeds the combined ceiling $${MAX_COMBINED_BUDGET_USD.toFixed(4)}; ` +
+        `recording this run as budget_exceeded.`,
+    );
+  }
   return {
     taskId: task.id,
     corpusId,
@@ -100,6 +165,8 @@ async function runArm(
     repetition,
     timestamp,
     model: MODEL,
+    category: task.category,
+    expectedWinner: task.expectedWinner,
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
     cacheReadTokens: result.usage.cacheReadTokens,
@@ -107,9 +174,11 @@ async function runArm(
     numTurns: result.numTurns,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
+    judgeCostUsd,
     resultText: result.resultText,
-    oraclePassed: oracle.passed,
-    status: result.status,
+    oraclePassed: oracle?.passed ?? false,
+    judgeReason: oracle?.reason,
+    status,
   };
 }
 
@@ -236,6 +305,22 @@ async function main() {
   const outPath = path.join(resultsDir, `${timestamp.replace(/[:.]/g, "-")}.json`);
   await writeFile(outPath, JSON.stringify(runs, null, 2));
   console.log(`Wrote ${runs.length} run records to ${outPath}`);
+
+  // Reported separately from arm spend, never summed with it, so grading cost
+  // is visible as its own line item rather than hiding inside the comparison.
+  const armSpend = runs.reduce((sum, r) => sum + r.costUsd, 0);
+  const judgeSpend = runs.reduce((sum, r) => sum + r.judgeCostUsd, 0);
+  console.log(`Arm spend: $${armSpend.toFixed(4)} | judge (grading) spend: $${judgeSpend.toFixed(4)}`);
+  const overBudget = runs.filter((r) => r.status === "budget_exceeded").length;
+  if (overBudget > 0) console.log(`Runs recorded as budget_exceeded: ${overBudget}`);
 }
 
-main();
+/**
+ * Only auto-run when this file is the process entry point, so the module can be
+ * imported (harness/budgetAccounting.test.ts imports combinedBudgetStatus)
+ * without kicking off a real, API-spending benchmark. `npm run token-economy`
+ * is unaffected: tsx sets argv[1] to this file's path.
+ */
+if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}
