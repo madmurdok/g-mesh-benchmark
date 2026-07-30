@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench session-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-3 of this project's dataviz palette: blue, orange, aqua. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .lede { color: var(--text-secondary); line-height: 1.6; margin: 0 0 20px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .line { fill: none; stroke-width: 2; }
+  .line-gmesh { stroke: var(--gmesh); }
+  .line-baseline { stroke: var(--baseline); }
+  .line-gmesh-trusted { stroke: var(--gmesh-trusted); }
+  .dot-gmesh { fill: var(--gmesh); }
+  .dot-baseline { fill: var(--baseline); }
+  .dot-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench session-economy run</h1>
+  <p class="timestamp">Generated 2026-07-30T22:25:56.687Z &middot; run timestamp 2026-07-30T21:59:27.926Z</p>
+  <p class="lede">Every task of a corpus asked inside one continuing <code>claude -p</code> session per arm, instead of
+  one fresh process per task. The number to watch is cache-creation tokens by position: an isolated process re-pays for
+  the MCP tool schemas on every call, a real session pays once. Positions are grouped strictly per corpus — chains have
+  different lengths, so pooling them would confuse "later in the session" with "a different codebase".</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">2622 → 3213 (+23%)</div><div class="stat-label">gmesh: cache-creation, first call vs later</div></div>
+    <div class="stat-tile"><div class="stat-value">2760 → 3626 (+31%)</div><div class="stat-label">baseline: cache-creation, first call vs later</div></div>
+    <div class="stat-tile"><div class="stat-value">8</div><div class="stat-label">Chains</div></div>
+    <div class="stat-tile"><div class="stat-value">77 / 2</div><div class="stat-label">Runs ok / skipped</div></div>
+    <div class="stat-tile"><div class="stat-value">$5.7993</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0713</div><div class="stat-label">Judge spend</div></div>
+  </div>
+
+  <h2>excalidraw: cache-creation tokens by position in session</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 900 340" class="chart chart-wide" role="img" aria-label="Mean cache-creation tokens by position in session for excalidraw"><line x1="64" y1="284" x2="880" y2="284" class="gridline" /><text x="56" y="288" class="axis-label" text-anchor="end">0</text><line x1="64" y1="219" x2="880" y2="219" class="gridline" /><text x="56" y="223" class="axis-label" text-anchor="end">11322</text><line x1="64" y1="154" x2="880" y2="154" class="gridline" /><text x="56" y="158" class="axis-label" text-anchor="end">22643</text><line x1="64" y1="89" x2="880" y2="89" class="gridline" /><text x="56" y="93" class="axis-label" text-anchor="end">33965</text><line x1="64" y1="24" x2="880" y2="24" class="gridline" /><text x="56" y="28" class="axis-label" text-anchor="end">45286</text><text x="64" y="304" class="axis-label" text-anchor="middle">1</text><text x="122.28571428571428" y="304" class="axis-label" text-anchor="middle">2</text><text x="180.57142857142856" y="304" class="axis-label" text-anchor="middle">3</text><text x="238.85714285714286" y="304" class="axis-label" text-anchor="middle">4</text><text x="297.1428571428571" y="304" class="axis-label" text-anchor="middle">5</text><text x="355.42857142857144" y="304" class="axis-label" text-anchor="middle">6</text><text x="413.7142857142857" y="304" class="axis-label" text-anchor="middle">7</text><text x="472" y="304" class="axis-label" text-anchor="middle">8</text><text x="530.2857142857142" y="304" class="axis-label" text-anchor="middle">9</text><text x="588.5714285714286" y="304" class="axis-label" text-anchor="middle">10</text><text x="646.8571428571429" y="304" class="axis-label" text-anchor="middle">11</text><text x="705.1428571428571" y="304" class="axis-label" text-anchor="middle">12</text><text x="763.4285714285714" y="304" class="axis-label" text-anchor="middle">13</text><text x="821.7142857142858" y="304" class="axis-label" text-anchor="middle">14</text><text x="880" y="304" class="axis-label" text-anchor="middle">15</text><text x="472" y="326" class="axis-label" text-anchor="middle">position in session</text><polyline points="64,254.69933312723578 122.28571428571428,280.7561718853509 180.57142857142856,253.40754317007463 238.85714285714286,252.11862385726272 297.1428571428571,269.72715629554386 355.42857142857144,278.20703970321955 413.7142857142857,272.11266174976817 472,234.89475776178068 530.2857142857142,273.92690897849224 588.5714285714286,276.9841452104403 646.8571428571429,261.8443669125116 705.1428571428571,273.5393719913439 763.4285714285714,239.32416199266882 821.7142857142858,264.18107141279864 880,276.7544936625006" class="line line-gmesh" /><circle cx="64" cy="254.69933312723578" r="4" class="dot-gmesh"><title>gmesh, position 1: 5104 cache-creation tokens (n=2)</title></circle><circle cx="122.28571428571428" cy="280.7561718853509" r="4" class="dot-gmesh"><title>gmesh, position 2: 565 cache-creation tokens (n=2)</title></circle><circle cx="180.57142857142856" cy="253.40754317007463" r="4" class="dot-gmesh"><title>gmesh, position 3: 5329 cache-creation tokens (n=2)</title></circle><circle cx="238.85714285714286" cy="252.11862385726272" r="4" class="dot-gmesh"><title>gmesh, position 4: 5553 cache-creation tokens (n=2)</title></circle><circle cx="297.1428571428571" cy="269.72715629554386" r="4" class="dot-gmesh"><title>gmesh, position 5: 2486 cache-creation tokens (n=2)</title></circle><circle cx="355.42857142857144" cy="278.20703970321955" r="4" class="dot-gmesh"><title>gmesh, position 6: 1009 cache-creation tokens (n=2)</title></circle><circle cx="413.7142857142857" cy="272.11266174976817" r="4" class="dot-gmesh"><title>gmesh, position 7: 2071 cache-creation tokens (n=2)</title></circle><circle cx="472" cy="234.89475776178068" r="4" class="dot-gmesh"><title>gmesh, position 8: 8553 cache-creation tokens (n=2)</title></circle><circle cx="530.2857142857142" cy="273.92690897849224" r="4" class="dot-gmesh"><title>gmesh, position 9: 1755 cache-creation tokens (n=2)</title></circle><circle cx="588.5714285714286" cy="276.9841452104403" r="4" class="dot-gmesh"><title>gmesh, position 10: 1222 cache-creation tokens (n=2)</title></circle><circle cx="646.8571428571429" cy="261.8443669125116" r="4" class="dot-gmesh"><title>gmesh, position 11: 3859 cache-creation tokens (n=2)</title></circle><circle cx="705.1428571428571" cy="273.5393719913439" r="4" class="dot-gmesh"><title>gmesh, position 12: 1822 cache-creation tokens (n=2)</title></circle><circle cx="763.4285714285714" cy="239.32416199266882" r="4" class="dot-gmesh"><title>gmesh, position 13: 7782 cache-creation tokens (n=2)</title></circle><circle cx="821.7142857142858" cy="264.18107141279864" r="4" class="dot-gmesh"><title>gmesh, position 14: 3452 cache-creation tokens (n=2)</title></circle><circle cx="880" cy="276.7544936625006" r="4" class="dot-gmesh"><title>gmesh, position 15: 1262 cache-creation tokens (n=2)</title></circle><polyline points="64,255.71554122686922 122.28571428571428,280.7676544627479 180.57142857142856,280.3514110321071 238.85714285714286,266.021154440666 297.1428571428571,278.29890032239547 355.42857142857144,271.88013955747914 413.7142857142857,275.330654065274 472,270.9672746544186 530.2857142857142,272.7068851300623 588.5714285714286,276.2636134787793 646.8571428571429,273.01117343108245 705.1428571428571,226.5670185046151 763.4285714285714,24 821.7142857142858,268.9176345890562 880,278.22426356931504" class="line line-baseline" /><circle cx="64" cy="255.71554122686922" r="4" class="dot-baseline"><title>baseline, position 1: 4927 cache-creation tokens (n=2)</title></circle><circle cx="122.28571428571428" cy="280.7676544627479" r="4" class="dot-baseline"><title>baseline, position 2: 563 cache-creation tokens (n=2)</title></circle><circle cx="180.57142857142856" cy="280.3514110321071" r="4" class="dot-baseline"><title>baseline, position 3: 636 cache-creation tokens (n=2)</title></circle><circle cx="238.85714285714286" cy="266.021154440666" r="4" class="dot-baseline"><title>baseline, position 4: 3132 cache-creation tokens (n=2)</title></circle><circle cx="297.1428571428571" cy="278.29890032239547" r="4" class="dot-baseline"><title>baseline, position 5: 993 cache-creation tokens (n=2)</title></circle><circle cx="355.42857142857144" cy="271.88013955747914" r="4" class="dot-baseline"><title>baseline, position 6: 2111 cache-creation tokens (n=2)</title></circle><circle cx="413.7142857142857" cy="275.330654065274" r="4" class="dot-baseline"><title>baseline, position 7: 1510 cache-creation tokens (n=2)</title></circle><circle cx="472" cy="270.9672746544186" r="4" class="dot-baseline"><title>baseline, position 8: 2270 cache-creation tokens (n=2)</title></circle><circle cx="530.2857142857142" cy="272.7068851300623" r="4" class="dot-baseline"><title>baseline, position 9: 1967 cache-creation tokens (n=2)</title></circle><circle cx="588.5714285714286" cy="276.2636134787793" r="4" class="dot-baseline"><title>baseline, position 10: 1348 cache-creation tokens (n=2)</title></circle><circle cx="646.8571428571429" cy="273.01117343108245" r="4" class="dot-baseline"><title>baseline, position 11: 1914 cache-creation tokens (n=2)</title></circle><circle cx="705.1428571428571" cy="226.5670185046151" r="4" class="dot-baseline"><title>baseline, position 12: 10004 cache-creation tokens (n=2)</title></circle><circle cx="763.4285714285714" cy="24" r="4" class="dot-baseline"><title>baseline, position 13: 45286 cache-creation tokens (n=1)</title></circle><circle cx="821.7142857142858" cy="268.9176345890562" r="4" class="dot-baseline"><title>baseline, position 14: 2627 cache-creation tokens (n=1)</title></circle><circle cx="880" cy="278.22426356931504" r="4" class="dot-baseline"><title>baseline, position 15: 1006 cache-creation tokens (n=1)</title></circle></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Arm</th><th>Position</th><th>Runs (n)</th><th>Mean cache-creation tokens</th><th>Mean total tokens</th></tr></thead><tbody><tr><td>gmesh</td><td>1</td><td>2</td><td>5104</td><td>38020</td></tr><tr><td>gmesh</td><td>2</td><td>2</td><td>565</td><td>39223</td></tr><tr><td>gmesh</td><td>3</td><td>2</td><td>5329</td><td>45297</td></tr><tr><td>gmesh</td><td>4</td><td>2</td><td>5553</td><td>82571</td></tr><tr><td>gmesh</td><td>5</td><td>2</td><td>2486</td><td>64345</td></tr><tr><td>gmesh</td><td>6</td><td>2</td><td>1009</td><td>67719</td></tr><tr><td>gmesh</td><td>7</td><td>2</td><td>2071</td><td>122710</td></tr><tr><td>gmesh</td><td>8</td><td>2</td><td>8553</td><td>166381</td></tr><tr><td>gmesh</td><td>9</td><td>2</td><td>1755</td><td>138324</td></tr><tr><td>gmesh</td><td>10</td><td>2</td><td>1222</td><td>142139</td></tr><tr><td>gmesh</td><td>11</td><td>2</td><td>3859</td><td>148498</td></tr><tr><td>gmesh</td><td>12</td><td>2</td><td>1822</td><td>158521</td></tr><tr><td>gmesh</td><td>13</td><td>2</td><td>7782</td><td>199212</td></tr><tr><td>gmesh</td><td>14</td><td>2</td><td>3452</td><td>226361</td></tr><tr><td>gmesh</td><td>15</td><td>2</td><td>1262</td><td>131260</td></tr><tr><td>baseline</td><td>1</td><td>2</td><td>4927</td><td>31239</td></tr><tr><td>baseline</td><td>2</td><td>2</td><td>563</td><td>32384</td></tr><tr><td>baseline</td><td>3</td><td>2</td><td>636</td><td>33642</td></tr><tr><td>baseline</td><td>4</td><td>2</td><td>3132</td><td>84408</td></tr><tr><td>baseline</td><td>5</td><td>2</td><td>993</td><td>41683</td></tr><tr><td>baseline</td><td>6</td><td>2</td><td>2111</td><td>66306</td></tr><tr><td>baseline</td><td>7</td><td>2</td><td>1510</td><td>48322</td></tr><tr><td>baseline</td><td>8</td><td>2</td><td>2270</td><td>52482</td></tr><tr><td>baseline</td><td>9</td><td>2</td><td>1967</td><td>84894</td></tr><tr><td>baseline</td><td>10</td><td>2</td><td>1348</td><td>89566</td></tr><tr><td>baseline</td><td>11</td><td>2</td><td>1914</td><td>125905</td></tr><tr><td>baseline</td><td>12</td><td>2</td><td>10004</td><td>281380</td></tr><tr><td>baseline</td><td>13</td><td>1</td><td>45286</td><td>335309</td></tr><tr><td>baseline</td><td>14</td><td>1</td><td>2627</td><td>173236</td></tr><tr><td>baseline</td><td>15</td><td>1</td><td>1006</td><td>117912</td></tr></tbody></table></div>
+
+  <h2>task-tracker-mcp: cache-creation tokens by position in session</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart chart-wide" role="img" aria-label="Mean cache-creation tokens by position in session for task-tracker-mcp"><line x1="64" y1="284" x2="540" y2="284" class="gridline" /><text x="56" y="288" class="axis-label" text-anchor="end">0</text><line x1="64" y1="219" x2="540" y2="219" class="gridline" /><text x="56" y="223" class="axis-label" text-anchor="end">1103</text><line x1="64" y1="154" x2="540" y2="154" class="gridline" /><text x="56" y="158" class="axis-label" text-anchor="end">2205</text><line x1="64" y1="89" x2="540" y2="89" class="gridline" /><text x="56" y="93" class="axis-label" text-anchor="end">3308</text><line x1="64" y1="24" x2="540" y2="24" class="gridline" /><text x="56" y="28" class="axis-label" text-anchor="end">4411</text><text x="64" y="304" class="axis-label" text-anchor="middle">1</text><text x="183" y="304" class="axis-label" text-anchor="middle">2</text><text x="302" y="304" class="axis-label" text-anchor="middle">3</text><text x="421" y="304" class="axis-label" text-anchor="middle">4</text><text x="540" y="304" class="axis-label" text-anchor="middle">5</text><text x="302" y="326" class="axis-label" text-anchor="middle">position in session</text><polyline points="64,275.71749234780634 183,259.71250425121866 302,83.27445867815439 421,111.36424441673279 540,26.210633714998266" class="line line-gmesh" /><circle cx="64" cy="275.71749234780634" r="4" class="dot-gmesh"><title>gmesh, position 1: 141 cache-creation tokens (n=2)</title></circle><circle cx="183" cy="259.71250425121866" r="4" class="dot-gmesh"><title>gmesh, position 2: 412 cache-creation tokens (n=2)</title></circle><circle cx="302" cy="83.27445867815439" r="4" class="dot-gmesh"><title>gmesh, position 3: 3405 cache-creation tokens (n=2)</title></circle><circle cx="421" cy="111.36424441673279" r="4" class="dot-gmesh"><title>gmesh, position 4: 2929 cache-creation tokens (n=2)</title></circle><circle cx="540" cy="26.210633714998266" r="4" class="dot-gmesh"><title>gmesh, position 5: 4373 cache-creation tokens (n=2)</title></circle><polyline points="64,249.04251218682688 183,250.1036163700261 302,156.25484638929828 421,179.98231493028 540,24" class="line line-baseline" /><circle cx="64" cy="249.04251218682688" r="4" class="dot-baseline"><title>baseline, position 1: 593 cache-creation tokens (n=2)</title></circle><circle cx="183" cy="250.1036163700261" r="4" class="dot-baseline"><title>baseline, position 2: 575 cache-creation tokens (n=2)</title></circle><circle cx="302" cy="156.25484638929828" r="4" class="dot-baseline"><title>baseline, position 3: 2167 cache-creation tokens (n=2)</title></circle><circle cx="421" cy="179.98231493028" r="4" class="dot-baseline"><title>baseline, position 4: 1765 cache-creation tokens (n=2)</title></circle><circle cx="540" cy="24" r="4" class="dot-baseline"><title>baseline, position 5: 4411 cache-creation tokens (n=2)</title></circle></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Arm</th><th>Position</th><th>Runs (n)</th><th>Mean cache-creation tokens</th><th>Mean total tokens</th></tr></thead><tbody><tr><td>gmesh</td><td>1</td><td>2</td><td>141</td><td>36712</td></tr><tr><td>gmesh</td><td>2</td><td>2</td><td>412</td><td>37532</td></tr><tr><td>gmesh</td><td>3</td><td>2</td><td>3405</td><td>154693</td></tr><tr><td>gmesh</td><td>4</td><td>2</td><td>2929</td><td>157063</td></tr><tr><td>gmesh</td><td>5</td><td>2</td><td>4373</td><td>85039</td></tr><tr><td>baseline</td><td>1</td><td>2</td><td>593</td><td>45362</td></tr><tr><td>baseline</td><td>2</td><td>2</td><td>575</td><td>31542</td></tr><tr><td>baseline</td><td>3</td><td>2</td><td>2167</td><td>68250</td></tr><tr><td>baseline</td><td>4</td><td>2</td><td>1765</td><td>76983</td></tr><tr><td>baseline</td><td>5</td><td>2</td><td>4411</td><td>44958</td></tr></tbody></table></div>
+
+  <h2>Sessions</h2>
+  <div class="table-wrap"><table><thead><tr><th>Corpus</th><th>Arm</th><th>Chain</th><th>Completed</th><th>Skipped</th><th>Failed</th><th>Spend</th><th>Final session id</th></tr></thead><tbody><tr><td>excalidraw</td><td>gmesh</td><td>1</td><td>15/15</td><td>0</td><td>0</td><td>$0.9856</td><td class="mono">8cf5c713-be4b-4e39-afbb-f82a0f650b6c</td></tr><tr><td>excalidraw</td><td>gmesh</td><td>2</td><td>15/15</td><td>0</td><td>0</td><td>$1.0384</td><td class="mono">e8ba9fd6-948c-4633-b798-449b9e6ddbbe</td></tr><tr><td>excalidraw</td><td>baseline</td><td>1</td><td>12/15</td><td>2</td><td>1</td><td>$1.7626</td><td class="mono">11c40fea-b66b-4959-8689-95baf358a757</td></tr><tr><td>excalidraw</td><td>baseline</td><td>2</td><td>15/15</td><td>0</td><td>0</td><td>$1.2017</td><td class="mono">530a2f40-4637-4585-b974-5aad7763a3b1</td></tr><tr><td>task-tracker-mcp</td><td>gmesh</td><td>1</td><td>5/5</td><td>0</td><td>0</td><td>$0.2151</td><td class="mono">dd0ca87d-86b6-4be0-9baf-049ab2da812e</td></tr><tr><td>task-tracker-mcp</td><td>gmesh</td><td>2</td><td>5/5</td><td>0</td><td>0</td><td>$0.3117</td><td class="mono">a9063b6e-b299-4aee-b658-7b596c8ffe59</td></tr><tr><td>task-tracker-mcp</td><td>baseline</td><td>1</td><td>5/5</td><td>0</td><td>0</td><td>$0.2052</td><td class="mono">2f7c4843-a217-4948-a723-c22c8b5f2829</td></tr><tr><td>task-tracker-mcp</td><td>baseline</td><td>2</td><td>5/5</td><td>0</td><td>0</td><td>$0.1504</td><td class="mono">c2e12440-7c4e-460d-8b93-2eb258d1aa03</td></tr></tbody></table></div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>gmesh</td><td>4/4</td><td>100%</td></tr><tr><td>ambiguous-name</td><td>baseline</td><td>4/4</td><td>100%</td></tr><tr><td>control</td><td>gmesh</td><td>4/4</td><td>100%</td></tr><tr><td>control</td><td>baseline</td><td>4/4</td><td>100%</td></tr><tr><td>lookup</td><td>gmesh</td><td>24/26</td><td>92%</td></tr><tr><td>lookup</td><td>baseline</td><td>20/26</td><td>77%</td></tr><tr><td>multi-hop</td><td>gmesh</td><td>5/6</td><td>83%</td></tr><tr><td>multi-hop</td><td>baseline</td><td>1/3</td><td>33%</td></tr></tbody></table></div>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation is not part of this experiment.</p>
+</div>
+</body>
+</html>
