@@ -6,6 +6,7 @@ import { generateNarrative } from "./lib/narrative.js";
 import {
   computeAggregate,
   computeAnalysis,
+  computeCategoryTokenTable,
   computeCorrectnessTable,
   computeStaleSummary,
   computeTaskTable,
@@ -72,6 +73,29 @@ function printCorrectness(runs: TokenEconomyRun[]): void {
 }
 
 /**
+ * Paired gmesh-vs-baseline token savings by category, printed right after the
+ * correctness table — the single blended PAIRED reduction number further
+ * below averages over all tasks, which hides categories like "multihop"
+ * (few tasks, largest g-mesh advantage) inside 17 easier tasks where a fixed
+ * per-turn MCP tool-schema cost can outweigh g-mesh's turn savings. Skips
+ * categories with zero qualifying pairs rather than printing a bare 0%.
+ */
+function printCategoryTokenSavings(runs: TokenEconomyRun[]): void {
+  const rows = computeCategoryTokenTable(runs);
+  if (rows.length === 0) return;
+
+  console.log("# Token savings by category (paired, oracle-passed pairs only)\n");
+  console.log("| Category | gmesh mean tokens | baseline mean tokens | Savings | Pairs (n) |");
+  console.log("|---|---|---|---|---|");
+  for (const row of rows) {
+    console.log(
+      `| ${row.category} | ${row.gmeshMeanTokens.toFixed(0)} | ${row.baselineMeanTokens.toFixed(0)} | ${row.savingsPct.toFixed(1)}% | ${row.pairCount} |`,
+    );
+  }
+  console.log("");
+}
+
+/**
  * Printed right after the correctness table, before the token-economy table
  * — only when something was actually excluded (never in --all mode). See
  * docs/results/v0.2.0-realistic-tasks-findings.md, "Stale run-record
@@ -109,6 +133,7 @@ async function reportTokenEconomy(): Promise<void> {
   }
 
   printCorrectness(runs);
+  printCategoryTokenSavings(runs);
   if (!useAll) printStaleSummary(stale);
 
   const taskTable = computeTaskTable(runs);

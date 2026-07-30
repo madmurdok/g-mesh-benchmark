@@ -3,11 +3,13 @@ import {
   armsPresent,
   computeAggregate,
   computeAnalysis,
+  computeCategoryTokenTable,
   computeCorrectnessTable,
   computeTaskTable,
   pairedTokenTotals,
   type Aggregate,
   type ArmAggregate,
+  type CategoryTokenRow,
   type CorrectnessRow,
   type TaskRow,
 } from "./reportData.js";
@@ -177,6 +179,16 @@ function correctnessTableHtml(rows: CorrectnessRow[]): string {
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+function categoryTokenTableHtml(rows: CategoryTokenRow[]): string {
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(r.category)}</td><td>${fmt0(r.gmeshMeanTokens)}</td><td>${fmt0(r.baselineMeanTokens)}</td><td>${r.savingsPct.toFixed(1)}%</td><td>${r.pairCount}</td></tr>`,
+    )
+    .join("");
+  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
     if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
@@ -214,6 +226,7 @@ export interface HtmlReportOptions {
  */
 export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOptions): string {
   const correctnessTable = computeCorrectnessTable(runs);
+  const categoryTokenTable = computeCategoryTokenTable(runs);
   const taskTable = computeTaskTable(runs);
   // Single source of truth for "which arms exist here" — shared with
   // report.ts/reportData.ts, so charts, legend and tables can never disagree.
@@ -336,6 +349,10 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   ${legend(arms)}
   <div class="chart-wrap">${renderCorrectnessChart(correctnessTable, arms)}</div>
   ${correctnessTableHtml(correctnessTable)}
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  ${categoryTokenTableHtml(categoryTokenTable)}
 
   <h2>Mean tokens by task</h2>
   ${legend(arms)}
