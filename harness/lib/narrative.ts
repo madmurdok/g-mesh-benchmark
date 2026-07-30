@@ -7,7 +7,14 @@ import type { Aggregate } from "./reportData.js";
  * generation is a small summarization pass, not a measured arm.
  */
 const NARRATIVE_MODEL = "claude-haiku-4-5";
-export const NARRATIVE_MAX_BUDGET_USD = 0.02;
+/**
+ * Matches JUDGE_MAX_BUDGET_USD (judge.ts) rather than a tighter cap: a
+ * smaller value (0.02) was tried first and verified to be routinely
+ * exceeded by real per-call cache-creation overhead alone, before any
+ * output tokens — it made the narrative section fall back to "skipped" on
+ * almost every run, defeating the point of generating one at all.
+ */
+export const NARRATIVE_MAX_BUDGET_USD = 0.05;
 
 function buildNarrativePrompt(bullets: string[], aggregate: Aggregate): string {
   return [
