@@ -308,5 +308,53 @@
       "candidatePool": ["Alt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Escape", "Spacebar", "Delete"],
       "minMatches": 4
     }
+  },
+  {
+    "id": "ex-ambiguous-clamp-math-utils",
+    "kind": "find_references",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "clamp", "file": "packages/math/src/utils.ts" },
+    "prompt": "In this repository, there is more than one function named clamp. Find the general-purpose numeric clamp(value, min, max) helper that the main math package exports for general use — not any package-local copy meant only for that package's own internal use — and list at least 6 distinct files elsewhere in the codebase that call it.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "packages/common/src/colors.ts",
+        "packages/element/src/binding.ts",
+        "packages/element/src/cropElement.ts",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/flowchart.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/App.viewport.ts",
+        "packages/excalidraw/components/Popover.tsx",
+        "packages/excalidraw/components/Stats/Dimension.tsx",
+        "packages/excalidraw/components/Stats/Position.tsx",
+        "packages/excalidraw/components/positionElementBesideCursor.ts",
+        "packages/excalidraw/drawShapeTrail.ts",
+        "packages/excalidraw/renderer/interactiveScene.ts",
+        "packages/excalidraw/scene/normalize.ts",
+        "packages/excalidraw/viewport.ts"
+      ],
+      "minMatches": 6
+    }
+  },
+  {
+    "id": "ex-ambiguous-exporttosvg-public-api",
+    "kind": "find_references",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "exportToSvg", "file": "packages/utils/src/export.ts" },
+    "prompt": "In this repository, there are two different functions named exportToSvg: an internal one, and a public-API wrapper (in the utils package) that calls the internal one and does its own extra work. Find the public-API wrapper specifically and list every file that calls it, other than where it's defined.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "packages/excalidraw/components/PublishLibrary.tsx",
+        "packages/excalidraw/hooks/useLibraryItemSvg.ts",
+        "packages/excalidraw/index.tsx"
+      ],
+      "minMatches": 2
+    }
   }
 ]
