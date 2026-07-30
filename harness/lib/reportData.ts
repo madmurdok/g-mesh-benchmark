@@ -1,10 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { TokenEconomyRun } from "../token-economy.js";
+import { ARM_ORDER, type Arm } from "./types.js";
 
 export interface ArmAggregate {
   taskId: string;
-  arm: "gmesh" | "baseline";
+  arm: Arm;
   total: number;
   okCount: number;
   passCount: number;
@@ -25,7 +26,24 @@ export function tokensSpent(r: TokenEconomyRun): number {
   return r.inputTokens + r.outputTokens + r.cacheReadTokens + r.cacheCreationTokens;
 }
 
-export function aggregateGroup(taskId: string, arm: "gmesh" | "baseline", group: TokenEconomyRun[]): ArmAggregate | null {
+/**
+ * Which arms actually appear in this run set, in ARM_ORDER.
+ *
+ * Every table/chart iterates this rather than a hardcoded arm list, so a
+ * report built from 2-arm-only history renders exactly as it always did (no
+ * empty "gmesh-trusted" rows or legend entries) while one that includes real
+ * `gmesh-trusted` runs picks the third arm up automatically. Unknown arms
+ * (a record written by a future harness) are appended alphabetically rather
+ * than dropped.
+ */
+export function armsPresent(runs: TokenEconomyRun[]): Arm[] {
+  const present = new Set<Arm>(runs.map((r) => r.arm));
+  const known = ARM_ORDER.filter((arm) => present.has(arm));
+  const unknown = [...present].filter((arm) => !ARM_ORDER.includes(arm)).sort();
+  return [...known, ...unknown];
+}
+
+export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[]): ArmAggregate | null {
   const ok = group.filter((r) => r.status === "ok");
   if (ok.length === 0) return null;
 
@@ -54,33 +72,116 @@ export async function loadRuns<T>(resultsDir: string, experiment: string): Promi
   return runs;
 }
 
+export interface PairedArmTotals {
+  armA: Arm;
+  armB: Arm;
+  /** tokensSpent() summed over `pairCount` pairs only — never over `comparedPairs`. */
+  totalA: number;
+  totalB: number;
+  /** numTurns summed over the same `pairCount` pairs, for turn-count comparisons. */
+  turnsA: number;
+  turnsB: number;
+  /** Pairs where both arms ran ok AND both passed oracle — the token denominator. */
+  pairCount: number;
+  /** Pairs where both arms ran ok, oracle result ignored — the pass-rate denominator. */
+  comparedPairs: number;
+  /**
+   * Pairs where both arms have a record but at least one didn't finish ok
+   * (errored, or hit the per-run budget cap). Excluded from every number
+   * above, and counted separately so a comparison built on very few pairs
+   * can say *why* rather than just looking thin.
+   */
+  droppedPairs: number;
+  passCountA: number;
+  passCountB: number;
+}
+
+/**
+ * Pairs two arms' runs by (taskId, repetition) and reports both a token
+ * comparison and an oracle comparison over that same set of pairs.
+ *
+ * The two denominators are deliberately different. Tokens are summed only over
+ * pairs where *both* arms passed oracle, so a token "win" can't be hiding
+ * behind the other arm's oracle false-negative (or vice versa). Pass rates are
+ * counted over every pair where both arms merely ran ok — restricting those to
+ * both-passed pairs would make them trivially 100%/100% and answer nothing.
+ */
+function pairedTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmTotals {
+  // Only ok runs enter the pairing map. That matters beyond the obvious: a
+  // (taskId, repetition) key recurs across result files, so "last one wins" —
+  // and letting a later non-ok record displace an earlier ok one would silently
+  // shrink pairedTokenTotals()'s long-standing numbers. droppedPairs is
+  // therefore derived from a separate presence-only pass below.
+  const byTaskRep = new Map<string, { a?: TokenEconomyRun; b?: TokenEconomyRun }>();
+  const armsSeenByTaskRep = new Map<string, Set<Arm>>();
+  for (const r of runs) {
+    if (r.arm !== armA && r.arm !== armB) continue;
+    const key = `${r.taskId}::${r.repetition}`;
+    const seen = armsSeenByTaskRep.get(key) ?? new Set<Arm>();
+    seen.add(r.arm);
+    armsSeenByTaskRep.set(key, seen);
+
+    if (r.status !== "ok") continue;
+    const pair = byTaskRep.get(key) ?? {};
+    if (r.arm === armA) pair.a = r;
+    else pair.b = r;
+    byTaskRep.set(key, pair);
+  }
+
+  let totalA = 0;
+  let totalB = 0;
+  let turnsA = 0;
+  let turnsB = 0;
+  let pairCount = 0;
+  let comparedPairs = 0;
+  let passCountA = 0;
+  let passCountB = 0;
+  for (const { a, b } of byTaskRep.values()) {
+    if (!a || !b) continue;
+    comparedPairs++;
+    if (a.oraclePassed) passCountA++;
+    if (b.oraclePassed) passCountB++;
+    if (!a.oraclePassed || !b.oraclePassed) continue;
+    totalA += tokensSpent(a);
+    totalB += tokensSpent(b);
+    turnsA += a.numTurns;
+    turnsB += b.numTurns;
+    pairCount++;
+  }
+  // Every (taskId, rep) where both arms were attempted, minus the ones that
+  // yielded a usable ok/ok pair — i.e. those lost to an error or a budget cap.
+  const bothAttempted = [...armsSeenByTaskRep.values()].filter((seen) => seen.has(armA) && seen.has(armB)).length;
+  const droppedPairs = bothAttempted - comparedPairs;
+
+  return { armA, armB, totalA, totalB, turnsA, turnsB, pairCount, comparedPairs, droppedPairs, passCountA, passCountB };
+}
+
+/**
+ * General paired comparison between any two arms — the gmesh-vs-gmesh-trusted
+ * question (does the agent's habit of manually re-verifying g-mesh's results
+ * cost tokens for nothing, or does it catch real g-mesh mistakes?) needs the
+ * same pairing logic pairedTokenTotals has always used, just not hardwired to
+ * gmesh/baseline.
+ */
+export function pairedArmsTokenTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmTotals {
+  return pairedTotals(runs, armA, armB);
+}
+
 /**
  * Sum of tokensSpent() for every (taskId, repetition) pair where *both* arms
  * ran ok and passed oracle — the token comparison restricted to runs neither
  * arm's own answer quality calls into question, so a token "win" can't be
  * hiding behind the other arm's oracle false-negative (or vice versa).
+ *
+ * Kept as its own gmesh/baseline-named function (rather than folded into
+ * pairedArmsTokenTotals) because it is the headline number the existing
+ * findings docs and report sections are written against; only its internals
+ * are now shared. Runs from any third arm are ignored here, so the number is
+ * unchanged by the existence of `gmesh-trusted`.
  */
 export function pairedTokenTotals(runs: TokenEconomyRun[]): { totalGmesh: number; totalBaseline: number; pairCount: number } {
-  const byTaskRep = new Map<string, { gmesh?: TokenEconomyRun; baseline?: TokenEconomyRun }>();
-  for (const r of runs) {
-    if (r.status !== "ok") continue;
-    const key = `${r.taskId}::${r.repetition}`;
-    const pair = byTaskRep.get(key) ?? {};
-    pair[r.arm] = r;
-    byTaskRep.set(key, pair);
-  }
-
-  let totalGmesh = 0;
-  let totalBaseline = 0;
-  let pairCount = 0;
-  for (const { gmesh, baseline } of byTaskRep.values()) {
-    if (!gmesh || !baseline) continue;
-    if (!gmesh.oraclePassed || !baseline.oraclePassed) continue;
-    totalGmesh += tokensSpent(gmesh);
-    totalBaseline += tokensSpent(baseline);
-    pairCount++;
-  }
-  return { totalGmesh, totalBaseline, pairCount };
+  const { totalA, totalB, pairCount } = pairedTotals(runs, "gmesh", "baseline");
+  return { totalGmesh: totalA, totalBaseline: totalB, pairCount };
 }
 
 /**
@@ -126,7 +227,7 @@ export const UNCATEGORIZED = "uncategorized (pre-v2)";
 
 export interface CorrectnessRow {
   category: string;
-  arm: "gmesh" | "baseline";
+  arm: Arm;
   passed: number;
   total: number;
 }
@@ -149,10 +250,11 @@ export function computeCorrectnessTable(runs: TokenEconomyRun[]): CorrectnessRow
   }
 
   const categories = [...new Set(runs.map((r) => r.category ?? UNCATEGORIZED))].sort();
+  const arms = armsPresent(runs);
 
   const rows: CorrectnessRow[] = [];
   for (const category of categories) {
-    for (const arm of ["gmesh", "baseline"] as const) {
+    for (const arm of arms) {
       const tally = byCategoryArm.get(`${category}::${arm}`);
       if (!tally) continue;
       rows.push({ category, arm, passed: tally.passed, total: tally.total });
@@ -161,16 +263,26 @@ export function computeCorrectnessTable(runs: TokenEconomyRun[]): CorrectnessRow
   return rows;
 }
 
+export interface TaskArmCell {
+  arm: Arm;
+  /** null when no run of this arm for this task finished ok (see groupLength to tell "none attempted" from "all failed"). */
+  agg: ArmAggregate | null;
+  groupLength: number;
+}
+
 export interface TaskRow {
   taskId: string;
   expectedWinner: string;
-  gmesh: ArmAggregate | null;
-  gmeshGroupLength: number;
-  baseline: ArmAggregate | null;
-  baselineGroupLength: number;
+  /** One cell per arm present anywhere in the run set, in ARM_ORDER — the single place consumers learn which arms to render. */
+  cells: TaskArmCell[];
 }
 
-/** Per-taskId aggregates for both arms, in first-seen task order (mirrors report.ts's old iteration order). */
+/** Convenience lookup for the callers that genuinely need one specific arm (e.g. the gmesh-vs-baseline aggregate). */
+export function taskRowCell(row: TaskRow, arm: Arm): TaskArmCell | undefined {
+  return row.cells.find((c) => c.arm === arm);
+}
+
+/** Per-taskId aggregates for every arm present, in first-seen task order (mirrors report.ts's old iteration order). */
 export function computeTaskTable(runs: TokenEconomyRun[]): TaskRow[] {
   const byTaskArm = new Map<string, TokenEconomyRun[]>();
   const expectedWinnerByTask = new Map<string, string>();
@@ -184,19 +296,16 @@ export function computeTaskTable(runs: TokenEconomyRun[]): TaskRow[] {
   }
 
   const taskIds = [...new Set(runs.map((r) => r.taskId))];
+  const arms = armsPresent(runs);
 
-  return taskIds.map((taskId) => {
-    const gmeshGroup = byTaskArm.get(`${taskId}::gmesh`) ?? [];
-    const baselineGroup = byTaskArm.get(`${taskId}::baseline`) ?? [];
-    return {
-      taskId,
-      expectedWinner: expectedWinnerByTask.get(taskId) ?? "-",
-      gmesh: aggregateGroup(taskId, "gmesh", gmeshGroup),
-      gmeshGroupLength: gmeshGroup.length,
-      baseline: aggregateGroup(taskId, "baseline", baselineGroup),
-      baselineGroupLength: baselineGroup.length,
-    };
-  });
+  return taskIds.map((taskId) => ({
+    taskId,
+    expectedWinner: expectedWinnerByTask.get(taskId) ?? "-",
+    cells: arms.map((arm) => {
+      const group = byTaskArm.get(`${taskId}::${arm}`) ?? [];
+      return { arm, agg: aggregateGroup(taskId, arm, group), groupLength: group.length };
+    }),
+  }));
 }
 
 export interface Aggregate {
@@ -221,15 +330,20 @@ export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
   let baselineOracleOk = 0;
   let baselineOracleTotal = 0;
 
+  // Deliberately gmesh-vs-baseline only: this is the headline comparison the
+  // findings docs are written against, and folding a third arm into these
+  // totals would silently change what "unconditional reduction" means.
   for (const row of taskTable) {
-    if (row.gmesh && row.baseline) {
+    const gmesh = taskRowCell(row, "gmesh")?.agg;
+    const baseline = taskRowCell(row, "baseline")?.agg;
+    if (gmesh && baseline) {
       taskCount++;
-      totalGmeshTokens += row.gmesh.meanTokens;
-      totalBaselineTokens += row.baseline.meanTokens;
-      gmeshOracleOk += row.gmesh.passCount;
-      gmeshOracleTotal += row.gmesh.okCount;
-      baselineOracleOk += row.baseline.passCount;
-      baselineOracleTotal += row.baseline.okCount;
+      totalGmeshTokens += gmesh.meanTokens;
+      totalBaselineTokens += baseline.meanTokens;
+      gmeshOracleOk += gmesh.passCount;
+      gmeshOracleTotal += gmesh.okCount;
+      baselineOracleOk += baseline.passCount;
+      baselineOracleTotal += baseline.okCount;
     }
   }
 
@@ -250,11 +364,13 @@ export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
 
 /** Per-task paired mean tokens (gmesh vs baseline), restricted to oraclePassed:true pairs for that task only. */
 function perTaskPairedMeans(runs: TokenEconomyRun[], taskId: string): { gmeshMean: number; baselineMean: number; pairCount: number } | null {
-  const taskRuns = runs.filter((r) => r.taskId === taskId && r.status === "ok");
+  const taskRuns = runs.filter(
+    (r) => r.taskId === taskId && r.status === "ok" && (r.arm === "gmesh" || r.arm === "baseline"),
+  );
   const byRep = new Map<number, { gmesh?: TokenEconomyRun; baseline?: TokenEconomyRun }>();
   for (const r of taskRuns) {
     const pair = byRep.get(r.repetition) ?? {};
-    pair[r.arm] = r;
+    pair[r.arm as "gmesh" | "baseline"] = r;
     byRep.set(r.repetition, pair);
   }
 
@@ -297,8 +413,11 @@ export function computeAnalysis(
     );
   }
 
+  // gmesh-vs-baseline divergence only — the gmesh-trusted comparison gets its
+  // own dedicated bullet below rather than being mixed into this one.
   const byCategory = new Map<string, { gmesh?: CorrectnessRow; baseline?: CorrectnessRow }>();
   for (const row of correctnessTable) {
+    if (row.arm !== "gmesh" && row.arm !== "baseline") continue;
     const entry = byCategory.get(row.category) ?? {};
     entry[row.arm] = row;
     byCategory.set(row.category, entry);
@@ -352,6 +471,61 @@ export function computeAnalysis(
           `an unexpected asymmetry worth a second look.`,
       );
     }
+  }
+
+  // The self-verification experiment: the gmesh arm habitually re-checks
+  // g-mesh's structural results with grep/Read before answering (see
+  // docs/results/v0.2.0-realistic-tasks-findings.md, "Turn-count evidence for
+  // the multi-hop self-verification pattern"). gmesh-trusted is the same arm
+  // told not to. Comparing them answers whether that habit is free paranoia or
+  // is catching real g-mesh mistakes. Emitted only when gmesh-trusted runs
+  // actually pair up with gmesh runs — a 2-arm report is unchanged.
+  const trusted = pairedArmsTokenTotals(runs, "gmesh", "gmesh-trusted");
+  const trustedPrefix =
+    `Self-verification cost (gmesh-trusted vs gmesh — identical tools and MCP config, only the ` +
+    `"don't re-verify g-mesh" instruction differs)`;
+  const droppedNote =
+    trusted.droppedPairs > 0
+      ? ` ${trusted.droppedPairs} further pair(s) excluded because one arm did not finish ok — an error, or the per-run budget cap.`
+      : "";
+
+  if (trusted.comparedPairs > 0) {
+    const gmeshPassPct = (trusted.passCountA / trusted.comparedPairs) * 100;
+    const trustedPassPct = (trusted.passCountB / trusted.comparedPairs) * 100;
+    const verdict =
+      trusted.passCountB > trusted.passCountA
+        ? `accuracy did not suffer (gmesh-trusted actually passed ${trusted.passCountB - trusted.passCountA} more)`
+        : trusted.passCountB === trusted.passCountA
+          ? "accuracy held exactly, so whatever the natural gmesh arm spent on re-verifying was overhead the oracle never rewarded"
+          : `accuracy DROPPED by ${trusted.passCountA - trusted.passCountB} pair(s), so the manual re-verification is catching real g-mesh mistakes rather than just being paranoid`;
+
+    const tokenPart =
+      trusted.pairCount > 0 && trusted.totalA > 0
+        ? (() => {
+            const deltaPct = ((trusted.totalA - trusted.totalB) / trusted.totalA) * 100;
+            const direction = deltaPct >= 0 ? `${deltaPct.toFixed(1)}% fewer` : `${Math.abs(deltaPct).toFixed(1)}% more`;
+            return (
+              `over the ${trusted.pairCount} pair(s) where both passed oracle it used ${direction} tokens ` +
+              `(${trusted.totalB.toFixed(0)} vs ${trusted.totalA.toFixed(0)}) and ${trusted.turnsB} vs ${trusted.turnsA} turns; `
+            );
+          })()
+        : "no (task, rep) pair had both arms pass oracle, so no token comparison is possible; ";
+
+    bullets.push(
+      `${trustedPrefix}: ${tokenPart}oracle pass rate across the ${trusted.comparedPairs} pair(s) where both ` +
+        `arms ran — gmesh ${trusted.passCountA}/${trusted.comparedPairs} (${gmeshPassPct.toFixed(0)}%), ` +
+        `gmesh-trusted ${trusted.passCountB}/${trusted.comparedPairs} (${trustedPassPct.toFixed(0)}%) — ${verdict}.` +
+        droppedNote,
+    );
+  } else if (trusted.droppedPairs > 0) {
+    // gmesh-trusted ran, but never alongside a gmesh run that finished — worth
+    // saying out loud instead of silently omitting the comparison, since "the
+    // natural gmesh arm blew its budget on this task" is itself a result.
+    bullets.push(
+      `${trustedPrefix}: no comparison possible yet — all ${trusted.droppedPairs} attempted pair(s) were lost ` +
+        `because one arm did not finish ok (an error, or the per-run budget cap). A gmesh arm that cannot complete ` +
+        `the task inside its budget while gmesh-trusted can is itself worth noting.`,
+    );
   }
 
   const overallGmeshPct = aggregate.gmeshOracleTotal > 0 ? (aggregate.gmeshOracleOk / aggregate.gmeshOracleTotal) * 100 : null;

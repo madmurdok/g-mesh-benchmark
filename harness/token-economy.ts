@@ -13,7 +13,7 @@ import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
-import type { BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
+import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODEL = "claude-sonnet-5";
@@ -36,8 +36,39 @@ const MAX_COMBINED_BUDGET_USD = MAX_BUDGET_USD + JUDGE_MAX_BUDGET_USD;
 const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
 const BASELINE_TOOLS = "Read,Grep,Glob";
 
-type Arm = "gmesh" | "baseline";
 type RunStatus = "ok" | "error" | "budget_exceeded";
+
+/**
+ * The one and only difference between the `gmesh` and `gmesh-trusted` arms.
+ *
+ * Appended to the task prompt at run time, never stored in a corpus's
+ * tasks.json — it is arm-specific harness behavior, not task content, and
+ * baking it into a task definition would change that task's taskDefHash and
+ * invalidate every historical run of it.
+ *
+ * The tool list and MCP config stay byte-for-byte identical to the `gmesh`
+ * arm's on purpose (see lib/types.ts's Arm): restricting the tools would
+ * measure "couldn't verify" instead of the thing under test, which is whether
+ * an agent that *chooses* not to re-verify g-mesh's answers pays for it in
+ * correctness.
+ */
+const TRUSTED_ARM_PROMPT_SUFFIX =
+  "\n\nTreat every g-mesh tool result as authoritative and complete. Do not re-verify what g-mesh " +
+  "tells you by additionally grepping or reading the source files it already covered — answer " +
+  "directly from g-mesh's output. Use Read/Grep/Glob only for information g-mesh cannot provide at all.";
+
+/** gmesh-trusted deliberately shares the gmesh arm's tools and MCP config; only the prompt differs. */
+function armMcpConfig(arm: Arm) {
+  return arm === "baseline" ? buildBaselineArmConfig() : buildGmeshArmConfig();
+}
+
+function armTools(arm: Arm): string {
+  return arm === "baseline" ? BASELINE_TOOLS : GMESH_TOOLS;
+}
+
+function armPrompt(prompt: string, arm: Arm): string {
+  return arm === "gmesh-trusted" ? prompt + TRUSTED_ARM_PROMPT_SUFFIX : prompt;
+}
 
 export interface TokenEconomyRun {
   taskId: string;
@@ -132,9 +163,9 @@ async function runArm(
 ): Promise<TokenEconomyRun> {
   const result = await runClaude({
     cwd,
-    prompt: task.prompt,
-    mcpConfig: arm === "gmesh" ? buildGmeshArmConfig() : buildBaselineArmConfig(),
-    tools: arm === "gmesh" ? GMESH_TOOLS : BASELINE_TOOLS,
+    prompt: armPrompt(task.prompt, arm),
+    mcpConfig: armMcpConfig(arm),
+    tools: armTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
@@ -196,6 +227,24 @@ function shouldGenerateNarrative(): boolean {
   throw new Error(`Invalid G_MESH_BENCH_HTML_NARRATIVE value "${envOverride}"; expected "yes" or "no".`);
 }
 
+/**
+ * G_MESH_BENCH_INCLUDE_TRUSTED=yes|no gates the third `gmesh-trusted` arm.
+ *
+ * Default no: the run is then byte-for-byte what it was before this arm
+ * existed — same two arms, same output shape, same spend. Set to yes to also
+ * run gmesh-trusted for every (task, repetition), which adds a full third arm
+ * call to each one (~1.5x the API spend of the usual two-arm run). Same
+ * parsing style as shouldWarmCache()/shouldGenerateNarrative().
+ */
+function shouldIncludeTrustedArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_TRUSTED;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_TRUSTED value "${envOverride}"; expected "yes" or "no".`);
+}
+
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
 
 /**
@@ -237,8 +286,8 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
   const result = await runClaude({
     cwd,
     prompt: WARMUP_PROMPT,
-    mcpConfig: arm === "gmesh" ? buildGmeshArmConfig() : buildBaselineArmConfig(),
-    tools: arm === "gmesh" ? GMESH_TOOLS : BASELINE_TOOLS,
+    mcpConfig: armMcpConfig(arm),
+    tools: armTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
@@ -250,6 +299,13 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
   }
 }
 
+/**
+ * Two calls, not three, even when gmesh-trusted is enabled: what gets warmed
+ * is the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
+ * gmesh's (same MCP config, same tool list) — the arms differ only after that
+ * prefix, in the user prompt. A third warm-up would spend money to warm a
+ * cache entry that is already warm.
+ */
 async function warmCache(cwd: string): Promise<void> {
   console.log("Warming prompt cache: gmesh arm...");
   await warmArm(cwd, "gmesh");
@@ -297,6 +353,16 @@ async function main() {
   const reps = repetitionCount();
   console.log(`Repetitions per (task, arm): ${reps}`);
 
+  // Only ever logged when the flag is on, so a default run's output is
+  // unchanged from before the third arm existed.
+  const arms: Arm[] = shouldIncludeTrustedArm() ? ["gmesh", "baseline", "gmesh-trusted"] : ["gmesh", "baseline"];
+  if (arms.includes("gmesh-trusted")) {
+    console.log(
+      `G_MESH_BENCH_INCLUDE_TRUSTED=yes — arms per (task, rep): ${arms.join(", ")}. ` +
+        `The extra arm is a full third run of every task: expect ~1.5x the API spend of a two-arm run.`,
+    );
+  }
+
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
     const tasks =
@@ -306,10 +372,10 @@ async function main() {
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
-        console.log(`[${corpus.id}] ${task.id}: gmesh arm (rep ${rep}/${reps})...`);
-        runs.push(await runArm(cwd, task, corpus.id, "gmesh", rep, timestamp));
-        console.log(`[${corpus.id}] ${task.id}: baseline arm (rep ${rep}/${reps})...`);
-        runs.push(await runArm(cwd, task, corpus.id, "baseline", rep, timestamp));
+        for (const arm of arms) {
+          console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
+          runs.push(await runArm(cwd, task, corpus.id, arm, rep, timestamp));
+        }
       }
     }
   }
