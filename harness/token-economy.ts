@@ -3,11 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
 import { resolveWarm } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
-import { buildBaselineArmConfig, buildGmeshArmConfig, gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { gmeshBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
@@ -16,8 +17,6 @@ import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const MODEL = "claude-sonnet-5";
-const MAX_BUDGET_USD = 1.0;
 /**
  * A judge-mode oracle grades the arm's answer with a second, independent
  * `claude -p` call (lib/judge.ts), capped on its own by JUDGE_MAX_BUDGET_USD.
@@ -32,43 +31,17 @@ const MAX_BUDGET_USD = 1.0;
  * this accounting doesn't know about) — not that the run was legitimately
  * expensive. That makes it a real invariant rather than a second throttle.
  */
-const MAX_COMBINED_BUDGET_USD = MAX_BUDGET_USD + JUDGE_MAX_BUDGET_USD;
-const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
-const BASELINE_TOOLS = "Read,Grep,Glob";
-
-type RunStatus = "ok" | "error" | "budget_exceeded";
+export const MAX_COMBINED_BUDGET_USD = MAX_BUDGET_USD + JUDGE_MAX_BUDGET_USD;
 
 /**
- * The one and only difference between the `gmesh` and `gmesh-trusted` arms.
- *
- * Appended to the task prompt at run time, never stored in a corpus's
- * tasks.json — it is arm-specific harness behavior, not task content, and
- * baking it into a task definition would change that task's taskDefHash and
- * invalidate every historical run of it.
- *
- * The tool list and MCP config stay byte-for-byte identical to the `gmesh`
- * arm's on purpose (see lib/types.ts's Arm): restricting the tools would
- * measure "couldn't verify" instead of the thing under test, which is whether
- * an agent that *chooses* not to re-verify g-mesh's answers pays for it in
- * correctness.
+ * "skipped" is produced only by session-economy.ts, which aborts the rest of a
+ * chained session once one call in it fails — every later task in that chain
+ * is recorded as skipped rather than silently omitted, so the run set says
+ * *why* a measurement is missing. token-economy.ts itself never emits it, and
+ * every consumer tests `status === "ok"` rather than switching exhaustively,
+ * so the extra member changes nothing downstream.
  */
-const TRUSTED_ARM_PROMPT_SUFFIX =
-  "\n\nTreat every g-mesh tool result as authoritative and complete. Do not re-verify what g-mesh " +
-  "tells you by additionally grepping or reading the source files it already covered — answer " +
-  "directly from g-mesh's output. Use Read/Grep/Glob only for information g-mesh cannot provide at all.";
-
-/** gmesh-trusted deliberately shares the gmesh arm's tools and MCP config; only the prompt differs. */
-function armMcpConfig(arm: Arm) {
-  return arm === "baseline" ? buildBaselineArmConfig() : buildGmeshArmConfig();
-}
-
-function armTools(arm: Arm): string {
-  return arm === "baseline" ? BASELINE_TOOLS : GMESH_TOOLS;
-}
-
-function armPrompt(prompt: string, arm: Arm): string {
-  return arm === "gmesh-trusted" ? prompt + TRUSTED_ARM_PROMPT_SUFFIX : prompt;
-}
+export type RunStatus = "ok" | "error" | "budget_exceeded" | "skipped";
 
 export interface TokenEconomyRun {
   taskId: string;

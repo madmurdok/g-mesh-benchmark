@@ -11,6 +11,20 @@ export interface RunClaudeOptions {
   tools: string;
   model: string;
   maxBudgetUsd: number;
+  /**
+   * Continue an existing CLI session (`--resume <id>`) instead of starting a
+   * fresh one — used by session-economy.ts to chain several task prompts into
+   * one conversation and observe how much of the MCP tool-schema cost
+   * amortizes after the first call.
+   *
+   * Every other option still has to be passed identically on a resumed call:
+   * each `claude -p` invocation is a new process, so --mcp-config/--tools/
+   * --model are not inherited from the session being resumed.
+   *
+   * Omitted (the default, and what every other caller does) leaves the spawned
+   * argv byte-for-byte what it was before this option existed.
+   */
+  resumeSessionId?: string;
 }
 
 export interface RunClaudeResult {
@@ -25,6 +39,13 @@ export interface RunClaudeResult {
   durationMs: number;
   costUsd: number;
   resultText: string;
+  /**
+   * The CLI's `session_id` for this call — pass it back as `resumeSessionId`
+   * to continue this conversation. Populated whenever the CLI's JSON parsed at
+   * all (including the error/budget_exceeded shapes, where the session still
+   * exists); undefined only when the output wasn't parseable JSON.
+   */
+  sessionId?: string;
 }
 
 interface ClaudeJsonResult {
@@ -32,6 +53,7 @@ interface ClaudeJsonResult {
   subtype: string;
   is_error: boolean;
   result?: string;
+  session_id?: string;
   num_turns: number;
   duration_ms: number;
   total_cost_usd: number;
@@ -70,6 +92,9 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       String(opts.maxBudgetUsd),
       "--setting-sources",
       "project",
+      // Spliced in only when resuming, immediately before the trailing prompt
+      // positional, so a non-resuming call's argv is unchanged.
+      ...(opts.resumeSessionId !== undefined ? ["--resume", opts.resumeSessionId] : []),
       opts.prompt,
     ];
 
@@ -89,10 +114,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
     }
 
     if (parsed.subtype === "error_max_budget_usd") {
-      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, resultText: "" };
+      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, resultText: "", sessionId: parsed.session_id };
     }
     if (parsed.is_error || parsed.subtype !== "success") {
-      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, resultText: "" };
+      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, resultText: "", sessionId: parsed.session_id };
     }
 
     return {
@@ -107,6 +132,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       durationMs: parsed.duration_ms,
       costUsd: parsed.total_cost_usd,
       resultText: parsed.result ?? "",
+      sessionId: parsed.session_id,
     };
   } finally {
     await rm(configDir, { recursive: true, force: true });
