@@ -49,6 +49,15 @@ tokens per run — see the design doc's failure-modes section for budget caps.
   call generating a plain-English summary paragraph for the HTML report
   (default `yes`; `no` skips the call entirely, no spend). Applies to both
   `token-economy` (per-run report) and `report` (cumulative report).
+- `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — also run a third `gmesh-trusted` arm
+  (default `no`): the same MCP config and tool list as `gmesh`, plus a
+  harness-injected instruction not to re-verify g-mesh's results by hand. It
+  measures what the gmesh arm's habitual self-verification actually costs and
+  whether it buys any correctness — see
+  `docs/results/v0.2.0-realistic-tasks-findings.md`'s "Turn-count evidence for
+  the multi-hop self-verification pattern" for the investigation that motivated
+  it. Adds a full third run per (task, repetition), so budget ~1.5x the usual
+  API spend; with the flag off, nothing about the run or the report changes.
 
 By default, `npm run report` only compares runs graded against each task's
 *current* prompt/oracle definition — a run recorded before a task was edited

@@ -117,11 +117,11 @@ async function reportTokenEconomy(): Promise<void> {
   console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Oracle (pass/ok) |");
   console.log("|---|---|---|---|---|---|---|---|---|");
 
+  // Iterates whichever arms the loaded runs actually contain (see
+  // reportData.ts's armsPresent) — 2-arm history prints exactly as before,
+  // and a run set that includes gmesh-trusted grows a third row per task.
   for (const row of taskTable) {
-    for (const [arm, group, agg] of [
-      ["gmesh", row.gmeshGroupLength, row.gmesh] as const,
-      ["baseline", row.baselineGroupLength, row.baseline] as const,
-    ]) {
+    for (const { arm, agg, groupLength: group } of row.cells) {
       if (!agg) {
         if (group > 0) {
           console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - |`);
