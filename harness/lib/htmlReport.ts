@@ -15,7 +15,8 @@ import {
 } from "./reportData.js";
 import type { Arm } from "./types.js";
 
-function escapeHtml(s: string): string {
+/** Exported so lib/sessionReport.ts can share it rather than re-declaring the same five replacements. */
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

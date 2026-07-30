@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench session-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-3 of this project's dataviz palette: blue, orange, aqua. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .lede { color: var(--text-secondary); line-height: 1.6; margin: 0 0 20px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .line { fill: none; stroke-width: 2; }
+  .line-gmesh { stroke: var(--gmesh); }
+  .line-baseline { stroke: var(--baseline); }
+  .line-gmesh-trusted { stroke: var(--gmesh-trusted); }
+  .dot-gmesh { fill: var(--gmesh); }
+  .dot-baseline { fill: var(--baseline); }
+  .dot-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench session-economy run</h1>
+  <p class="timestamp">Generated 2026-07-30T21:46:30.996Z &middot; run timestamp 2026-07-30T21:42:30.486Z</p>
+  <p class="lede">Every task of a corpus asked inside one continuing <code>claude -p</code> session per arm, instead of
+  one fresh process per task. The number to watch is cache-creation tokens by position: an isolated process re-pays for
+  the MCP tool schemas on every call, a real session pays once. Positions are grouped strictly per corpus — chains have
+  different lengths, so pooling them would confuse "later in the session" with "a different codebase".</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">278 → 2385 (+758%)</div><div class="stat-label">gmesh: cache-creation, first call vs later</div></div>
+    <div class="stat-tile"><div class="stat-value">8937 → 1508 (-83%)</div><div class="stat-label">baseline: cache-creation, first call vs later</div></div>
+    <div class="stat-tile"><div class="stat-value">2</div><div class="stat-label">Chains</div></div>
+    <div class="stat-tile"><div class="stat-value">10 / 0</div><div class="stat-label">Runs ok / skipped</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.4190</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0000</div><div class="stat-label">Judge spend</div></div>
+  </div>
+
+  <h2>task-tracker-mcp: cache-creation tokens by position in session</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart chart-wide" role="img" aria-label="Mean cache-creation tokens by position in session for task-tracker-mcp"><line x1="64" y1="284" x2="540" y2="284" class="gridline" /><text x="56" y="288" class="axis-label" text-anchor="end">0</text><line x1="64" y1="219" x2="540" y2="219" class="gridline" /><text x="56" y="223" class="axis-label" text-anchor="end">2234</text><line x1="64" y1="154" x2="540" y2="154" class="gridline" /><text x="56" y="158" class="axis-label" text-anchor="end">4469</text><line x1="64" y1="89" x2="540" y2="89" class="gridline" /><text x="56" y="93" class="axis-label" text-anchor="end">6703</text><line x1="64" y1="24" x2="540" y2="24" class="gridline" /><text x="56" y="28" class="axis-label" text-anchor="end">8937</text><text x="64" y="304" class="axis-label" text-anchor="middle">1</text><text x="183" y="304" class="axis-label" text-anchor="middle">2</text><text x="302" y="304" class="axis-label" text-anchor="middle">3</text><text x="421" y="304" class="axis-label" text-anchor="middle">4</text><text x="540" y="304" class="axis-label" text-anchor="middle">5</text><text x="302" y="326" class="axis-label" text-anchor="middle">position in session</text><polyline points="64,275.9122748125769 183,261.71511692961843 302,223.632986460781 421,223.16750587445452 540,149.99977621125657" class="line line-gmesh" /><circle cx="64" cy="275.9122748125769" r="4" class="dot-gmesh"><title>gmesh, position 1: 278 cache-creation tokens (n=1)</title></circle><circle cx="183" cy="261.71511692961843" r="4" class="dot-gmesh"><title>gmesh, position 2: 766 cache-creation tokens (n=1)</title></circle><circle cx="302" cy="223.632986460781" r="4" class="dot-gmesh"><title>gmesh, position 3: 2075 cache-creation tokens (n=1)</title></circle><circle cx="421" cy="223.16750587445452" r="4" class="dot-gmesh"><title>gmesh, position 4: 2091 cache-creation tokens (n=1)</title></circle><circle cx="540" cy="149.99977621125657" r="4" class="dot-gmesh"><title>gmesh, position 5: 4606 cache-creation tokens (n=1)</title></circle><polyline points="64,24 183,255.69296184401924 302,233.69900414009174 421,222.6147476781918 540,248.5071052926038" class="line line-baseline" /><circle cx="64" cy="24" r="4" class="dot-baseline"><title>baseline, position 1: 8937 cache-creation tokens (n=1)</title></circle><circle cx="183" cy="255.69296184401924" r="4" class="dot-baseline"><title>baseline, position 2: 973 cache-creation tokens (n=1)</title></circle><circle cx="302" cy="233.69900414009174" r="4" class="dot-baseline"><title>baseline, position 3: 1729 cache-creation tokens (n=1)</title></circle><circle cx="421" cy="222.6147476781918" r="4" class="dot-baseline"><title>baseline, position 4: 2110 cache-creation tokens (n=1)</title></circle><circle cx="540" cy="248.5071052926038" r="4" class="dot-baseline"><title>baseline, position 5: 1220 cache-creation tokens (n=1)</title></circle></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Arm</th><th>Position</th><th>Runs (n)</th><th>Mean cache-creation tokens</th><th>Mean total tokens</th></tr></thead><tbody><tr><td>gmesh</td><td>1</td><td>1</td><td>278</td><td>36719</td></tr><tr><td>gmesh</td><td>2</td><td>1</td><td>766</td><td>56991</td></tr><tr><td>gmesh</td><td>3</td><td>1</td><td>2075</td><td>80917</td></tr><tr><td>gmesh</td><td>4</td><td>1</td><td>2091</td><td>90184</td></tr><tr><td>gmesh</td><td>5</td><td>1</td><td>4606</td><td>80192</td></tr><tr><td>baseline</td><td>1</td><td>1</td><td>8937</td><td>45214</td></tr><tr><td>baseline</td><td>2</td><td>1</td><td>973</td><td>47886</td></tr><tr><td>baseline</td><td>3</td><td>1</td><td>1729</td><td>68543</td></tr><tr><td>baseline</td><td>4</td><td>1</td><td>2110</td><td>76306</td></tr><tr><td>baseline</td><td>5</td><td>1</td><td>1220</td><td>42399</td></tr></tbody></table></div>
+
+  <h2>Sessions</h2>
+  <div class="table-wrap"><table><thead><tr><th>Corpus</th><th>Arm</th><th>Chain</th><th>Completed</th><th>Skipped</th><th>Failed</th><th>Spend</th><th>Final session id</th></tr></thead><tbody><tr><td>task-tracker-mcp</td><td>gmesh</td><td>1</td><td>5/5</td><td>0</td><td>0</td><td>$0.2085</td><td class="mono">2aab857e-9f9e-4737-8a3b-be7c45a956d0</td></tr><tr><td>task-tracker-mcp</td><td>baseline</td><td>1</td><td>5/5</td><td>0</td><td>0</td><td>$0.2105</td><td class="mono">44bca90d-4809-427e-a99e-205b1d29c989</td></tr></tbody></table></div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>lookup</td><td>gmesh</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>baseline</td><td>5/5</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation is not part of this experiment.</p>
+</div>
+</body>
+</html>

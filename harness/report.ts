@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,8 +15,10 @@ import {
   pairedTokenTotals,
   partitionByCurrentDef,
 } from "./lib/reportData.js";
+import { computeSequenceTokenTable, renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
+import type { SessionEconomyRun } from "./session-economy.js";
 import type { TokenEconomyRun } from "./token-economy.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -190,6 +193,51 @@ async function reportTokenEconomy(): Promise<void> {
   console.log(`\nWrote HTML report to ${htmlPath}`);
 }
 
+/**
+ * The chained-session experiment's cumulative report.
+ *
+ * Kept entirely separate from reportTokenEconomy's math: computeAggregate and
+ * pairedTokenTotals assume every run is an isolated, cold-start measurement,
+ * and blending chained-session runs into them would silently change what the
+ * headline reduction number means. Same "never merge separate metrics"
+ * principle the README already states for the other experiments.
+ */
+async function reportSessionEconomy(): Promise<void> {
+  const dir = path.join(ROOT, "results/session-economy");
+  if (!existsSync(dir)) {
+    console.error(`No session-economy results yet (${dir} does not exist). Run \`npm run session-economy\` first.`);
+    process.exit(1);
+  }
+  const runs = await loadRuns<SessionEconomyRun>(path.join(ROOT, "results"), "session-economy");
+
+  const sequenceTable = computeSequenceTokenTable(runs);
+
+  console.log("# Session economy report — cost by position in a chained session\n");
+  console.log("| Corpus | Arm | Position | Runs (n) | Mean cache-creation tokens | Mean total tokens |");
+  console.log("|---|---|---|---|---|---|");
+  for (const row of sequenceTable) {
+    console.log(
+      `| ${row.corpusId} | ${row.arm} | ${row.sequenceIndex} | ${row.n} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanTotalTokens.toFixed(0)} |`,
+    );
+  }
+
+  const skipped = runs.filter((r) => r.status === "skipped").length;
+  const errored = runs.filter((r) => r.status === "error" || r.status === "budget_exceeded").length;
+  console.log(
+    `\n${runs.length} run record(s) loaded — ${runs.filter((r) => r.status === "ok").length} ok, ${skipped} skipped (chain aborted before them), ${errored} failed.`,
+  );
+
+  const html = renderSessionHtmlReport(runs, {
+    title: "g-mesh-bench session-economy cumulative report",
+    narrative: null,
+  });
+  const htmlDir = path.join(ROOT, "results/html");
+  await mkdir(htmlDir, { recursive: true });
+  const htmlPath = path.join(htmlDir, "session-cumulative.html");
+  await writeFile(htmlPath, html);
+  console.log(`\nWrote HTML report to ${htmlPath}`);
+}
+
 async function main() {
   // process.argv[2] is normally the experiment name, but `--all` (see
   // reportTokenEconomy) is also passed positionally there (`npm run report --
@@ -198,6 +246,10 @@ async function main() {
   const experiment = process.argv.slice(2).find((arg) => !arg.startsWith("--")) ?? "token-economy";
   if (experiment === "token-economy") {
     await reportTokenEconomy();
+    return;
+  }
+  if (experiment === "session-economy") {
+    await reportSessionEconomy();
     return;
   }
   console.error(`No report renderer yet for experiment "${experiment}".`);

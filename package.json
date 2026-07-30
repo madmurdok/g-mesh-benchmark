@@ -6,6 +6,7 @@
   "description": "Benchmark suite measuring g-mesh's effectiveness: token economy, search latency, and cold-start indexing time.",
   "scripts": {
     "token-economy": "tsx harness/token-economy.ts",
+    "session-economy": "tsx harness/session-economy.ts",
     "search-latency": "tsx harness/search-latency.ts",
     "cold-start": "tsx harness/cold-start.ts",
     "report": "tsx harness/report.ts",
