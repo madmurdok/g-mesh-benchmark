@@ -356,5 +356,65 @@
       ],
       "minMatches": 2
     }
+  },
+  {
+    "id": "ex-multihop-mutateelement-nondeleted-callers",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+        { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" }
+      ]
+    },
+    "prompt": "In this repository, first find every file that calls the standalone mutateElement function exported by the element package — the helper that applies an in-place update to a single element and bumps its version — as opposed to the same-named method on the Scene class. Then, considering only those files, report which of them also call the standalone getNonDeletedElements helper exported by that same package, as opposed to the same-named Scene method or a module-local helper of the same name. A file that only re-exports one of these symbols without calling it does not count. Your final answer must list only the files that satisfy both conditions, each as a full repo-relative path.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: which files in the Excalidraw repo call BOTH the standalone mutateElement function exported by the element package AND the standalone getNonDeletedElements function exported by that same package. Ground truth: exactly two files — packages/element/src/frame.ts and packages/excalidraw/actions/actionFrame.ts. PASS only if the answer's final list of files is exactly those two. FAIL if either is missing from the final list, or if the final list contains any other file. Files that the answer explicitly rules out or presents as excluded do not count as part of its final list. Wrong entries that must FAIL if presented as part of the answer: packages/excalidraw/clipboard.ts, packages/element/src/Scene.ts, packages/element/src/binding.ts, packages/element/src/linearElementEditor.ts and packages/excalidraw/components/App.tsx (these call mutateElement, but reach getNonDeletedElements only as the Scene class method or a module-local helper of the same name, or not at all); packages/excalidraw/index.tsx (it re-exports both symbols and calls neither); and files such as packages/excalidraw/actions/actionProperties.tsx, actionFlip.ts, actionDeleteSelected.tsx or anything under packages/excalidraw/components/Stats/ (these call getNonDeletedElements but not the standalone mutateElement). Formatting, ordering, prose and extra correct commentary do not matter."
+    }
+  },
+  {
+    "id": "ex-multihop-trail-impl-pointfrom",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
+        { "symbol": "pointFrom", "file": "packages/math/src/point.ts" }
+      ]
+    },
+    "prompt": "In this repository, first find every class that implements the Trail interface, including classes that only get it indirectly by extending another Trail implementation. Then, of those classes, report which ones are defined in a file that also calls pointFrom (the helper that constructs a 2D point value) and which ones are not. Name the classes on both sides of that split.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The answer is about classes implementing the Trail interface in the Excalidraw repo, split by whether the class's own file calls pointFrom. Ground truth: exactly five classes implement Trail — AnimatedTrail, LaserTrails, DrawShapeTrail (all three declare `implements Trail`), plus EraserTrail and LassoTrail (which implement it indirectly by extending AnimatedTrail). Of these, the files defining DrawShapeTrail, EraserTrail and LassoTrail call pointFrom; the files defining AnimatedTrail and LaserTrails do not. PASS only if the answer names DrawShapeTrail, EraserTrail and LassoTrail as the ones whose files call pointFrom AND states that AnimatedTrail and LaserTrails do not. FAIL if it omits any of DrawShapeTrail/EraserTrail/LassoTrail from the calling side, if it claims AnimatedTrail or LaserTrails calls pointFrom, or if it presents some class other than these five as a Trail implementation. Wording, ordering, and extra correct detail such as file paths or line numbers do not matter."
+    }
+  },
+  {
+    "id": "ex-multihop-mutateelement-sizehelper-transitive",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+        { "symbol": "getSizeFromPoints", "file": "packages/common/src/points.ts" }
+      ]
+    },
+    "prompt": "In this repository, start from mutateElement — the helper that applies an in-place update to a single element and bumps its version. When the update changes an element's points, it delegates to a small helper imported from another workspace package to derive the element's width and height from that points array. Name that helper, then list every other file in the repository that calls the same helper, excluding the file that defines it and excluding mutateElement's own file. Give full repo-relative paths.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "getSizeFromPoints",
+        "packages/element/src/elbowArrow.ts",
+        "packages/element/src/transform.ts",
+        "packages/excalidraw/data/restore.ts"
+      ],
+      "minMatches": 4
+    }
   }
 ]
