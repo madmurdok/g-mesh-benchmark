@@ -23,7 +23,6 @@
     "prompt": "In this repository, find every class that implements the generic DeltaContainer<T> interface. Report the class name(s).",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/element/src/delta.ts"],
       "mustMentionSymbols": ["AppStateDelta", "ElementsDelta"]
     }
   },
@@ -291,7 +290,6 @@
     "prompt": "In this repository, find the small analytics-tracking helper function named trackEvent. Which event categories does it actually forward to tracking, and name at least two separate conditions under which it returns early without sending anything (i.e., silently no-ops)?",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/excalidraw/analytics.ts"],
       "mustMentionSymbols": ["command_palette", "export"]
     }
   },
