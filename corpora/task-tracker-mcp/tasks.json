@@ -2,9 +2,12 @@
   {
     "id": "tt-find-impl-completionverifier",
     "kind": "find_implementations",
+    "category": "lookup",
+    "revealsLocation": false,
     "target": { "symbol": "CompletionVerifier", "file": "src/domain/verification.ts" },
     "prompt": "In this repository, find every class that implements the CompletionVerifier interface. Report the class name(s) and the file(s) they live in.",
     "oracle": {
+      "mode": "substring",
       "mustMentionFiles": ["src/domain/verification.ts"],
       "mustMentionSymbols": ["GitDiffCompletionVerifier"]
     }
@@ -12,9 +15,12 @@
   {
     "id": "tt-find-impl-budgetestimator",
     "kind": "find_implementations",
+    "category": "lookup",
+    "revealsLocation": false,
     "target": { "symbol": "BudgetEstimator", "file": "src/domain/budget.ts" },
     "prompt": "In this repository, find every class that implements the BudgetEstimator interface. Report the class name(s) and the file(s) they live in.",
     "oracle": {
+      "mode": "substring",
       "mustMentionFiles": ["src/domain/budget.ts"],
       "mustMentionSymbols": ["HeuristicBudgetEstimator"]
     }
@@ -22,29 +28,60 @@
   {
     "id": "tt-deps-incoming-db-connection",
     "kind": "get_dependencies",
+    "category": "lookup",
+    "revealsLocation": false,
     "target": { "symbol": "", "file": "src/db/connection.ts" },
-    "prompt": "In this repository, which files import from src/db/connection.ts? List at least 5 of them.",
+    "prompt": "In this repository, find the module that sets up the database connection (the central sqlite db-open/init code), then list at least 5 files across the codebase that import from it.",
     "oracle": {
-      "mustMentionFiles": ["src/domain/tasks.ts"],
-      "mustMentionSymbols": []
+      "mode": "pool",
+      "candidatePool": [
+        "src/cli/status.ts",
+        "src/dashboard/server.ts",
+        "src/db/schema.ts",
+        "src/domain/board.ts",
+        "src/domain/dependencies.ts",
+        "src/domain/epics.ts",
+        "src/domain/handoffNotes.ts",
+        "src/domain/lifecycle.ts",
+        "src/domain/projects.ts",
+        "src/domain/releases.ts",
+        "src/domain/status.ts",
+        "src/domain/tasks.ts",
+        "src/index.ts",
+        "src/mcp/server.ts",
+        "src/mcp/tools/dependencies.ts",
+        "src/mcp/tools/epics.ts",
+        "src/mcp/tools/lifecycle.ts",
+        "src/mcp/tools/projects.ts",
+        "src/mcp/tools/releases.ts",
+        "src/mcp/tools/status.ts",
+        "src/mcp/tools/tasks.ts"
+      ],
+      "minMatches": 5
     }
   },
   {
     "id": "tt-references-requiretask",
     "kind": "find_references",
+    "category": "lookup",
+    "revealsLocation": false,
     "target": { "symbol": "requireTask", "file": "src/domain/tasks.ts" },
-    "prompt": "In this repository, find every place that calls the requireTask function defined in src/domain/tasks.ts. List the calling files.",
+    "prompt": "In this repository, find the requireTask function (a lookup helper that throws if a given task id doesn't exist), then list every file — other than where it's defined — that actually calls it. Watch out for other, similarly-named helpers that are not the same function.",
     "oracle": {
-      "mustMentionFiles": ["src/domain/tasks.ts"],
-      "mustMentionSymbols": ["requireTask"]
+      "mode": "pool",
+      "candidatePool": ["src/domain/status.ts", "tests/tasks.test.ts"],
+      "minMatches": 1
     }
   },
   {
     "id": "tt-outline-lifecycle-vs-small",
     "kind": "get_file_outline",
+    "category": "lookup",
+    "revealsLocation": true,
     "target": { "symbol": "", "file": "src/domain/lifecycle.ts" },
     "prompt": "In this repository, list the exported functions and interfaces from src/domain/lifecycle.ts, then contrast it with the exports of src/domain/handoffNotes.ts (a much smaller file). Report both lists.",
     "oracle": {
+      "mode": "substring",
       "mustMentionFiles": ["src/domain/lifecycle.ts", "src/domain/handoffNotes.ts"],
       "mustMentionSymbols": ["ReleaseTaskInput", "HandoffNote"]
     }
