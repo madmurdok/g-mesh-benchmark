@@ -39,3 +39,31 @@ tokens per run — see the design doc's failure-modes section for budget caps.
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
 - `npm run token-economy -- <taskId...>` — run only the named task(s) instead of the
   full registry, e.g. `npm run token-economy -- ex-find-impl-trail-crossfile`.
+
+## Authoring `mode: "pool"` oracle tasks
+
+Tasks whose answer is an enumerable set of files ("list at least N callers/
+importers/implementers") use `oracle.mode: "pool"` — a `candidatePool` of every
+valid file, computed independently of g-mesh, graded by counting how many
+pool members the agent's answer mentions (`>= minMatches` passes). See
+`docs/architecture/g-mesh-bench-v2-realistic-tasks.md` for why (a hand-picked
+`mustMentionFiles` subset produces false negatives whenever the agent
+correctly names a different valid subset than the task author guessed).
+
+Compute the pool with `scripts/computeCandidatePool.ts`, e.g.:
+
+```bash
+npx tsx scripts/computeCandidatePool.ts --corpus excalidraw \
+  --symbol pointFrom --file packages/math/src/point.ts --mode references --json
+```
+
+then paste the printed file list into the task's `oracle.candidatePool`.
+
+**Re-run it whenever a corpus's pinned `ref` in `corpora/registry.json` is
+bumped.** Pools are computed once, at authoring time, against that specific
+ref — they are not automatically refreshed. Moving the ref without
+re-running `computeCandidatePool.ts` for every `mode: "pool"` task in that
+corpus silently grades against a stale ground truth (a real, if less severe,
+version of the same bug the pool mode itself exists to fix). This is a
+deliberate manual step, not automated — see the architecture doc's Failure
+Modes section.
