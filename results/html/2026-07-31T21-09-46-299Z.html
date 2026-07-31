@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-3 of this project's dataviz palette: blue, orange, aqua. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run</h1>
+  <p class="timestamp">Generated 2026-07-31T21:14:47.307Z &middot; run timestamp 2026-07-31T21:09:46.299Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-84.1%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-84.1% (n=5)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.9496</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0804</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">5/5</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">5/5</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="233" height="250" rx="4" class="bar-gmesh"><title>gmesh, scenario: 5/5</title></rect><text x="176.5" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="295" y="34" width="233" height="250" rx="4" class="bar-baseline"><title>baseline, scenario: 5/5</title></rect><text x="411.5" y="28" class="bar-label" text-anchor="middle">5/5</text><text x="294" y="304" class="axis-label" text-anchor="middle">scenario</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>scenario</td><td>gmesh</td><td>5/5</td><td>100%</td></tr><tr><td>scenario</td><td>baseline</td><td>5/5</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>scenario</td><td>102878</td><td>55889</td><td>-84.1%</td><td>5</td></tr></tbody></table></div>
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>scenario</td><td>gmesh</td><td>10</td><td>1446</td><td>12783</td><td>88638</td><td>5</td></tr><tr><td>scenario</td><td>baseline</td><td>7</td><td>992</td><td>5631</td><td>49259</td><td>5</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 262" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="246" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>tt-scenario-impact-requireproject</title>tt-scenario-impact-requirep…</text><rect x="220" y="21" width="185.47675952962624" height="17" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-impact-requireproject: 77777 tokens</title></rect><text x="411.47675952962624" y="33.5" class="bar-label" text-anchor="start">77777</text><rect x="220" y="40" width="113.5415286617453" height="17" rx="4" class="bar-baseline"><title>baseline, tt-scenario-impact-requireproject: 47612 tokens</title></rect><text x="339.5415286617453" y="52.5" class="bar-label" text-anchor="start">47612</text><text x="212" y="89" class="axis-label" text-anchor="end"><title>tt-scenario-deletesafe-taskcode</title>tt-scenario-deletesafe-task…</text><rect x="220" y="67" width="193.31058128997725" height="17" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-deletesafe-taskcode: 81062 tokens</title></rect><text x="419.3105812899772" y="79.5" class="bar-label" text-anchor="start">81062</text><rect x="220" y="86" width="149.64865051059613" height="17" rx="4" class="bar-baseline"><title>baseline, tt-scenario-deletesafe-taskcode: 62753 tokens</title></rect><text x="375.6486505105961" y="98.5" class="bar-label" text-anchor="start">62753</text><text x="212" y="135" class="axis-label" text-anchor="end"><title>tt-scenario-bugtrace-createtasks-selfdep</title>tt-scenario-bugtrace-create…</text><rect x="220" y="113" width="450" height="17" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-bugtrace-createtasks-selfdep: 188701 tokens</title></rect><text x="676" y="125.5" class="bar-label" text-anchor="start">188701</text><rect x="220" y="132" width="170.56030439690304" height="17" rx="4" class="bar-baseline"><title>baseline, tt-scenario-bugtrace-createtasks-selfdep: 71522 tokens</title></rect><text x="396.560304396903" y="144.5" class="bar-label" text-anchor="start">71522</text><text x="212" y="181" class="axis-label" text-anchor="end"><title>ex-scenario-impact-getelementabsolutecoords</title>ex-scenario-impact-geteleme…</text><rect x="220" y="159" width="200.0402753562514" height="17" rx="4" class="bar-gmesh"><title>gmesh, ex-scenario-impact-getelementabsolutecoords: 83884 tokens</title></rect><text x="426.0402753562514" y="171.5" class="bar-label" text-anchor="start">83884</text><rect x="220" y="178" width="118.1321243660606" height="17" rx="4" class="bar-baseline"><title>baseline, ex-scenario-impact-getelementabsolutecoords: 49537 tokens</title></rect><text x="344.13212436606057" y="190.5" class="bar-label" text-anchor="start">49537</text><text x="212" y="227" class="axis-label" text-anchor="end"><title>ex-scenario-deletesafe-getrectangleboxabsolutecoords</title>ex-scenario-deletesafe-getr…</text><rect x="220" y="205" width="197.84871304338608" height="17" rx="4" class="bar-gmesh"><title>gmesh, ex-scenario-deletesafe-getrectangleboxabsolutecoords: 82965 tokens</title></rect><text x="423.84871304338606" y="217.5" class="bar-label" text-anchor="start">82965</text><rect x="220" y="224" width="114.51926592863842" height="17" rx="4" class="bar-baseline"><title>baseline, ex-scenario-deletesafe-getrectangleboxabsolutecoords: 48022 tokens</title></rect><text x="340.51926592863845" y="236.5" class="bar-label" text-anchor="start">48022</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>77777</td><td>77777</td><td>77777</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>47612</td><td>47612</td><td>47612</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>gmesh</td><td>1/1</td><td>81062</td><td>81062</td><td>81062</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>baseline</td><td>1/1</td><td>62753</td><td>62753</td><td>62753</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>188701</td><td>188701</td><td>188701</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>71522</td><td>71522</td><td>71522</td><td>1/1</td></tr><tr><td>ex-scenario-impact-getelementabsolutecoords</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>83884</td><td>83884</td><td>83884</td><td>1/1</td></tr><tr><td>ex-scenario-impact-getelementabsolutecoords</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>49537</td><td>49537</td><td>49537</td><td>1/1</td></tr><tr><td>ex-scenario-deletesafe-getrectangleboxabsolutecoords</td><td>parity</td><td>gmesh</td><td>1/1</td><td>82965</td><td>82965</td><td>82965</td><td>1/1</td></tr><tr><td>ex-scenario-deletesafe-getrectangleboxabsolutecoords</td><td>parity</td><td>baseline</td><td>1/1</td><td>48022</td><td>48022</td><td>48022</td><td>1/1</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Expected-winner check: 0/3 tasks with a declared expected winner matched the observed lower-token arm; mismatches: tt-scenario-impact-requireproject, tt-scenario-bugtrace-createtasks-selfdep, ex-scenario-impact-getelementabsolutecoords.</li>
+    <li>Task &quot;tt-scenario-deletesafe-taskcode&quot; is declared expectedWinner:&quot;parity&quot; but its arms&#39; mean tokens differ by 29% (gmesh 81062, baseline 62753) — an unexpected asymmetry worth a second look.</li>
+    <li>Task &quot;ex-scenario-deletesafe-getrectangleboxabsolutecoords&quot; is declared expectedWinner:&quot;parity&quot; but its arms&#39; mean tokens differ by 73% (gmesh 82965, baseline 48022) — an unexpected asymmetry worth a second look.</li>
+    <li>Bottom line: across 5 compared tasks, gmesh used -84.1% fewer tokens (unconditional), -84.1% fewer paired (n=5). Oracle pass rate — gmesh: 5/5 (100%), baseline: 5/5 (100%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation skipped (disabled or unavailable).</p>
+</div>
+</body>
+</html>
