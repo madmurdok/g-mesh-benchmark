@@ -59,6 +59,21 @@ test("pool mode's negation guard is local — an unrelated negation far away in 
     assert.deepEqual(result.missed, ["tests/tasks.test.ts"]);
   }));
 
+test("pool mode: an unrelated negation in a different bullet doesn't retract a candidate affirmed in its own bullet (real kungfu failure, tt-references-requiretask)", async () => {
+  const resultText =
+    "`requireTask` is defined at `src/domain/tasks.ts:78`. It's actually called (not just mentioned) from:\n\n" +
+    '- `src/domain/tasks.ts` itself (internal calls at lines 100, 177, 211 — same file, not "other")\n' +
+    "- `src/domain/status.ts:49` (inside `getTaskDetail`)\n" +
+    "- `tests/tasks.test.ts` (lines 107, 142, 175, 180)\n\n" +
+    "Note: `src/domain/releases.ts` defines a distinct, deliberately separate helper `requireTaskProjectAndRelease` " +
+    "(its own comment explains it avoids importing `requireTask` to prevent a circular import) — it does **not** " +
+    "call `requireTask`, so it's excluded.\n\n" +
+    "So excluding the defining file, the callers are: **`src/domain/status.ts`** and **`tests/tasks.test.ts`**.";
+  const result = await checkOracle(resultText, poolOracle());
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.missed, []);
+});
+
 test("pool mode still fails a candidate that is never mentioned at all", async () => {
   const result = await checkOracle("No callers found anywhere in the repo.", poolOracle());
   assert.equal(result.passed, false);
@@ -75,6 +90,28 @@ test("pool mode respects minMatches across multiple affirmed candidates", async 
 
   const twoHits = await checkOracle("Called from a.ts and b.ts.", oracle);
   assert.equal(twoHits.passed, true);
+});
+
+test("pool mode: 'excluding X, the callers are: Y' affirms Y even though 'excluding' precedes it on the same line (real kungfu failure, ex-multihop-mutateelement-sizehelper-transitive)", async () => {
+  const oracle = poolOracle({
+    candidatePool: [
+      "getSizeFromPoints",
+      "packages/element/src/elbowArrow.ts",
+      "packages/element/src/transform.ts",
+      "packages/excalidraw/data/restore.ts",
+    ],
+    minMatches: 4,
+  });
+  const resultText =
+    "The helper is **`getSizeFromPoints`**, defined in `packages/common/src/points.ts`.\n\n" +
+    "Excluding that definition file and `packages/element/src/mutateElement.ts`, the other callers are:\n\n" +
+    "- `packages/element/src/transform.ts` — `convertToExcalidrawElements`\n" +
+    "- `packages/element/src/elbowArrow.ts` — `normalizeArrowElementUpdate`\n" +
+    "- `packages/excalidraw/data/restore.ts` — `restoreElement`\n" +
+    "- `packages/element/tests/resize.test.tsx` — test usage";
+  const result = await checkOracle(resultText, oracle);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.missed, []);
 });
 
 test("substring mode is untouched by the pool negation guard (v1 behavior preserved)", async () => {
