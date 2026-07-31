@@ -7,6 +7,7 @@ import { generateNarrative } from "./lib/narrative.js";
 import {
   computeAggregate,
   computeAnalysis,
+  computeCategoryTokenBreakdown,
   computeCategoryTokenTable,
   computeCorrectnessTable,
   computeStaleSummary,
@@ -99,6 +100,33 @@ function printCategoryTokenSavings(runs: TokenEconomyRun[]): void {
 }
 
 /**
+ * Same pairs as printCategoryTokenSavings, split into the four token types
+ * Anthropic bills separately (input/output/cache-create/cache-read) instead
+ * of the summed total that table shows. The sum hides mechanism: on
+ * "lookup", gmesh pays more in BOTH cache-create and cache-read (a fixed
+ * schema tax with nothing offsetting it); on "multi-hop"/"ambiguous-name",
+ * baseline pays dramatically more in cache-create (each grep/Read round-trip
+ * adds fresh, never-cached content) AND more cache-read (a longer transcript
+ * from more turns) — a compounding double cost that explains gmesh's win
+ * there. Printed right after printCategoryTokenSavings so the two are read
+ * together.
+ */
+function printCategoryTokenBreakdown(runs: TokenEconomyRun[]): void {
+  const rows = computeCategoryTokenBreakdown(runs);
+  if (rows.length === 0) return;
+
+  console.log("# Token type breakdown by category (paired, oracle-passed pairs only)\n");
+  console.log("| Category | Arm | Input | Output | Cache create | Cache read | Pairs (n) |");
+  console.log("|---|---|---|---|---|---|---|");
+  for (const row of rows) {
+    console.log(
+      `| ${row.category} | ${row.arm} | ${row.meanInputTokens.toFixed(0)} | ${row.meanOutputTokens.toFixed(0)} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanCacheReadTokens.toFixed(0)} | ${row.pairCount} |`,
+    );
+  }
+  console.log("");
+}
+
+/**
  * Printed right after the correctness table, before the token-economy table
  * — only when something was actually excluded (never in --all mode). See
  * docs/results/v0.2.0-realistic-tasks-findings.md, "Stale run-record
@@ -137,6 +165,7 @@ async function reportTokenEconomy(): Promise<void> {
 
   printCorrectness(runs);
   printCategoryTokenSavings(runs);
+  printCategoryTokenBreakdown(runs);
   if (!useAll) printStaleSummary(stale);
 
   const taskTable = computeTaskTable(runs);
@@ -218,6 +247,20 @@ async function reportSessionEconomy(): Promise<void> {
   for (const row of sequenceTable) {
     console.log(
       `| ${row.corpusId} | ${row.arm} | ${row.sequenceIndex} | ${row.n} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanTotalTokens.toFixed(0)} |`,
+    );
+  }
+  console.log("");
+
+  // This experiment's actual finding — cache-read grows with position while
+  // cache-creation doesn't — needs all four token types broken out, not just
+  // cache-creation-vs-total. See sessionReport.ts's SequencePositionRow doc
+  // comment.
+  console.log("# Session economy report — token type breakdown by position\n");
+  console.log("| Corpus | Arm | Position | Runs (n) | Input | Output | Cache create | Cache read |");
+  console.log("|---|---|---|---|---|---|---|---|");
+  for (const row of sequenceTable) {
+    console.log(
+      `| ${row.corpusId} | ${row.arm} | ${row.sequenceIndex} | ${row.n} | ${row.meanInputTokens.toFixed(0)} | ${row.meanOutputTokens.toFixed(0)} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanCacheReadTokens.toFixed(0)} |`,
     );
   }
 
