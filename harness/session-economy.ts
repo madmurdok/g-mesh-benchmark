@@ -3,8 +3,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
-import { resolveWarm } from "./lib/corpusResolver.js";
-import { gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
+import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
@@ -122,6 +122,32 @@ function shouldIncludeTrustedArm(): boolean {
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
   throw new Error(`Invalid G_MESH_BENCH_INCLUDE_TRUSTED value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * G_MESH_BENCH_INCLUDE_KUNGFU=yes|no gates the external `kungfu` comparison
+ * arm — same opt-in pattern as shouldIncludeTrustedArm(), duplicated
+ * verbatim from token-economy.ts's gate (task #57) for the same reason that
+ * gate itself is duplicated here rather than shared.
+ */
+function shouldIncludeKungfuArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_KUNGFU;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_KUNGFU value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * kungfuBinaryPath() defaults to the bare command "kungfu", resolved via
+ * PATH at spawn time — existsSync can't check that directly. Duplicated from
+ * token-economy.ts's identical helper (kungfuBinaryIsAvailable).
+ */
+function kungfuBinaryIsAvailable(): boolean {
+  const bin = kungfuBinaryPath();
+  if (bin.includes(path.sep)) return existsSync(bin);
+  return (process.env.PATH ?? "").split(path.delimiter).some((dir) => dir.length > 0 && existsSync(path.join(dir, bin)));
 }
 
 /**
@@ -296,6 +322,15 @@ async function main() {
     process.exit(1);
   }
 
+  const includeKungfu = shouldIncludeKungfuArm();
+  if (includeKungfu && !kungfuBinaryIsAvailable()) {
+    console.error(
+      `G_MESH_BENCH_INCLUDE_KUNGFU=yes but kungfu binary "${kungfuBinaryPath()}" was not found on PATH. ` +
+        `Install it (see https://github.com/denyzhirkov/kungfu) or set G_MESH_BENCH_KUNGFU_BINARY to its path.`,
+    );
+    process.exit(1);
+  }
+
   const timestamp = new Date().toISOString();
   const registry = await loadRegistry();
 
@@ -310,14 +345,16 @@ async function main() {
   const corpora = selectedCorpusIds.length > 0 ? registry.filter((c) => selectedCorpusIds.includes(c.id)) : registry;
 
   const reps = sessionRepetitionCount();
-  const arms: Arm[] = shouldIncludeTrustedArm() ? ["gmesh", "baseline", "gmesh-trusted"] : ["gmesh", "baseline"];
+  const arms: Arm[] = ["gmesh", "baseline"];
+  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
+  if (includeKungfu) arms.push("kungfu");
   console.log(
     `Chains per (corpus, arm): ${reps} | arms: ${arms.join(", ")} | corpora: ${corpora.map((c) => c.id).join(", ")}`,
   );
-  if (arms.includes("gmesh-trusted")) {
+  if (arms.length > 2) {
     console.log(
-      `G_MESH_BENCH_INCLUDE_TRUSTED=yes — the extra arm is a whole extra chain per (corpus, repetition): ` +
-        `expect ~1.5x the API spend of a two-arm run.`,
+      `Extra arms beyond gmesh/baseline are each a whole extra chain per (corpus, repetition): ` +
+        `expect roughly ${(arms.length / 2).toFixed(1)}x the API spend of a two-arm run.`,
     );
   }
 
@@ -333,10 +370,16 @@ async function main() {
       continue;
     }
     const cwd = await resolveWarm(corpus);
+    // Same reasoning as token-economy.ts's #57 fix: kungfu writes a .kungfu/
+    // index into its cwd, so its chain must run against a throwaway clone,
+    // never the shared `cwd` above (the live, registry-registered checkout).
+    // One clone per corpus, reused across every repetition's kungfu chain.
+    const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
     for (let rep = 1; rep <= reps; rep++) {
       for (const arm of arms) {
         console.log(`[${corpus.id}] ${arm} session (chain ${rep}/${reps}, ${tasks.length} tasks)...`);
-        runs.push(...(await runSessionChain(cwd, tasks, corpus.id, arm, rep, timestamp)));
+        const armCwd = arm === "kungfu" && kungfuCwd !== undefined ? kungfuCwd : cwd;
+        runs.push(...(await runSessionChain(armCwd, tasks, corpus.id, arm, rep, timestamp)));
       }
     }
   }
