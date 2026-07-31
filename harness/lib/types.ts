@@ -9,18 +9,22 @@
  *   and docs/results/v0.2.0-realistic-tasks-findings.md, "Turn-count evidence
  *   for the multi-hop self-verification pattern"). Keeping the tools identical
  *   is the point: it measures "chose not to verify", not "couldn't verify".
+ * - `kungfu` — a third-party code-intelligence MCP server (github.com/denyzhirkov/kungfu)
+ *   used as an external comparison point, restricted to a curated tool subset
+ *   matching g-mesh's 7 capabilities as closely as it has analogs for (see
+ *   armConfig.ts's KUNGFU_TOOLS for the exact mapping and its documented gaps).
  *
  * Lives here rather than in token-economy.ts so reportData.ts/htmlReport.ts
  * share one definition instead of each re-declaring the union.
  */
-export type Arm = "gmesh" | "baseline" | "gmesh-trusted";
+export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu";
 
 /**
  * Fixed presentation order for arms in every table, chart and legend.
  * `gmesh`/`baseline` stay first so reports built from pre-`gmesh-trusted`
  * history render exactly as they did before that arm existed.
  */
-export const ARM_ORDER: readonly Arm[] = ["gmesh", "baseline", "gmesh-trusted"];
+export const ARM_ORDER: readonly Arm[] = ["gmesh", "baseline", "gmesh-trusted", "kungfu"];
 
 export interface CorpusEntry {
   id: string;

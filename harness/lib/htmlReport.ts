@@ -284,10 +284,11 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     --text-secondary: #52514e;
     --muted: #898781;
     --gridline: #e1e0d9;
-    /* Categorical slots 1-3 of this project's dataviz palette: blue, orange, aqua. */
+    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
     --gmesh: #2a78d6;
     --baseline: #eb6834;
     --gmesh-trusted: #1baf7a;
+    --kungfu: #8b5cf6;
     background: var(--surface-1);
     color: var(--text-primary);
     padding: 24px clamp(16px, 4vw, 48px) 64px;
@@ -306,6 +307,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
       --gmesh: #3987e5;
       --baseline: #d95926;
       --gmesh-trusted: #199e70;
+      --kungfu: #a78bfa;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -319,6 +321,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     --gmesh: #3987e5;
     --baseline: #d95926;
     --gmesh-trusted: #199e70;
+    --kungfu: #a78bfa;
   }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   h2 { font-size: 1.15rem; margin: 40px 0 12px; }
@@ -333,6 +336,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   .swatch-gmesh { background: var(--gmesh); }
   .swatch-baseline { background: var(--baseline); }
   .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .swatch-kungfu { background: var(--kungfu); }
   .chart-wrap { overflow-x: auto; }
   svg.chart { width: 100%; height: auto; display: block; }
   svg.chart.chart-wide { min-width: 640px; }
@@ -342,6 +346,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   .bar-gmesh { fill: var(--gmesh); }
   .bar-baseline { fill: var(--baseline); }
   .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .bar-kungfu { fill: var(--kungfu); }
   .table-wrap { overflow-x: auto; margin-top: 12px; }
   table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
   th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }

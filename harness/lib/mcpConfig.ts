@@ -30,3 +30,25 @@ export function buildGmeshArmConfig(): McpServerConfig {
 export function buildBaselineArmConfig(): McpServerConfig {
   return { mcpServers: {} };
 }
+
+/**
+ * kungfu (github.com/denyzhirkov/kungfu) is an external, unvendored tool: its
+ * own install.sh symlinks the binary onto the system PATH by design, so unlike
+ * gmeshBinaryPath() there is no in-repo release build to default to. Bare
+ * "kungfu" relies on PATH; override with G_MESH_BENCH_KUNGFU_BINARY for a
+ * pinned/non-PATH install.
+ */
+export function kungfuBinaryPath(): string {
+  return process.env.G_MESH_BENCH_KUNGFU_BINARY ?? "kungfu";
+}
+
+export function buildKungfuArmConfig(): McpServerConfig {
+  return {
+    mcpServers: {
+      kungfu: {
+        command: kungfuBinaryPath(),
+        args: ["mcp"],
+      },
+    },
+  };
+}
