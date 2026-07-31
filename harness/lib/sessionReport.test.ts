@@ -21,6 +21,8 @@ function run(overrides: {
   sequenceIndex: number;
   sessionLength: number;
   inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
   cacheCreationTokens?: number;
   status?: SessionEconomyRun["status"];
   repetition?: number;
@@ -34,8 +36,8 @@ function run(overrides: {
     model: "claude-sonnet-5",
     taskDefHash: "hash",
     inputTokens: overrides.inputTokens ?? 0,
-    outputTokens: 0,
-    cacheReadTokens: 0,
+    outputTokens: overrides.outputTokens ?? 0,
+    cacheReadTokens: overrides.cacheReadTokens ?? 0,
     cacheCreationTokens: overrides.cacheCreationTokens ?? 0,
     numTurns: 1,
     durationMs: 1,
@@ -61,6 +63,25 @@ test("averages every ok run at one (corpus, arm, position) cell", () => {
   // tokensSpent = input + output + cacheRead + cacheCreation.
   assert.equal(row.meanTotalTokens, (20100 + 10300) / 2);
   assert.equal(row.meanCacheCreationTokens, 15000);
+});
+
+test("cache-read (and input/output) are broken out per position alongside cache-creation — this experiment's actual finding", () => {
+  const rows = computeSequenceTokenTable([
+    run({ corpusId: "c", arm: "gmesh", sequenceIndex: 1, sessionLength: 3, inputTokens: 6, outputTokens: 700, cacheCreationTokens: 5000, cacheReadTokens: 10000, repetition: 1 }),
+    run({ corpusId: "c", arm: "gmesh", sequenceIndex: 3, sessionLength: 3, inputTokens: 8, outputTokens: 900, cacheCreationTokens: 5200, cacheReadTokens: 90000, repetition: 1 }),
+  ]);
+
+  const first = rows.find((r) => r.sequenceIndex === 1)!;
+  const third = rows.find((r) => r.sequenceIndex === 3)!;
+  // Cache-creation stays roughly flat across positions (same MCP tool-schema
+  // tax paid once per call); cache-read grows because the transcript being
+  // re-read gets longer — the two fields must diverge, not track together.
+  assert.equal(first.meanCacheCreationTokens, 5000);
+  assert.equal(third.meanCacheCreationTokens, 5200);
+  assert.equal(first.meanCacheReadTokens, 10000);
+  assert.equal(third.meanCacheReadTokens, 90000);
+  assert.equal(first.meanInputTokens, 6);
+  assert.equal(first.meanOutputTokens, 700);
 });
 
 test("two corpora of different chain lengths never pool into the same row", () => {
