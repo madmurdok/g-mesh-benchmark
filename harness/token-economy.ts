@@ -4,7 +4,7 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
-import { resolveWarm } from "./lib/corpusResolver.js";
+import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
@@ -296,16 +296,19 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
  * prefix, in the user prompt. A third warm-up would spend money to warm a
  * cache entry that is already warm.
  */
-async function warmCache(cwd: string, includeKungfu: boolean): Promise<void> {
+async function warmCache(cwd: string, kungfuCwd: string | undefined): Promise<void> {
   console.log("Warming prompt cache: gmesh arm...");
   await warmArm(cwd, "gmesh");
   console.log("Warming prompt cache: baseline arm...");
   await warmArm(cwd, "baseline");
-  if (includeKungfu) {
+  if (kungfuCwd !== undefined) {
     // kungfu's MCP config/tool list differs from gmesh's, so it needs its own
     // warm-up call — unlike gmesh-trusted, it does not share gmesh's prefix.
+    // Uses a throwaway clone, not `cwd`, for the same reason as the main loop
+    // below: kungfu indexes into a .kungfu/ dir inside its cwd, which must
+    // never be the live registry-registered checkout.
     console.log("Warming prompt cache: kungfu arm...");
-    await warmArm(cwd, "kungfu");
+    await warmArm(kungfuCwd, "kungfu");
   }
 }
 
@@ -365,7 +368,8 @@ async function main() {
       throw new Error("Cannot warm cache: corpus registry is empty.");
     }
     const warmupCwd = await resolveWarm(firstCorpus);
-    await warmCache(warmupCwd, includeKungfu);
+    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
+    await warmCache(warmupCwd, warmupKungfuCwd);
   }
 
   const reps = repetitionCount();
@@ -389,12 +393,21 @@ async function main() {
       selectedTaskIds.length > 0 ? corpusTasks.filter((t) => selectedTaskIds.includes(t.id)) : corpusTasks;
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
+    // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,
+    // which indexes into ~/.g-mesh, never the project dir. Running it against
+    // the shared `cwd` above would plant that directory inside the live,
+    // registry-registered checkout, which this experiment must not touch (see
+    // task #57's explicit constraint). One throwaway clone per corpus, reused
+    // across every kungfu-arm call for that corpus, same resolveFresh()
+    // precedent used elsewhere in this harness for exactly this reason.
+    const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
         for (const arm of arms) {
           console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
-          runs.push(await runArm(cwd, task, corpus.id, arm, rep, timestamp));
+          const armCwd = arm === "kungfu" && kungfuCwd !== undefined ? kungfuCwd : cwd;
+          runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
         }
       }
     }
