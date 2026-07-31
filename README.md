@@ -64,6 +64,15 @@ tokens per run — see the design doc's failure-modes section for budget caps.
   the multi-hop self-verification pattern" for the investigation that motivated
   it. Adds a full third run per (task, repetition), so budget ~1.5x the usual
   API spend; with the flag off, nothing about the run or the report changes.
+- `G_MESH_BENCH_INCLUDE_KUNGFU=yes|no` — also run a `kungfu` arm (default `no`):
+  a third-party code-intelligence MCP server
+  ([denyzhirkov/kungfu](https://github.com/denyzhirkov/kungfu)), restricted to
+  a curated 6-tool subset chosen to match g-mesh's 7 capabilities as closely as
+  it has analogs for (see `harness/lib/armConfig.ts`'s `KUNGFU_TOOLS` for the
+  exact mapping and its two documented gaps: no reference-graph tool distinct
+  from the call graph, and no interface-implementation tool at all). Requires
+  `kungfu` on PATH (or `G_MESH_BENCH_KUNGFU_BINARY` pointed at it); adds a full
+  extra run per (task, repetition).
 
 ### `session-economy` — the same comparison, amortized instead of isolated
 

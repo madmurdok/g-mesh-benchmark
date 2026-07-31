@@ -83,11 +83,27 @@ function findAllIndices(text: string, needle: string): number[] {
  * sentence-split) deliberately: candidates are file paths containing '.',
  * so splitting resultText into sentences on punctuation would break mid
  * filename (e.g. "status.ts" -> "status" / "ts").
+ *
+ * The window never crosses a newline on either side, in addition to the
+ * NEGATION_CONTEXT_CHARS cap — found necessary from two real kungfu
+ * false-negatives (g-mesh-bench task #58): on multi-line/bulleted markdown
+ * answers, a negation about a *different* file in an adjacent bullet or
+ * aside can land within 150 plain chars of a real, affirmed mention purely
+ * by document layout (one case triggered at a 20-char distance — closer
+ * than the original calibration case's ~100 chars needed, so shrinking
+ * NEGATION_CONTEXT_CHARS alone can't separate true from false positives;
+ * the two ranges overlap). Scoping to the current line leaves both existing
+ * calibration tests unaffected, since real captured negations so far are
+ * single-paragraph prose with no newlines at all — same behavior there,
+ * narrower only where line structure exists.
  */
 function isEveryMentionNegated(resultText: string, candidate: string, indices: number[]): boolean {
   return indices.every((idx) => {
-    const start = Math.max(0, idx - NEGATION_CONTEXT_CHARS);
-    const end = Math.min(resultText.length, idx + candidate.length + NEGATION_CONTEXT_CHARS);
+    const lineStart = resultText.lastIndexOf("\n", idx) + 1; // -1 (no newline before) + 1 = 0
+    const lineEndSearch = resultText.indexOf("\n", idx + candidate.length);
+    const lineEnd = lineEndSearch === -1 ? resultText.length : lineEndSearch;
+    const start = Math.max(lineStart, idx - NEGATION_CONTEXT_CHARS);
+    const end = Math.min(lineEnd, idx + candidate.length + NEGATION_CONTEXT_CHARS);
     return hasNegationCue(resultText.slice(start, end));
   });
 }

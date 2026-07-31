@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run (kungfu comparison)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    --kungfu: #8b5cf6;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+      --kungfu: #a78bfa;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+    --kungfu: #a78bfa;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .swatch-kungfu { background: var(--kungfu); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .bar-kungfu { fill: var(--kungfu); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run (kungfu comparison)</h1>
+  <p class="timestamp">Generated 2026-07-31T21:43:19.892Z &middot; run timestamp 2026-07-31T21:27:56.212Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-9.4%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-7.9% (n=6)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$1.3859</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0000</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">7/7</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">6/7</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-kungfu"></span>kungfu</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh"><title>gmesh, ambiguous-name: 1/1</title></rect><text x="81.77777777777777" y="28" class="bar-label" text-anchor="middle">1/1</text><rect x="105.55555555555554" y="34" width="43.55555555555555" height="250" rx="4" class="bar-baseline"><title>baseline, ambiguous-name: 1/1</title></rect><text x="127.33333333333331" y="28" class="bar-label" text-anchor="middle">1/1</text><rect x="151.1111111111111" y="34" width="43.55555555555555" height="250" rx="4" class="bar-kungfu"><title>kungfu, ambiguous-name: 1/1</title></rect><text x="172.88888888888886" y="28" class="bar-label" text-anchor="middle">1/1</text><text x="127.33333333333333" y="304" class="axis-label" text-anchor="middle">ambiguous-name</text><rect x="226.66666666666666" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh"><title>gmesh, lookup: 5/5</title></rect><text x="248.44444444444443" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="272.22222222222223" y="84" width="43.55555555555555" height="200" rx="4" class="bar-baseline"><title>baseline, lookup: 4/5</title></rect><text x="294" y="78" class="bar-label" text-anchor="middle">4/5</text><rect x="317.77777777777777" y="84" width="43.55555555555555" height="200" rx="4" class="bar-kungfu"><title>kungfu, lookup: 4/5</title></rect><text x="339.55555555555554" y="78" class="bar-label" text-anchor="middle">4/5</text><text x="294" y="304" class="axis-label" text-anchor="middle">lookup</text><rect x="393.3333333333333" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh"><title>gmesh, multi-hop: 1/1</title></rect><text x="415.1111111111111" y="28" class="bar-label" text-anchor="middle">1/1</text><rect x="438.88888888888886" y="34" width="43.55555555555555" height="250" rx="4" class="bar-baseline"><title>baseline, multi-hop: 1/1</title></rect><text x="460.66666666666663" y="28" class="bar-label" text-anchor="middle">1/1</text><rect x="484.4444444444444" y="34" width="43.55555555555555" height="250" rx="4" class="bar-kungfu"><title>kungfu, multi-hop: 1/1</title></rect><text x="506.2222222222222" y="28" class="bar-label" text-anchor="middle">1/1</text><text x="460.66666666666663" y="304" class="axis-label" text-anchor="middle">multi-hop</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>gmesh</td><td>1/1</td><td>100%</td></tr><tr><td>ambiguous-name</td><td>baseline</td><td>1/1</td><td>100%</td></tr><tr><td>ambiguous-name</td><td>kungfu</td><td>1/1</td><td>100%</td></tr><tr><td>lookup</td><td>gmesh</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>baseline</td><td>4/5</td><td>80%</td></tr><tr><td>lookup</td><td>kungfu</td><td>4/5</td><td>80%</td></tr><tr><td>multi-hop</td><td>gmesh</td><td>1/1</td><td>100%</td></tr><tr><td>multi-hop</td><td>baseline</td><td>1/1</td><td>100%</td></tr><tr><td>multi-hop</td><td>kungfu</td><td>1/1</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>64636</td><td>127020</td><td>49.1%</td><td>1</td></tr><tr><td>lookup</td><td>69937</td><td>51888</td><td>-34.8%</td><td>4</td></tr><tr><td>multi-hop</td><td>112544</td><td>88876</td><td>-26.6%</td><td>1</td></tr></tbody></table></div>
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>gmesh</td><td>6</td><td>627</td><td>7927</td><td>56076</td><td>1</td></tr><tr><td>ambiguous-name</td><td>baseline</td><td>14</td><td>1450</td><td>8232</td><td>117324</td><td>1</td></tr><tr><td>lookup</td><td>gmesh</td><td>7</td><td>469</td><td>4593</td><td>64869</td><td>4</td></tr><tr><td>lookup</td><td>baseline</td><td>7</td><td>641</td><td>3196</td><td>48045</td><td>4</td></tr><tr><td>multi-hop</td><td>gmesh</td><td>10</td><td>573</td><td>8638</td><td>103323</td><td>1</td></tr><tr><td>multi-hop</td><td>baseline</td><td>10</td><td>683</td><td>7612</td><td>80571</td><td>1</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-kungfu"></span>kungfu</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 354" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="338" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>tt-find-impl-completionverifier</title>tt-find-impl-completionveri…</text><rect x="220" y="21" width="201.0776477828001" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-find-impl-completionverifier: 60994 tokens</title></rect><text x="427.0776477828001" y="30.333333333333332" class="bar-label" text-anchor="start">60994</text><rect x="220" y="33.666666666666664" width="205.65673511549366" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-find-impl-completionverifier: 62383 tokens</title></rect><text x="431.6567351154937" y="43" class="bar-label" text-anchor="start">62383</text><rect x="220" y="46.33333333333333" width="184.2909575754024" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, tt-find-impl-completionverifier: 55902 tokens</title></rect><text x="410.2909575754024" y="55.666666666666664" class="bar-label" text-anchor="start">55902</text><text x="212" y="89" class="axis-label" text-anchor="end"><title>tt-deps-incoming-db-connection</title>tt-deps-incoming-db-connection</text><rect x="220" y="67" width="297.5252928549974" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-deps-incoming-db-connection: 90250 tokens</title></rect><text x="523.5252928549974" y="76.33333333333333" class="bar-label" text-anchor="start">90250</text><rect x="220" y="79.66666666666667" width="157.62082329067186" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-deps-incoming-db-connection: 47812 tokens</title></rect><text x="383.62082329067186" y="89" class="bar-label" text-anchor="start">47812</text><rect x="220" y="92.33333333333333" width="298.0000146519073" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, tt-deps-incoming-db-connection: 90394 tokens</title></rect><text x="524.0000146519073" y="101.66666666666666" class="bar-label" text-anchor="start">90394</text><text x="212" y="135" class="axis-label" text-anchor="end"><title>tt-references-requiretask</title>tt-references-requiretask</text><rect x="220" y="113" width="270.1892293829349" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-references-requiretask: 81958 tokens</title></rect><text x="496.1892293829349" y="122.33333333333333" class="bar-label" text-anchor="start">81958</text><rect x="220" y="125.66666666666667" width="158.94608830704536" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-references-requiretask: 48214 tokens</title></rect><text x="384.94608830704533" y="135" class="bar-label" text-anchor="start">48214</text><rect x="220" y="138.33333333333334" width="450" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, tt-references-requiretask: 136501 tokens</title></rect><text x="676" y="147.66666666666669" class="bar-label" text-anchor="start">136501</text><text x="212" y="181" class="axis-label" text-anchor="end"><title>ex-references-pointfrom-highfanout</title>ex-references-pointfrom-hig…</text><rect x="220" y="159" width="153.44393081369367" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-references-pointfrom-highfanout: 46545 tokens</title></rect><text x="379.44393081369367" y="168.33333333333334" class="bar-label" text-anchor="start">46545</text><rect x="220" y="171.66666666666666" width="162.00540655379814" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-references-pointfrom-highfanout: 49142 tokens</title></rect><text x="388.00540655379814" y="181" class="bar-label" text-anchor="start">49142</text><rect x="220" y="184.33333333333334" width="90.67845656808375" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, ex-references-pointfrom-highfanout: 27506 tokens</title></rect><text x="316.67845656808373" y="193.66666666666669" class="bar-label" text-anchor="start">27506</text><text x="212" y="227" class="axis-label" text-anchor="end"><title>ex-find-callers-mutateelement</title>ex-find-callers-mutateelement</text><rect x="220" y="205" width="139.56161493322395" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-find-callers-mutateelement: 42334 tokens</title></rect><text x="365.56161493322395" y="214.33333333333334" class="bar-label" text-anchor="start">42334</text><rect x="220" y="217.66666666666666" width="108.18382282913679" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-find-callers-mutateelement: 32816 tokens</title></rect><text x="334.1838228291368" y="227" class="bar-label" text-anchor="start">32816</text><rect x="220" y="230.33333333333334" width="224.7906608742793" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, ex-find-callers-mutateelement: 68187 tokens</title></rect><text x="450.7906608742793" y="239.66666666666669" class="bar-label" text-anchor="start">68187</text><text x="212" y="273" class="axis-label" text-anchor="end"><title>ex-ambiguous-clamp-math-utils</title>ex-ambiguous-clamp-math-utils</text><rect x="220" y="251" width="213.08415322964666" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-ambiguous-clamp-math-utils: 64636 tokens</title></rect><text x="439.08415322964663" y="260.3333333333333" class="bar-label" text-anchor="start">64636</text><rect x="220" y="263.6666666666667" width="418.7441850242855" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-ambiguous-clamp-math-utils: 127020 tokens</title></rect><text x="644.7441850242856" y="273" class="bar-label" text-anchor="start">127020</text><rect x="220" y="276.3333333333333" width="390.0498897443975" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, ex-ambiguous-clamp-math-utils: 118316 tokens</title></rect><text x="616.0498897443974" y="285.66666666666663" class="bar-label" text-anchor="start">118316</text><text x="212" y="319" class="axis-label" text-anchor="end"><title>ex-multihop-mutateelement-sizehelper-transitive</title>ex-multihop-mutateelement-s…</text><rect x="220" y="297" width="371.0214577182585" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-multihop-mutateelement-sizehelper-transitive: 112544 tokens</title></rect><text x="597.0214577182585" y="306.3333333333333" class="bar-label" text-anchor="start">112544</text><rect x="220" y="309.6666666666667" width="292.995655709482" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-multihop-mutateelement-sizehelper-transitive: 88876 tokens</title></rect><text x="518.995655709482" y="319" class="bar-label" text-anchor="start">88876</text><rect x="220" y="322.3333333333333" width="325.18772756243544" height="10.666666666666666" rx="4" class="bar-kungfu"><title>kungfu, ex-multihop-mutateelement-sizehelper-transitive: 98641 tokens</title></rect><text x="551.1877275624354" y="331.66666666666663" class="bar-label" text-anchor="start">98641</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>gmesh</td><td>1/1</td><td>60994</td><td>60994</td><td>60994</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>baseline</td><td>1/1</td><td>62383</td><td>62383</td><td>62383</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>kungfu</td><td>1/1</td><td>55902</td><td>55902</td><td>55902</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh</td><td>1/1</td><td>90250</td><td>90250</td><td>90250</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>baseline</td><td>1/1</td><td>47812</td><td>47812</td><td>47812</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>kungfu</td><td>1/1</td><td>90394</td><td>90394</td><td>90394</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>gmesh</td><td>1/1</td><td>81958</td><td>81958</td><td>81958</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>baseline</td><td>1/1</td><td>48214</td><td>48214</td><td>48214</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>kungfu</td><td>1/1</td><td>136501</td><td>136501</td><td>136501</td><td>1/1</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>46545</td><td>46545</td><td>46545</td><td>1/1</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>49142</td><td>49142</td><td>49142</td><td>1/1</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>kungfu</td><td>1/1</td><td>27506</td><td>27506</td><td>27506</td><td>1/1</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>42334</td><td>42334</td><td>42334</td><td>1/1</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>32816</td><td>32816</td><td>32816</td><td>0/1</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>kungfu</td><td>1/1</td><td>68187</td><td>68187</td><td>68187</td><td>0/1</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>64636</td><td>64636</td><td>64636</td><td>1/1</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>127020</td><td>127020</td><td>127020</td><td>1/1</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>kungfu</td><td>1/1</td><td>118316</td><td>118316</td><td>118316</td><td>1/1</td></tr><tr><td>ex-multihop-mutateelement-sizehelper-transitive</td><td>parity</td><td>gmesh</td><td>1/1</td><td>112544</td><td>112544</td><td>112544</td><td>1/1</td></tr><tr><td>ex-multihop-mutateelement-sizehelper-transitive</td><td>parity</td><td>baseline</td><td>1/1</td><td>88876</td><td>88876</td><td>88876</td><td>1/1</td></tr><tr><td>ex-multihop-mutateelement-sizehelper-transitive</td><td>parity</td><td>kungfu</td><td>1/1</td><td>98641</td><td>98641</td><td>98641</td><td>1/1</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Category &quot;lookup&quot;: oracle pass rates diverge by 20 points (gmesh 5/5, baseline 4/5) — gmesh passes substantially more often.</li>
+    <li>Expected-winner check: 2/2 tasks with a declared expected winner matched the observed lower-token arm.</li>
+    <li>Task &quot;ex-multihop-mutateelement-sizehelper-transitive&quot; is declared expectedWinner:&quot;parity&quot; but its arms&#39; mean tokens differ by 27% (gmesh 112544, baseline 88876) — an unexpected asymmetry worth a second look.</li>
+    <li>Bottom line: across 7 compared tasks, gmesh used -9.4% fewer tokens (unconditional), -7.9% fewer paired (n=6). Oracle pass rate — gmesh: 7/7 (100%), baseline: 6/7 (86%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation skipped (disabled or unavailable).</p>
+</div>
+</body>
+</html>

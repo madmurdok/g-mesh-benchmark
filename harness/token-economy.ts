@@ -4,11 +4,11 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
-import { resolveWarm } from "./lib/corpusResolver.js";
+import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
-import { gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
@@ -218,6 +218,23 @@ function shouldIncludeTrustedArm(): boolean {
   throw new Error(`Invalid G_MESH_BENCH_INCLUDE_TRUSTED value "${envOverride}"; expected "yes" or "no".`);
 }
 
+/**
+ * G_MESH_BENCH_INCLUDE_KUNGFU=yes|no gates the external `kungfu` comparison
+ * arm — same opt-in-only pattern as shouldIncludeTrustedArm(), for the same
+ * reason: a default run's output must stay exactly what it was before this
+ * arm existed. kungfu is a separately-installed, unvendored third-party tool
+ * (see mcpConfig.ts's kungfuBinaryPath), so this also gates the extra
+ * preflight check in main().
+ */
+function shouldIncludeKungfuArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_KUNGFU;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_KUNGFU value "${envOverride}"; expected "yes" or "no".`);
+}
+
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
 
 /**
@@ -279,11 +296,33 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
  * prefix, in the user prompt. A third warm-up would spend money to warm a
  * cache entry that is already warm.
  */
-async function warmCache(cwd: string): Promise<void> {
+async function warmCache(cwd: string, kungfuCwd: string | undefined): Promise<void> {
   console.log("Warming prompt cache: gmesh arm...");
   await warmArm(cwd, "gmesh");
   console.log("Warming prompt cache: baseline arm...");
   await warmArm(cwd, "baseline");
+  if (kungfuCwd !== undefined) {
+    // kungfu's MCP config/tool list differs from gmesh's, so it needs its own
+    // warm-up call — unlike gmesh-trusted, it does not share gmesh's prefix.
+    // Uses a throwaway clone, not `cwd`, for the same reason as the main loop
+    // below: kungfu indexes into a .kungfu/ dir inside its cwd, which must
+    // never be the live registry-registered checkout.
+    console.log("Warming prompt cache: kungfu arm...");
+    await warmArm(kungfuCwd, "kungfu");
+  }
+}
+
+/**
+ * kungfuBinaryPath() defaults to the bare command "kungfu", resolved via
+ * PATH by the OS at spawn time (see mcpConfig.ts) — existsSync can't check
+ * that directly, so a bare name is checked with `which`/PATH lookup while a
+ * path override (contains a separator) is checked as a real path, same as
+ * gmeshBinaryPath().
+ */
+function kungfuBinaryIsAvailable(): boolean {
+  const bin = kungfuBinaryPath();
+  if (bin.includes(path.sep)) return existsSync(bin);
+  return (process.env.PATH ?? "").split(path.delimiter).some((dir) => dir.length > 0 && existsSync(path.join(dir, bin)));
 }
 
 async function main() {
@@ -292,6 +331,15 @@ async function main() {
       `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
         `  cd ../g-mesh/core && cargo build --release\n` +
         `  cd ../g-mesh/plugins/js-ts && npm install && npm run build`,
+    );
+    process.exit(1);
+  }
+
+  const includeKungfu = shouldIncludeKungfuArm();
+  if (includeKungfu && !kungfuBinaryIsAvailable()) {
+    console.error(
+      `G_MESH_BENCH_INCLUDE_KUNGFU=yes but kungfu binary "${kungfuBinaryPath()}" was not found on PATH. ` +
+        `Install it (see https://github.com/denyzhirkov/kungfu) or set G_MESH_BENCH_KUNGFU_BINARY to its path.`,
     );
     process.exit(1);
   }
@@ -320,19 +368,22 @@ async function main() {
       throw new Error("Cannot warm cache: corpus registry is empty.");
     }
     const warmupCwd = await resolveWarm(firstCorpus);
-    await warmCache(warmupCwd);
+    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
+    await warmCache(warmupCwd, warmupKungfuCwd);
   }
 
   const reps = repetitionCount();
   console.log(`Repetitions per (task, arm): ${reps}`);
 
-  // Only ever logged when the flag is on, so a default run's output is
-  // unchanged from before the third arm existed.
-  const arms: Arm[] = shouldIncludeTrustedArm() ? ["gmesh", "baseline", "gmesh-trusted"] : ["gmesh", "baseline"];
-  if (arms.includes("gmesh-trusted")) {
+  // Only ever logged when a flag is on, so a default run's output is
+  // unchanged from before these extra arms existed.
+  const arms: Arm[] = ["gmesh", "baseline"];
+  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
+  if (includeKungfu) arms.push("kungfu");
+  if (arms.length > 2) {
     console.log(
-      `G_MESH_BENCH_INCLUDE_TRUSTED=yes — arms per (task, rep): ${arms.join(", ")}. ` +
-        `The extra arm is a full third run of every task: expect ~1.5x the API spend of a two-arm run.`,
+      `Arms per (task, rep): ${arms.join(", ")}. Extra arms are full extra runs of every task: ` +
+        `expect roughly ${(arms.length / 2).toFixed(1)}x the API spend of a two-arm run.`,
     );
   }
 
@@ -342,12 +393,21 @@ async function main() {
       selectedTaskIds.length > 0 ? corpusTasks.filter((t) => selectedTaskIds.includes(t.id)) : corpusTasks;
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
+    // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,
+    // which indexes into ~/.g-mesh, never the project dir. Running it against
+    // the shared `cwd` above would plant that directory inside the live,
+    // registry-registered checkout, which this experiment must not touch (see
+    // task #57's explicit constraint). One throwaway clone per corpus, reused
+    // across every kungfu-arm call for that corpus, same resolveFresh()
+    // precedent used elsewhere in this harness for exactly this reason.
+    const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
         for (const arm of arms) {
           console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
-          runs.push(await runArm(cwd, task, corpus.id, arm, rep, timestamp));
+          const armCwd = arm === "kungfu" && kungfuCwd !== undefined ? kungfuCwd : cwd;
+          runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
         }
       }
     }
