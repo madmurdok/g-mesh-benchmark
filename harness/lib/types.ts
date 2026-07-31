@@ -38,7 +38,16 @@ export interface CorpusEntry {
  */
 export type GradingMode = "substring" | "pool" | "judge";
 
-export type TaskCategory = "lookup" | "multi-hop" | "ambiguous-name" | "control";
+/**
+ * "scenario" (added post-v2) covers tasks framed around a concrete dev
+ * moment — pre-change impact analysis, bug tracing from a symptom back to a
+ * root cause, or a blast-radius/"is this safe to touch" question — rather
+ * than an abstract "find every X" prompt. The underlying query shape often
+ * overlaps with "lookup"/"multi-hop" (a references/callers walk), so this is
+ * a framing tag, not a claim about tool-call complexity; see
+ * docs/results/ for whether the framing measurably changes agent behavior.
+ */
+export type TaskCategory = "lookup" | "multi-hop" | "ambiguous-name" | "control" | "scenario";
 
 /** Task author's hypothesis about which arm should win, surfaced in report.ts for interpretation only — never gates pass/fail. */
 export type ExpectedWinner = "gmesh" | "baseline" | "parity";
