@@ -85,5 +85,57 @@
       "mustMentionFiles": ["src/domain/lifecycle.ts", "src/domain/handoffNotes.ts"],
       "mustMentionSymbols": ["ReleaseTaskInput", "HandoffNote"]
     }
+  },
+  {
+    "id": "tt-scenario-impact-requireproject",
+    "kind": "find_references",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "requireProject", "file": "src/domain/projects.ts" },
+    "prompt": "In this repository, I'm about to change the signature of the requireProject function (the lookup helper that resolves a project reference and throws if it doesn't exist) — for example, adding a new required parameter. Before making the change, list every file elsewhere in the codebase that calls it and would need its call site updated. Give each file's full repo-relative path.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "src/domain/board.ts",
+        "src/domain/epics.ts",
+        "src/domain/lifecycle.ts",
+        "src/domain/releases.ts",
+        "src/domain/status.ts",
+        "src/domain/tasks.ts"
+      ],
+      "minMatches": 4
+    }
+  },
+  {
+    "id": "tt-scenario-deletesafe-taskcode",
+    "kind": "find_references",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "taskCode", "file": "src/domain/tasks.ts" },
+    "prompt": "In this repository, there's a small exported helper function named taskCode that formats a project prefix and a task number into the human-facing 'PREFIX-N' display code. Investigate: is this function actually called anywhere in the application's own source code (not just exercised by a test)? Report your finding precisely — is it used in production code paths, only in a test, or neither — and name every file (test or otherwise) that references it.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is where taskCode (src/domain/tasks.ts) is referenced across the whole task-tracker-mcp repository. Ground truth, independently verified with the TypeScript language service (project-wide reference search): taskCode has exactly ONE reference anywhere in the repo outside its own declaration — tests/tasks.test.ts — and ZERO references from any file under src/ (i.e. it is not actually called by any production code path, despite what its doc comment implies about rendering task codes on other surfaces). PASS only if the answer's final conclusion states both: (a) taskCode is not called by any production/src code, and (b) it is referenced by tests/tasks.test.ts (a test). FAIL if the answer claims any src/ file calls it, claims it is entirely unused (missing the test reference), claims it is used elsewhere without naming tests/tasks.test.ts specifically, or fails to reach a clear conclusion. Wording and extra correct detail do not matter."
+    }
+  },
+  {
+    "id": "tt-scenario-bugtrace-createtasks-selfdep",
+    "kind": "bug_trace",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "addDependency", "file": "src/domain/dependencies.ts" },
+        { "symbol": "createTasks", "file": "src/domain/tasks.ts" }
+      ]
+    },
+    "prompt": "In this repository, the addDependency function throws \"A task cannot depend on itself\" whenever it's called with the same task id for both its task_id and depends_on_task_id arguments. One of addDependency's callers builds a whole batch of new tasks from a single client-supplied list of task specs, where each spec may carry its own temporary client-chosen id and a depends_on list of references — each reference resolving either to another spec in the same batch (by that spec's temporary id) or to an already-existing task id. Trace forward from that batch-creating caller and explain precisely what shape of client input triggers addDependency's self-dependency error through this path, even though no single spec in the batch ever literally repeats its own real task id as its own dependency. Name the function where this happens, and describe the exact input shape that triggers the bug.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: which caller of addDependency (src/domain/dependencies.ts) can trigger its 'A task cannot depend on itself' self-dependency error even though no single input spec literally repeats its own real task id as its own dependency value. Ground truth, confirmed by reading src/domain/tasks.ts's createTasks function (the domain function behind the create_tasks MCP tool): createTasks first creates every task in the batch, populating a temp_id -> real task_id map; it then walks each spec's depends_on list a second time, resolving each entry through that map (falling back to treating it as a literal existing task_id if it isn't a known temp_id). If a spec supplies its own temp_id inside its own depends_on array (e.g. {temp_id: 'a', depends_on: ['a']}), that reference resolves back to the same task's own just-created id, so addDependency ends up called with the same id for both arguments and throws the self-dependency error — even though the raw input JSON never repeats a literal real task id anywhere. PASS only if the answer (a) names createTasks (or unambiguously identifies the create_tasks batch-creation function/tool) as the caller responsible, AND (b) describes the triggering condition as a spec whose depends_on list references its own temp_id (or an equivalent precise description of a spec depending on itself via its own client-chosen temporary id, resolved only after all tasks in the batch are created). FAIL if the answer blames a different function (e.g. the direct add_dependency tool, or splitTask) as the root cause of this specific self-triggering bug, if it fails to identify the temp_id self-reference mechanism (e.g. only vaguely says 'bad input' without identifying the temp_id resolution step), or if it claims this scenario cannot happen / no such bug exists. Wording, the exact input JSON shown, and additional correct detail do not matter."
+    }
   }
 ]

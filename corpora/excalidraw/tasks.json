@@ -414,5 +414,55 @@
       ],
       "minMatches": 4
     }
+  },
+  {
+    "id": "ex-scenario-impact-getelementabsolutecoords",
+    "kind": "find_references",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "getElementAbsoluteCoords", "file": "packages/element/src/bounds.ts" },
+    "prompt": "In this repository, I'm about to change the signature of the getElementAbsoluteCoords function (the helper that computes an element's absolute bounding coordinates, accounting for rotation) — for example, adding a new required parameter. Before making the change, list at least 10 distinct files elsewhere in the codebase that call it and would need their call sites updated. Give each file's full repo-relative path.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "packages/element/src/convertToShape.ts",
+        "packages/element/src/cropElement.ts",
+        "packages/element/src/frame.ts",
+        "packages/element/src/linearElementEditor.ts",
+        "packages/element/src/newElement.ts",
+        "packages/element/src/renderElement.ts",
+        "packages/element/src/resizeElements.ts",
+        "packages/element/src/resizeTest.ts",
+        "packages/element/src/selection.ts",
+        "packages/element/src/shape.ts",
+        "packages/element/src/transformHandles.ts",
+        "packages/excalidraw/components/App.tsx",
+        "packages/excalidraw/components/ConvertElementTypePopup.tsx",
+        "packages/excalidraw/components/ElementCanvasButtons.tsx",
+        "packages/excalidraw/components/hyperlink/Hyperlink.tsx",
+        "packages/excalidraw/components/hyperlink/helpers.ts",
+        "packages/excalidraw/renderer/interactiveScene.ts",
+        "packages/excalidraw/renderer/staticScene.ts",
+        "packages/excalidraw/renderer/staticSvgScene.ts",
+        "packages/excalidraw/scene/export.ts",
+        "packages/excalidraw/snapping.ts",
+        "packages/utils/src/shape.ts"
+      ],
+      "minMatches": 10
+    }
+  },
+  {
+    "id": "ex-scenario-deletesafe-getrectangleboxabsolutecoords",
+    "kind": "find_references",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "getRectangleBoxAbsoluteCoords", "file": "packages/element/src/bounds.ts" },
+    "prompt": "In this repository, there is an exported helper function named getRectangleBoxAbsoluteCoords. Before removing it as apparent dead code, check thoroughly: does anything anywhere in the repository — production code, tests, or any other package — actually call it? State your conclusion (safe to delete, or not) and, if it is called anywhere, name every file that calls it.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is whether getRectangleBoxAbsoluteCoords (exported from packages/element/src/bounds.ts) has any real caller anywhere in the Excalidraw repository, including tests. Ground truth, independently verified with the TypeScript language service (project-wide reference search, tests included): it has ZERO references anywhere outside its own declaration — it is genuinely unused, dead code, and safe to delete. PASS only if the answer's final conclusion states it is unused/has no callers and that it is safe to delete (or clearly equivalent wording), and does not claim any real caller/file for it. FAIL if the answer claims any file (other than its own defining file, if mentioned only as the declaration site) calls it, if it concludes it is NOT safe to delete, or if it hedges to an unclear/uncertain conclusion instead of stating it is unused and safe to delete. Wording, ordering, and extra correct commentary do not matter."
+    }
   }
 ]
