@@ -96,17 +96,34 @@ export interface PairedArmTotals {
   passCountB: number;
 }
 
+interface PairedRuns {
+  /** One entry per (taskId, repetition) where both arms ran ok AND passed oracle — the token/breakdown denominator. */
+  pairs: { a: TokenEconomyRun; b: TokenEconomyRun }[];
+  /** Pairs where both arms ran ok, oracle result ignored — the pass-rate denominator. */
+  comparedPairs: number;
+  /** Pairs where both arms have a record but at least one didn't finish ok. */
+  droppedPairs: number;
+  passCountA: number;
+  passCountB: number;
+}
+
 /**
- * Pairs two arms' runs by (taskId, repetition) and reports both a token
- * comparison and an oracle comparison over that same set of pairs.
+ * Pairs two arms' runs by (taskId, repetition), keeping the actual matched
+ * run objects rather than a pre-summed number — the one piece of pairing
+ * logic every "paired X by Y" function in this file (token totals, per-
+ * category token-type breakdown, and whatever's added next) needs identically
+ * and must never re-derive slightly differently. pairedTotals below sums
+ * tokensSpent() over `pairs`; computeCategoryTokenBreakdown sums the four raw
+ * token fields over the same `pairs` instead.
  *
- * The two denominators are deliberately different. Tokens are summed only over
- * pairs where *both* arms passed oracle, so a token "win" can't be hiding
- * behind the other arm's oracle false-negative (or vice versa). Pass rates are
- * counted over every pair where both arms merely ran ok — restricting those to
- * both-passed pairs would make them trivially 100%/100% and answer nothing.
+ * The two counts are deliberately different. `pairs` (and therefore any token
+ * sum built from it) is restricted to both-passed-oracle, so a token "win"
+ * can't be hiding behind the other arm's oracle false-negative (or vice
+ * versa). `comparedPairs`/pass counts cover every pair where both arms merely
+ * ran ok — restricting those to both-passed pairs would make them trivially
+ * 100%/100% and answer nothing.
  */
-function pairedTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmTotals {
+function pairedRuns(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedRuns {
   // Only ok runs enter the pairing map. That matters beyond the obvious: a
   // (taskId, repetition) key recurs across result files, so "last one wins" —
   // and letting a later non-ok record displace an earlier ok one would silently
@@ -128,11 +145,7 @@ function pairedTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmT
     byTaskRep.set(key, pair);
   }
 
-  let totalA = 0;
-  let totalB = 0;
-  let turnsA = 0;
-  let turnsB = 0;
-  let pairCount = 0;
+  const pairs: { a: TokenEconomyRun; b: TokenEconomyRun }[] = [];
   let comparedPairs = 0;
   let passCountA = 0;
   let passCountB = 0;
@@ -142,18 +155,38 @@ function pairedTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmT
     if (a.oraclePassed) passCountA++;
     if (b.oraclePassed) passCountB++;
     if (!a.oraclePassed || !b.oraclePassed) continue;
-    totalA += tokensSpent(a);
-    totalB += tokensSpent(b);
-    turnsA += a.numTurns;
-    turnsB += b.numTurns;
-    pairCount++;
+    pairs.push({ a, b });
   }
   // Every (taskId, rep) where both arms were attempted, minus the ones that
   // yielded a usable ok/ok pair — i.e. those lost to an error or a budget cap.
   const bothAttempted = [...armsSeenByTaskRep.values()].filter((seen) => seen.has(armA) && seen.has(armB)).length;
   const droppedPairs = bothAttempted - comparedPairs;
 
-  return { armA, armB, totalA, totalB, turnsA, turnsB, pairCount, comparedPairs, droppedPairs, passCountA, passCountB };
+  return { pairs, comparedPairs, droppedPairs, passCountA, passCountB };
+}
+
+/**
+ * Pairs two arms' runs by (taskId, repetition) and reports both a token
+ * comparison and an oracle comparison over that same set of pairs. Thin
+ * wrapper around pairedRuns() that sums tokensSpent()/numTurns over its
+ * `pairs` — see pairedRuns' doc comment for why the pairing itself lives
+ * there and not here.
+ */
+function pairedTotals(runs: TokenEconomyRun[], armA: Arm, armB: Arm): PairedArmTotals {
+  const { pairs, comparedPairs, droppedPairs, passCountA, passCountB } = pairedRuns(runs, armA, armB);
+
+  let totalA = 0;
+  let totalB = 0;
+  let turnsA = 0;
+  let turnsB = 0;
+  for (const { a, b } of pairs) {
+    totalA += tokensSpent(a);
+    totalB += tokensSpent(b);
+    turnsA += a.numTurns;
+    turnsB += b.numTurns;
+  }
+
+  return { armA, armB, totalA, totalB, turnsA, turnsB, pairCount: pairs.length, comparedPairs, droppedPairs, passCountA, passCountB };
 }
 
 /**
@@ -296,6 +329,71 @@ export function computeCategoryTokenTable(runs: TokenEconomyRun[]): CategoryToke
       baselineMeanTokens: paired.totalB / paired.pairCount,
       savingsPct: paired.totalB > 0 ? ((paired.totalB - paired.totalA) / paired.totalB) * 100 : 0,
       pairCount: paired.pairCount,
+    });
+  }
+  return rows;
+}
+
+export interface CategoryTokenBreakdownRow {
+  category: string;
+  arm: Arm;
+  meanInputTokens: number;
+  meanOutputTokens: number;
+  meanCacheCreationTokens: number;
+  meanCacheReadTokens: number;
+  pairCount: number;
+}
+
+/**
+ * Same category x gmesh/baseline pairing as computeCategoryTokenTable, but
+ * broken into the four token fields tokensSpent() sums together instead of
+ * the summed total. The sum hides real mechanism: on "lookup", gmesh pays
+ * more in BOTH cacheCreate and cacheRead (a fixed schema tax with nothing
+ * offsetting it); on "multi-hop"/"ambiguous-name", baseline pays dramatically
+ * more in cacheCreate (each grep/Read round-trip adds fresh, never-cached
+ * content) AND more cacheRead (a longer transcript from more turns) — a
+ * compounding double cost that a single "tokens" number can't distinguish
+ * from a one-sided difference. `input` is included for completeness but is
+ * noise everywhere (5-15 tokens) since prompt caching absorbs almost
+ * everything into the other two buckets.
+ *
+ * Reuses pairedRuns rather than re-deriving the pairing: two rows per
+ * qualifying category (one per arm), each row's means computed over the same
+ * `pairs` pairedTotals would sum tokensSpent() over — so this table's numbers
+ * always agree with computeCategoryTokenTable's for the same category (their
+ * per-field sum equals the total column there), just split by field. A
+ * category with zero qualifying pairs is omitted, same as
+ * computeCategoryTokenTable.
+ */
+export function computeCategoryTokenBreakdown(runs: TokenEconomyRun[]): CategoryTokenBreakdownRow[] {
+  const categories = [...new Set(runs.map((r) => r.category ?? UNCATEGORIZED))].sort();
+  const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
+
+  const rows: CategoryTokenBreakdownRow[] = [];
+  for (const category of categories) {
+    const categoryRuns = runs.filter((r) => (r.category ?? UNCATEGORIZED) === category);
+    const { pairs } = pairedRuns(categoryRuns, "gmesh", "baseline");
+    if (pairs.length === 0) continue;
+
+    const gmeshRuns = pairs.map((p) => p.a);
+    const baselineRuns = pairs.map((p) => p.b);
+    rows.push({
+      category,
+      arm: "gmesh",
+      meanInputTokens: mean(gmeshRuns.map((r) => r.inputTokens)),
+      meanOutputTokens: mean(gmeshRuns.map((r) => r.outputTokens)),
+      meanCacheCreationTokens: mean(gmeshRuns.map((r) => r.cacheCreationTokens)),
+      meanCacheReadTokens: mean(gmeshRuns.map((r) => r.cacheReadTokens)),
+      pairCount: pairs.length,
+    });
+    rows.push({
+      category,
+      arm: "baseline",
+      meanInputTokens: mean(baselineRuns.map((r) => r.inputTokens)),
+      meanOutputTokens: mean(baselineRuns.map((r) => r.outputTokens)),
+      meanCacheCreationTokens: mean(baselineRuns.map((r) => r.cacheCreationTokens)),
+      meanCacheReadTokens: mean(baselineRuns.map((r) => r.cacheReadTokens)),
+      pairCount: pairs.length,
     });
   }
   return rows;

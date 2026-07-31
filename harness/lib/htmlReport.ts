@@ -3,12 +3,14 @@ import {
   armsPresent,
   computeAggregate,
   computeAnalysis,
+  computeCategoryTokenBreakdown,
   computeCategoryTokenTable,
   computeCorrectnessTable,
   computeTaskTable,
   pairedTokenTotals,
   type Aggregate,
   type ArmAggregate,
+  type CategoryTokenBreakdownRow,
   type CategoryTokenRow,
   type CorrectnessRow,
   type TaskRow,
@@ -190,6 +192,22 @@ function categoryTokenTableHtml(rows: CategoryTokenRow[]): string {
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+/**
+ * Splits the row above into the four fields tokensSpent() sums together. Each
+ * category emits one row per arm (rather than arm-paired columns like
+ * categoryTokenTableHtml) so a category with 4 token types x 2 arms stays
+ * readable as 2 rows instead of 8 columns.
+ */
+function categoryTokenBreakdownTableHtml(rows: CategoryTokenBreakdownRow[]): string {
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(r.category)}</td><td>${r.arm}</td><td>${fmt0(r.meanInputTokens)}</td><td>${fmt0(r.meanOutputTokens)}</td><td>${fmt0(r.meanCacheCreationTokens)}</td><td>${fmt0(r.meanCacheReadTokens)}</td><td>${r.pairCount}</td></tr>`,
+    )
+    .join("");
+  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
     if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
@@ -228,6 +246,7 @@ export interface HtmlReportOptions {
 export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOptions): string {
   const correctnessTable = computeCorrectnessTable(runs);
   const categoryTokenTable = computeCategoryTokenTable(runs);
+  const categoryTokenBreakdown = computeCategoryTokenBreakdown(runs);
   const taskTable = computeTaskTable(runs);
   // Single source of truth for "which arms exist here" — shared with
   // report.ts/reportData.ts, so charts, legend and tables can never disagree.
@@ -354,6 +373,10 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
   <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
   ${categoryTokenTableHtml(categoryTokenTable)}
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  ${categoryTokenBreakdownTableHtml(categoryTokenBreakdown)}
 
   <h2>Mean tokens by task</h2>
   ${legend(arms)}

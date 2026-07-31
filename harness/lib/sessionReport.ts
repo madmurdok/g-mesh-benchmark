@@ -22,6 +22,18 @@ export interface SequencePositionRow {
   n: number;
   meanTotalTokens: number;
   meanCacheCreationTokens: number;
+  /**
+   * The metric this experiment's core finding is actually about: an isolated
+   * `claude -p` process re-pays cache-creation once per call regardless of
+   * position (see meanCacheCreationTokens), but cache-read grows with
+   * position as the transcript accumulates — a cost the original
+   * cache-creation-only chart/table couldn't show at all. See
+   * docs/results/v0.2.0-session-economy-findings.md.
+   */
+  meanCacheReadTokens: number;
+  /** Included for completeness alongside the other three fields; negligible here just like everywhere else in this codebase. */
+  meanInputTokens: number;
+  meanOutputTokens: number;
 }
 
 function armRank(arm: Arm): number {
@@ -47,15 +59,22 @@ function armRank(arm: Arm): number {
  * successful call.
  */
 export function computeSequenceTokenTable(runs: SessionEconomyRun[]): SequencePositionRow[] {
-  const buckets = new Map<string, { corpusId: string; arm: Arm; sequenceIndex: number; total: number[]; cacheCreation: number[] }>();
+  const buckets = new Map<
+    string,
+    { corpusId: string; arm: Arm; sequenceIndex: number; total: number[]; cacheCreation: number[]; cacheRead: number[]; input: number[]; output: number[] }
+  >();
 
   for (const run of runs) {
     if (run.status !== "ok") continue;
     const key = `${run.corpusId}::${run.arm}::${run.sequenceIndex}`;
     const bucket =
-      buckets.get(key) ?? { corpusId: run.corpusId, arm: run.arm, sequenceIndex: run.sequenceIndex, total: [], cacheCreation: [] };
+      buckets.get(key) ??
+      { corpusId: run.corpusId, arm: run.arm, sequenceIndex: run.sequenceIndex, total: [], cacheCreation: [], cacheRead: [], input: [], output: [] };
     bucket.total.push(tokensSpent(run));
     bucket.cacheCreation.push(run.cacheCreationTokens);
+    bucket.cacheRead.push(run.cacheReadTokens);
+    bucket.input.push(run.inputTokens);
+    bucket.output.push(run.outputTokens);
     buckets.set(key, bucket);
   }
 
@@ -69,6 +88,9 @@ export function computeSequenceTokenTable(runs: SessionEconomyRun[]): SequencePo
       n: b.total.length,
       meanTotalTokens: mean(b.total),
       meanCacheCreationTokens: mean(b.cacheCreation),
+      meanCacheReadTokens: mean(b.cacheRead),
+      meanInputTokens: mean(b.input),
+      meanOutputTokens: mean(b.output),
     }))
     .sort(
       (a, b) =>
@@ -183,6 +205,28 @@ function sequenceTableHtml(rows: SequencePositionRow[], corpusId: string): strin
     )
     .join("");
   return `<div class="table-wrap"><table><thead><tr><th>Arm</th><th>Position</th><th>Runs (n)</th><th>Mean cache-creation tokens</th><th>Mean total tokens</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+/**
+ * Splits the table above's cache-creation/total pair into all four token
+ * types Anthropic bills separately. This experiment's whole finding is that
+ * cache-read grows with position while cache-creation stays roughly flat
+ * (each call re-pays the same MCP tool-schema tax regardless of session
+ * length, but a longer-running session accumulates a longer transcript to
+ * re-read) — a distinction the cache-creation-only chart above can't show,
+ * since it only ever plots the flat series.
+ */
+function sequenceTokenBreakdownTableHtml(rows: SequencePositionRow[], corpusId: string): string {
+  const body = rows
+    .filter((r) => r.corpusId === corpusId)
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(r.arm)}</td><td>${r.sequenceIndex}</td><td>${r.n}</td>` +
+        `<td>${fmt0(r.meanInputTokens)}</td><td>${fmt0(r.meanOutputTokens)}</td>` +
+        `<td>${fmt0(r.meanCacheCreationTokens)}</td><td>${fmt0(r.meanCacheReadTokens)}</td></tr>`,
+    )
+    .join("");
+  return `<div class="table-wrap"><table><thead><tr><th>Arm</th><th>Position</th><th>Runs (n)</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function correctnessTableHtml(rows: CorrectnessRow[]): string {
@@ -319,7 +363,12 @@ export function renderSessionHtmlReport(runs: SessionEconomyRun[], opts: Session
         `<h2>${escapeHtml(corpusId)}: cache-creation tokens by position in session</h2>\n` +
         `  ${legend(arms)}\n` +
         `  <div class="chart-wrap">${renderSequenceChart(sequenceTable, corpusId, arms)}</div>\n` +
-        `  ${sequenceTableHtml(sequenceTable, corpusId)}`,
+        `  ${sequenceTableHtml(sequenceTable, corpusId)}\n\n` +
+        `  <h2>${escapeHtml(corpusId)}: token type breakdown by position</h2>\n` +
+        `  <p class="muted">Same positions as above, split into all four token types. Watch cache-read grow with ` +
+        `position while cache-creation stays roughly flat — the accumulating transcript, not the per-call MCP tool-` +
+        `schema tax, is what actually gets more expensive as a session runs longer.</p>\n` +
+        `  ${sequenceTokenBreakdownTableHtml(sequenceTable, corpusId)}`,
     )
     .join("\n\n  ");
 
