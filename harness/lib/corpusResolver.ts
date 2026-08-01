@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,5 +52,31 @@ export async function resolveFresh(entry: CorpusEntry): Promise<string> {
     return dest;
   }
   await cloneAt(entry, dest);
+  return dest;
+}
+
+/**
+ * Throwaway clone (same resolveFresh() mechanism kungfu's cwd already uses,
+ * for the identical reason — must never write into the live,
+ * registry-registered checkout) with a real project CLAUDE.md written into
+ * it, so the gmesh-configured arm exercises Claude Code's actual
+ * `--setting-sources project` auto-discovery instead of a harness-injected
+ * prompt suffix.
+ *
+ * Appends to an existing CLAUDE.md rather than overwriting it — the
+ * excalidraw corpus has its own real project CLAUDE.md about monorepo/build
+ * conventions, and appending mirrors how a real user would actually add this
+ * recommendation to an existing project rather than clobbering their own
+ * instructions.
+ */
+export async function resolveConfigured(entry: CorpusEntry, claudeMd: string): Promise<string> {
+  const dest = await resolveFresh(entry);
+  const claudeMdPath = path.join(dest, "CLAUDE.md");
+  if (existsSync(claudeMdPath)) {
+    const existing = await readFile(claudeMdPath, "utf-8");
+    await writeFile(claudeMdPath, `${existing}\n\n${claudeMd}`);
+  } else {
+    await writeFile(claudeMdPath, claudeMd);
+  }
   return dest;
 }
