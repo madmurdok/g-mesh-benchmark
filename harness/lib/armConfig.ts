@@ -137,16 +137,73 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
 - A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
 `;
 
-/** gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md (gmesh-configured) differs. */
+/**
+ * The kungfu-side counterpart to GMESH_CONFIGURED_CLAUDE_MD: kungfu's own
+ * documented recommendation for how an agent should use it, copied verbatim
+ * (not paraphrased) from github.com/denyzhirkov/kungfu's README, "Manual
+ * setup (advanced / other agents)" section — so any gmesh-configured vs
+ * kungfu comparison is best-practice-vs-best-practice instead of g-mesh's
+ * tuned setup against kungfu with no setup guidance at all.
+ *
+ * Deliberately kept verbatim even though it references kungfu tools
+ * (ask_context, investigate, explore_symbol, explore_file, edit_context,
+ * file_history, symbol_history, change_timeline, coupling, smart_test,
+ * hotspots, debug_trace, reindex, verify_change, memory_search, memory_add)
+ * well outside KUNGFU_TOOLS's curated 6-tool allowlist that the
+ * kungfu/kungfu-configured arms are restricted to via KUNGFU_DENIED_TOOLS.
+ * The point is testing kungfu's own real recommendation as written, not a
+ * version edited to match this benchmark's restriction — mismatched tool
+ * references are a fair, honest side effect of the same restriction that
+ * makes the kungfu arm comparable to g-mesh's 6-7 tools at all.
+ */
+export const KUNGFU_CONFIGURED_CLAUDE_MD = `## kungfu — context retrieval (use BEFORE Read / grep / find)
+
+Default to kungfu; raw file reads are the fallback, not the first move — it returns
+ranked, scoped packets instead of whole files. Start every task with
+\`ask_context("<task>", budget: "tiny")\` and escalate the budget only if the packet
+is clearly insufficient. Open a raw file only once kungfu points you at it.
+
+Route by situation:
+
+| Situation | First call |
+|---|---|
+| New task / "figure out X" | \`ask_context\` (or \`investigate\`) |
+| Where is a named symbol defined/used? | \`find_symbol\` → \`explore_symbol\`, then \`callers\` / \`callees\` |
+| Concept with no known name ("where does rate limiting live") | \`semantic_search\` |
+| Understand a file > 50 lines | \`file_outline\` / \`explore_file\`, then a targeted Read of that range |
+| About to edit a symbol | \`edit_context\` (full verbatim body + contracts — no follow-up Read) |
+| "Why is it like this / what changed?" | \`file_history\` / \`symbol_history\` / \`change_timeline\` |
+| Refactor touching > 1 file | \`affected\` + \`coupling\` + \`smart_test\` before editing |
+| Bug with no clear file | \`hotspots\`, then \`debug_trace\` on the stack trace |
+
+After edits: \`reindex\` the changed paths, then \`verify_change\` for the blast radius
+and minimal test set. \`memory_search\` before implementing (there may already be a
+decision or warning); \`memory_add\` to persist new ones — pin sparingly.
+
+Skip kungfu only for: a one-line edit in a file already open this session; a file
+< 50 lines whose exact path you know; pure shell ops; reading a config/lock file by
+exact path. Otherwise, if you reach for Read / grep / find — stop and route above.
+`;
+
+/**
+ * gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools
+ * and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md
+ * (gmesh-configured) differs. Same story for kungfu-configured vs kungfu:
+ * identical tools/MCP config, only the loaded CLAUDE.md (and thus cwd)
+ * differs — unlike gmesh-configured, kungfu-configured doesn't fall through
+ * to a shared default branch here, since plain `kungfu` isn't the default
+ * case, so it needs an explicit check alongside it in all three functions
+ * below.
+ */
 export function armMcpConfig(arm: Arm) {
   if (arm === "baseline") return buildBaselineArmConfig();
-  if (arm === "kungfu") return buildKungfuArmConfig();
+  if (arm === "kungfu" || arm === "kungfu-configured") return buildKungfuArmConfig();
   return buildGmeshArmConfig();
 }
 
 export function armTools(arm: Arm): string {
   if (arm === "baseline") return BASELINE_TOOLS;
-  if (arm === "kungfu") return KUNGFU_TOOLS;
+  if (arm === "kungfu" || arm === "kungfu-configured") return KUNGFU_TOOLS;
   return GMESH_TOOLS;
 }
 
@@ -155,5 +212,5 @@ export function armPrompt(prompt: string, arm: Arm): string {
 }
 
 export function armDisallowedTools(arm: Arm): string | undefined {
-  return arm === "kungfu" ? KUNGFU_DENIED_TOOLS : undefined;
+  return arm === "kungfu" || arm === "kungfu-configured" ? KUNGFU_DENIED_TOOLS : undefined;
 }
