@@ -5,6 +5,7 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import {
   GMESH_CONFIGURED_CLAUDE_MD,
+  KUNGFU_CONFIGURED_CLAUDE_MD,
   MAX_BUDGET_USD,
   MODEL,
   armDisallowedTools,
@@ -259,6 +260,22 @@ function shouldIncludeConfiguredArm(): boolean {
   throw new Error(`Invalid G_MESH_BENCH_INCLUDE_CONFIGURED value "${envOverride}"; expected "yes" or "no".`);
 }
 
+/**
+ * G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED=yes|no gates the `kungfu-configured`
+ * arm — same opt-in-only pattern as the other should*Arm functions above, for
+ * the same reason: a default run's output must stay exactly what it was
+ * before this arm existed. Also gates the kungfu-binary preflight check in
+ * main(), same as shouldIncludeKungfuArm() does for plain `kungfu`.
+ */
+function shouldIncludeKungfuConfiguredArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED value "${envOverride}"; expected "yes" or "no".`);
+}
+
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
 
 /**
@@ -325,6 +342,7 @@ async function warmCache(
   cwd: string,
   kungfuCwd: string | undefined,
   configuredCwd: string | undefined,
+  kungfuConfiguredCwd: string | undefined,
 ): Promise<void> {
   console.log("Warming prompt cache: gmesh arm...");
   await warmArm(cwd, "gmesh");
@@ -347,6 +365,13 @@ async function warmCache(
     // warm-up call, same reasoning as why kungfu gets one above.
     console.log("Warming prompt cache: gmesh-configured arm...");
     await warmArm(configuredCwd, "gmesh-configured");
+  }
+  if (kungfuConfiguredCwd !== undefined) {
+    // Same reasoning as gmesh-configured above: kungfu-configured's CLAUDE.md
+    // is system-level context loaded alongside kungfu's tool schemas, so its
+    // cache prefix differs from plain kungfu's and isn't shared with it.
+    console.log("Warming prompt cache: kungfu-configured arm...");
+    await warmArm(kungfuConfiguredCwd, "kungfu-configured");
   }
 }
 
@@ -375,10 +400,12 @@ async function main() {
 
   const includeKungfu = shouldIncludeKungfuArm();
   const includeConfigured = shouldIncludeConfiguredArm();
-  if (includeKungfu && !kungfuBinaryIsAvailable()) {
+  const includeKungfuConfigured = shouldIncludeKungfuConfiguredArm();
+  if ((includeKungfu || includeKungfuConfigured) && !kungfuBinaryIsAvailable()) {
     console.error(
-      `G_MESH_BENCH_INCLUDE_KUNGFU=yes but kungfu binary "${kungfuBinaryPath()}" was not found on PATH. ` +
-        `Install it (see https://github.com/denyzhirkov/kungfu) or set G_MESH_BENCH_KUNGFU_BINARY to its path.`,
+      `G_MESH_BENCH_INCLUDE_KUNGFU=yes or G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED=yes but kungfu binary ` +
+        `"${kungfuBinaryPath()}" was not found on PATH. Install it (see https://github.com/denyzhirkov/kungfu) ` +
+        `or set G_MESH_BENCH_KUNGFU_BINARY to its path.`,
     );
     process.exit(1);
   }
@@ -411,7 +438,10 @@ async function main() {
     const warmupConfiguredCwd = includeConfigured
       ? await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD)
       : undefined;
-    await warmCache(warmupCwd, warmupKungfuCwd, warmupConfiguredCwd);
+    const warmupKungfuConfiguredCwd = includeKungfuConfigured
+      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+      : undefined;
+    await warmCache(warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
   }
 
   const reps = repetitionCount();
@@ -423,6 +453,7 @@ async function main() {
   if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
   if (includeKungfu) arms.push("kungfu");
   if (includeConfigured) arms.push("gmesh-configured");
+  if (includeKungfuConfigured) arms.push("kungfu-configured");
   if (arms.length > 2) {
     console.log(
       `Arms per (task, rep): ${arms.join(", ")}. Extra arms are full extra runs of every task: ` +
@@ -451,6 +482,12 @@ async function main() {
     const configuredCwd = arms.includes("gmesh-configured")
       ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
       : undefined;
+    // kungfu-configured needs its own throwaway clone for the same reason
+    // gmesh-configured does above: a real CLAUDE.md must be written into its
+    // cwd, and that must never be the live, registry-registered checkout.
+    const kungfuConfiguredCwd = arms.includes("kungfu-configured")
+      ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+      : undefined;
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
@@ -461,7 +498,9 @@ async function main() {
               ? kungfuCwd
               : arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
-                : cwd;
+                : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
+                  ? kungfuConfiguredCwd
+                  : cwd;
           runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
         }
       }
