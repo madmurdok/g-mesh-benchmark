@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
+import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
 import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
@@ -251,6 +251,7 @@ async function runSessionChain(
       prompt: armPrompt(task.prompt, arm),
       mcpConfig: armMcpConfig(arm),
       tools: armTools(arm),
+      disallowedTools: armDisallowedTools(arm),
       model: MODEL,
       maxBudgetUsd: MAX_BUDGET_USD,
       resumeSessionId,

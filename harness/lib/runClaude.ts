@@ -25,6 +25,27 @@ export interface RunClaudeOptions {
    * argv byte-for-byte what it was before this option existed.
    */
   resumeSessionId?: string;
+
+  /**
+   * `--disallowedTools` — a comma-separated deny list, passed through
+   * verbatim to the CLI. Unlike `--tools` (`opts.tools`), which the CLI docs
+   * confirm only restricts the *built-in* tool set (Read/Grep/Bash/etc.) and
+   * has zero effect on `mcp__`-namespaced tools, a deny rule actually shrinks
+   * what's sent to the model — the tool is removed from Claude's context
+   * entirely rather than merely being blocked at permission-check time. This
+   * is the mechanism `armConfig.ts`'s `armDisallowedTools()` relies on to
+   * actually restrict the kungfu arm to its curated tool subset (see that
+   * function's doc comment).
+   *
+   * Omitted (the default, and what every caller other than the kungfu arm
+   * does) leaves the spawned argv byte-for-byte what it was before this
+   * option existed.
+   *
+   * Placement in argv matters: see the comment at this option's splice site
+   * below for why it must NOT go last before the trailing prompt positional
+   * (unlike resumeSessionId/--resume above).
+   */
+  disallowedTools?: string;
 }
 
 export interface RunClaudeResult {
@@ -86,6 +107,19 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       "bypassPermissions",
       "--tools",
       opts.tools,
+      // Spliced in only when set, right after --tools and before --model —
+      // NOT at the end of argv before the trailing prompt positional (unlike
+      // --resume below). --disallowedTools takes a variadic value
+      // (`<tools...>` per `claude -p --help`), so if it were the last flag
+      // before the bare prompt string, the CLI's arg parser greedily
+      // swallows the prompt into the tools list, leaving no prompt argument
+      // at all and failing every call with "Input must be provided either
+      // through stdin or as a prompt argument" (confirmed empirically: this
+      // exact failure mode silently errored every kungfu-arm call in this
+      // fix's first verification run). Placing another flag (--model) right
+      // after it bounds the variadic list correctly. A call that doesn't
+      // pass this option has byte-for-byte unchanged argv.
+      ...(opts.disallowedTools !== undefined ? ["--disallowedTools", opts.disallowedTools] : []),
       "--model",
       opts.model,
       "--max-budget-usd",
@@ -93,7 +127,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       "--setting-sources",
       "project",
       // Spliced in only when resuming, immediately before the trailing prompt
-      // positional, so a non-resuming call's argv is unchanged.
+      // positional, so a non-resuming call's argv is unchanged. Safe here
+      // (unlike --disallowedTools above) because --resume takes a single
+      // optional value (`[value]`), not a variadic list, so it can't swallow
+      // the following bare prompt string.
       ...(opts.resumeSessionId !== undefined ? ["--resume", opts.resumeSessionId] : []),
       opts.prompt,
     ];

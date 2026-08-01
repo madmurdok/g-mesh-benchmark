@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
-import { MAX_BUDGET_USD, MODEL, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
+import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
 import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
@@ -139,6 +139,7 @@ async function runArm(
     prompt: armPrompt(task.prompt, arm),
     mcpConfig: armMcpConfig(arm),
     tools: armTools(arm),
+    disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
@@ -278,6 +279,7 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
     prompt: WARMUP_PROMPT,
     mcpConfig: armMcpConfig(arm),
     tools: armTools(arm),
+    disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
   });
