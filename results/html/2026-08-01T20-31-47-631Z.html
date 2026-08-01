@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    --kungfu: #8b5cf6;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+      --kungfu: #a78bfa;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+    --kungfu: #a78bfa;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .swatch-kungfu { background: var(--kungfu); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .bar-kungfu { fill: var(--kungfu); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run</h1>
+  <p class="timestamp">Generated 2026-08-01T20:40:45.887Z &middot; run timestamp 2026-08-01T20:31:47.631Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-14.9%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-14.9% (n=8)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$1.2580</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0903</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">8/8</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">8/8</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-kungfu-configured"></span>kungfu-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh"><title>gmesh, lookup: 5/5</title></rect><text x="95.66666666666666" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="133.33333333333331" y="34" width="71.33333333333333" height="250" rx="4" class="bar-baseline"><title>baseline, lookup: 5/5</title></rect><text x="168.99999999999997" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="206.66666666666666" y="34" width="71.33333333333333" height="250" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, lookup: 5/5</title></rect><text x="242.33333333333331" y="28" class="bar-label" text-anchor="middle">5/5</text><text x="169" y="304" class="axis-label" text-anchor="middle">lookup</text><rect x="310" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh"><title>gmesh, scenario: 3/3</title></rect><text x="345.6666666666667" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="383.3333333333333" y="34" width="71.33333333333333" height="250" rx="4" class="bar-baseline"><title>baseline, scenario: 3/3</title></rect><text x="419" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="456.66666666666663" y="34" width="71.33333333333333" height="250" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, scenario: 3/3</title></rect><text x="492.3333333333333" y="28" class="bar-label" text-anchor="middle">3/3</text><text x="419" y="304" class="axis-label" text-anchor="middle">scenario</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>lookup</td><td>gmesh</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>baseline</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>kungfu-configured</td><td>5/5</td><td>100%</td></tr><tr><td>scenario</td><td>gmesh</td><td>3/3</td><td>100%</td></tr><tr><td>scenario</td><td>baseline</td><td>3/3</td><td>100%</td></tr><tr><td>scenario</td><td>kungfu-configured</td><td>3/3</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>lookup</td><td>54798</td><td>47773</td><td>-14.7%</td><td>5</td></tr><tr><td>scenario</td><td>78534</td><td>68207</td><td>-15.1%</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>lookup</td><td>gmesh</td><td>5</td><td>461</td><td>1814</td><td>52517</td><td>5</td></tr><tr><td>lookup</td><td>baseline</td><td>6</td><td>560</td><td>2845</td><td>44363</td><td>5</td></tr><tr><td>scenario</td><td>gmesh</td><td>7</td><td>994</td><td>1790</td><td>75743</td><td>3</td></tr><tr><td>scenario</td><td>baseline</td><td>8</td><td>1310</td><td>1801</td><td>65087</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-kungfu-configured"></span>kungfu-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 400" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="384" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>tt-find-impl-completionverifier</title>tt-find-impl-completionveri…</text><rect x="220" y="21" width="135.6273349128423" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-find-impl-completionverifier: 40580 tokens</title></rect><text x="361.6273349128423" y="30.333333333333332" class="bar-label" text-anchor="start">40580</text><rect x="220" y="33.666666666666664" width="161.56965560267673" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-find-impl-completionverifier: 48342 tokens</title></rect><text x="387.56965560267673" y="43" class="bar-label" text-anchor="start">48342</text><rect x="220" y="46.33333333333333" width="154.1064757391879" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-find-impl-completionverifier: 46109 tokens</title></rect><text x="380.1064757391879" y="55.666666666666664" class="bar-label" text-anchor="start">46109</text><text x="212" y="89" class="axis-label" text-anchor="end"><title>tt-find-impl-budgetestimator</title>tt-find-impl-budgetestimator</text><rect x="220" y="67" width="135.5003305085375" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-find-impl-budgetestimator: 40542 tokens</title></rect><text x="361.5003305085375" y="76.33333333333333" class="bar-label" text-anchor="start">40542</text><rect x="220" y="79.66666666666667" width="112.22510230910348" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-find-impl-budgetestimator: 33578 tokens</title></rect><text x="338.2251023091035" y="89" class="bar-label" text-anchor="start">33578</text><rect x="220" y="92.33333333333333" width="151.93403198134297" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-find-impl-budgetestimator: 45459 tokens</title></rect><text x="377.93403198134297" y="101.66666666666666" class="bar-label" text-anchor="start">45459</text><text x="212" y="135" class="axis-label" text-anchor="end"><title>tt-deps-incoming-db-connection</title>tt-deps-incoming-db-connection</text><rect x="220" y="113" width="288.56403324395984" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-deps-incoming-db-connection: 86339 tokens</title></rect><text x="514.5640332439598" y="122.33333333333333" class="bar-label" text-anchor="start">86339</text><rect x="220" y="125.66666666666667" width="226.5257239622403" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-deps-incoming-db-connection: 67777 tokens</title></rect><text x="452.5257239622403" y="135" class="bar-label" text-anchor="start">67777</text><rect x="220" y="138.33333333333334" width="263.3536589894609" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-deps-incoming-db-connection: 78796 tokens</title></rect><text x="489.3536589894609" y="147.66666666666669" class="bar-label" text-anchor="start">78796</text><text x="212" y="181" class="axis-label" text-anchor="end"><title>tt-references-requiretask</title>tt-references-requiretask</text><rect x="220" y="159" width="206.76651242934915" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-references-requiretask: 61865 tokens</title></rect><text x="432.7665124293492" y="168.33333333333334" class="bar-label" text-anchor="start">61865</text><rect x="220" y="171.66666666666666" width="165.3831299529861" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-references-requiretask: 49483 tokens</title></rect><text x="391.3831299529861" y="181" class="bar-label" text-anchor="start">49483</text><rect x="220" y="184.33333333333334" width="329.62990470956095" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-references-requiretask: 98626 tokens</title></rect><text x="555.629904709561" y="193.66666666666669" class="bar-label" text-anchor="start">98626</text><text x="212" y="227" class="axis-label" text-anchor="end"><title>tt-outline-lifecycle-vs-small</title>tt-outline-lifecycle-vs-small</text><rect x="220" y="205" width="149.2702817121085" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-outline-lifecycle-vs-small: 44662 tokens</title></rect><text x="375.2702817121085" y="214.33333333333334" class="bar-label" text-anchor="start">44662</text><rect x="220" y="217.66666666666666" width="132.63604696934811" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-outline-lifecycle-vs-small: 39685 tokens</title></rect><text x="358.6360469693481" y="227" class="bar-label" text-anchor="start">39685</text><rect x="220" y="230.33333333333334" width="181.14170275027666" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-outline-lifecycle-vs-small: 54198 tokens</title></rect><text x="407.14170275027664" y="239.66666666666669" class="bar-label" text-anchor="start">54198</text><text x="212" y="273" class="axis-label" text-anchor="end"><title>tt-scenario-impact-requireproject</title>tt-scenario-impact-requirep…</text><rect x="220" y="251" width="211.5191509272807" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-impact-requireproject: 63287 tokens</title></rect><text x="437.5191509272807" y="260.3333333333333" class="bar-label" text-anchor="start">63287</text><rect x="220" y="263.6666666666667" width="165.83767203155057" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-impact-requireproject: 49619 tokens</title></rect><text x="391.8376720315506" y="273" class="bar-label" text-anchor="start">49619</text><rect x="220" y="276.3333333333333" width="213.84867907992364" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-scenario-impact-requireproject: 63984 tokens</title></rect><text x="439.8486790799236" y="285.66666666666663" class="bar-label" text-anchor="start">63984</text><text x="212" y="319" class="axis-label" text-anchor="end"><title>tt-scenario-deletesafe-taskcode</title>tt-scenario-deletesafe-task…</text><rect x="220" y="297" width="276.57214370065583" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-deletesafe-taskcode: 82751 tokens</title></rect><text x="502.57214370065583" y="306.3333333333333" class="bar-label" text-anchor="start">82751</text><rect x="220" y="309.6666666666667" width="161.66323779532237" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-deletesafe-taskcode: 48370 tokens</title></rect><text x="387.6632377953224" y="319" class="bar-label" text-anchor="start">48370</text><rect x="220" y="322.3333333333333" width="211.69294642790828" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-scenario-deletesafe-taskcode: 63339 tokens</title></rect><text x="437.6929464279083" y="331.66666666666663" class="bar-label" text-anchor="start">63339</text><text x="212" y="365" class="axis-label" text-anchor="end"><title>tt-scenario-bugtrace-createtasks-selfdep</title>tt-scenario-bugtrace-create…</text><rect x="220" y="343" width="299.34269650403667" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-bugtrace-createtasks-selfdep: 89564 tokens</title></rect><text x="525.3426965040367" y="352.3333333333333" class="bar-label" text-anchor="start">89564</text><rect x="220" y="355.6666666666667" width="356.38438514271286" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-bugtrace-createtasks-selfdep: 106631 tokens</title></rect><text x="582.3843851427129" y="365" class="bar-label" text-anchor="start">106631</text><rect x="220" y="368.3333333333333" width="450" height="10.666666666666666" rx="4" class="bar-kungfu-configured"><title>kungfu-configured, tt-scenario-bugtrace-createtasks-selfdep: 134641 tokens</title></rect><text x="676" y="377.66666666666663" class="bar-label" text-anchor="start">134641</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>gmesh</td><td>1/1</td><td>40580</td><td>40580</td><td>40580</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>baseline</td><td>1/1</td><td>48342</td><td>48342</td><td>48342</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>kungfu-configured</td><td>1/1</td><td>46109</td><td>46109</td><td>46109</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>gmesh</td><td>1/1</td><td>40542</td><td>40542</td><td>40542</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>baseline</td><td>1/1</td><td>33578</td><td>33578</td><td>33578</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>kungfu-configured</td><td>1/1</td><td>45459</td><td>45459</td><td>45459</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh</td><td>1/1</td><td>86339</td><td>86339</td><td>86339</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>baseline</td><td>1/1</td><td>67777</td><td>67777</td><td>67777</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>kungfu-configured</td><td>1/1</td><td>78796</td><td>78796</td><td>78796</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>gmesh</td><td>1/1</td><td>61865</td><td>61865</td><td>61865</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>baseline</td><td>1/1</td><td>49483</td><td>49483</td><td>49483</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>kungfu-configured</td><td>1/1</td><td>98626</td><td>98626</td><td>98626</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>gmesh</td><td>1/1</td><td>44662</td><td>44662</td><td>44662</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>baseline</td><td>1/1</td><td>39685</td><td>39685</td><td>39685</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>kungfu-configured</td><td>1/1</td><td>54198</td><td>54198</td><td>54198</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>63287</td><td>63287</td><td>63287</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>49619</td><td>49619</td><td>49619</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>kungfu-configured</td><td>1/1</td><td>63984</td><td>63984</td><td>63984</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>gmesh</td><td>1/1</td><td>82751</td><td>82751</td><td>82751</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>baseline</td><td>1/1</td><td>48370</td><td>48370</td><td>48370</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>kungfu-configured</td><td>1/1</td><td>63339</td><td>63339</td><td>63339</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>89564</td><td>89564</td><td>89564</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>106631</td><td>106631</td><td>106631</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>kungfu-configured</td><td>1/1</td><td>134641</td><td>134641</td><td>134641</td><td>1/1</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Expected-winner check: 1/2 tasks with a declared expected winner matched the observed lower-token arm; mismatches: tt-scenario-impact-requireproject.</li>
+    <li>Task &quot;tt-scenario-deletesafe-taskcode&quot; is declared expectedWinner:&quot;parity&quot; but its arms&#39; mean tokens differ by 71% (gmesh 82751, baseline 48370) — an unexpected asymmetry worth a second look.</li>
+    <li>Bottom line: across 8 compared tasks, gmesh used -14.9% fewer tokens (unconditional), -14.9% fewer paired (n=8). Oracle pass rate — gmesh: 8/8 (100%), baseline: 8/8 (100%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation skipped (disabled or unavailable).</p>
+</div>
+</body>
+</html>
