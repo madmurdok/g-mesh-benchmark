@@ -108,7 +108,36 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
   "tells you by additionally grepping or reading the source files it already covered — answer " +
   "directly from g-mesh's output. Use Read/Grep/Glob only for information g-mesh cannot provide at all.";
 
-/** gmesh-trusted deliberately shares the gmesh arm's tools and MCP config; only the prompt differs. */
+/**
+ * The real-delivery-path counterpart to TRUSTED_ARM_PROMPT_SUFFIX: the same
+ * trust-g-mesh instruction, but shipped as an actual project `CLAUDE.md` that
+ * Claude Code auto-discovers and loads (every runClaude() call already passes
+ * `--setting-sources project`, see runClaude.ts), rather than appended to the
+ * task prompt as a benchmark-only shortcut.
+ *
+ * Copied verbatim from the user's own `~/.claude/CLAUDE.md` "Code search"
+ * section and from g-mesh/README.md's matching published snippet — this text
+ * lives in two other places outside this repo and must be kept in sync with
+ * both by hand if either changes, same manually-synced caveat this file
+ * already states for KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS above.
+ */
+export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript projects)
+
+- In TS/JS projects, prefer g-mesh (\`mcp__g-mesh__*\`) for cross-file impact analysis, ambiguous naming (same symbol name declared in different scopes/files), and call-graph/multi-hop questions (callers, implementations, transitive dependencies) — grep can't resolve these reliably and has real unbounded cost (many round-trips, occasionally very expensive) when it tries. For simple, unambiguous single-symbol lookups, grep/\`Explore\`/manual reading is often just as fast and cheaper — g-mesh's tool schema adds fixed overhead per turn that doesn't pay for itself on easy questions (measured: g-mesh costs *more* tokens than grep on simple lookups, both isolated and in a long session — see \`g-mesh-bench/docs/results/v0.2.0-session-economy-findings.md\`). Fall back to grep when g-mesh returns no result, errors, or the target isn't something it tracks (non-code files, config, CSS, etc.).
+- No manual indexing command exists or is needed. The g-mesh daemon bootstraps and indexes a project automatically on its first tool call in that project's directory. On first use in a new project, just issue any g-mesh call (e.g. \`get_file_outline\` on a source file) to trigger indexing, then proceed.
+- How to use the tools:
+  - \`get_file_outline(file_path)\` — list a file's top-level symbols before reading it in full, or to find the right symbol name to query next.
+  - \`find_definition(symbol_name)\` or \`find_definition(file_path, position)\` — resolve a symbol to its definition and get its \`symbol_id\`. Not required before the tools below — they accept \`symbol_name\` directly and skip this call when the name is likely unambiguous, saving a round-trip. Call \`find_definition\` first only when you already expect ambiguity or need the declaration site itself.
+  - \`find_references(symbol_name or symbol_id)\` — every usage of a symbol across the project; use before renaming or removing something.
+  - \`find_callers(symbol_name or symbol_id)\` / \`find_callees(...)\` — walk the call graph up or down from a function.
+  - \`find_implementations(symbol_name or symbol_id)\` — concrete types implementing an interface/abstract class.
+  - \`get_dependencies(file_path, direction: Outgoing|Incoming)\` — walk the import graph (what a file imports / what imports it); use for impact analysis before changing a shared module.
+  - If a \`symbol_name\` turns out ambiguous, the result carries \`ambiguous: true\` with a ranked candidate list — re-query using a candidate's \`id\` as \`symbol_id\`, not its \`qualifiedName\` (the same qualifiedName can name more than one declaration).
+- Typical flow: call \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` directly with \`symbol_name\` when it's likely unique; only call \`find_definition\` first if you expect ambiguity or need the declaration site itself. Use \`get_file_outline\` first if you don't already know the right symbol name.
+- A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
+`;
+
+/** gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md (gmesh-configured) differs. */
 export function armMcpConfig(arm: Arm) {
   if (arm === "baseline") return buildBaselineArmConfig();
   if (arm === "kungfu") return buildKungfuArmConfig();

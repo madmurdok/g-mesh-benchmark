@@ -13,11 +13,17 @@
  *   used as an external comparison point, restricted to a curated tool subset
  *   matching g-mesh's 7 capabilities as closely as it has analogs for (see
  *   armConfig.ts's KUNGFU_TOOLS for the exact mapping and its documented gaps).
+ * - `gmesh-configured` — the real-world counterpart to `gmesh-trusted`: same
+ *   trust instruction, delivered as an actual project `CLAUDE.md` auto-loaded
+ *   by Claude Code (via runClaude.ts's `--setting-sources project`) against a
+ *   throwaway clone, instead of a harness-injected prompt suffix. See
+ *   armConfig.ts's GMESH_CONFIGURED_CLAUDE_MD and corpusResolver.ts's
+ *   resolveConfigured().
  *
  * Lives here rather than in token-economy.ts so reportData.ts/htmlReport.ts
  * share one definition instead of each re-declaring the union.
  */
-export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu";
+export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu" | "gmesh-configured";
 
 /**
  * Fixed presentation order for arms in every table, chart and legend.
