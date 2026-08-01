@@ -13,11 +13,25 @@
  *   used as an external comparison point, restricted to a curated tool subset
  *   matching g-mesh's 7 capabilities as closely as it has analogs for (see
  *   armConfig.ts's KUNGFU_TOOLS for the exact mapping and its documented gaps).
+ * - `gmesh-configured` — the real-world counterpart to `gmesh-trusted`: same
+ *   trust instruction, delivered as an actual project `CLAUDE.md` auto-loaded
+ *   by Claude Code (via runClaude.ts's `--setting-sources project`) against a
+ *   throwaway clone, instead of a harness-injected prompt suffix. See
+ *   armConfig.ts's GMESH_CONFIGURED_CLAUDE_MD and corpusResolver.ts's
+ *   resolveConfigured().
+ * - `kungfu-configured` — the same real-delivery-path idea applied to
+ *   `kungfu`: byte-for-byte the same restricted tool list/MCP config as
+ *   `kungfu` (see armConfig.ts's KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS), but run
+ *   against a throwaway clone with kungfu's own documented CLAUDE.md
+ *   recommendation auto-loaded, instead of bare kungfu with no setup guidance
+ *   at all. Exists so a `gmesh-configured` vs `kungfu` comparison isn't
+ *   unfair — g-mesh's own best-practice setup against kungfu's default. See
+ *   armConfig.ts's KUNGFU_CONFIGURED_CLAUDE_MD.
  *
  * Lives here rather than in token-economy.ts so reportData.ts/htmlReport.ts
  * share one definition instead of each re-declaring the union.
  */
-export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu";
+export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu" | "gmesh-configured" | "kungfu-configured";
 
 /**
  * Fixed presentation order for arms in every table, chart and legend.

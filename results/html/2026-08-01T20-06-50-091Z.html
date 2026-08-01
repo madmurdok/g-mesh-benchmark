@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    --kungfu: #8b5cf6;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+      --kungfu: #a78bfa;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+    --kungfu: #a78bfa;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .swatch-kungfu { background: var(--kungfu); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .bar-kungfu { fill: var(--kungfu); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run</h1>
+  <p class="timestamp">Generated 2026-08-01T20:18:20.401Z &middot; run timestamp 2026-08-01T20:06:50.091Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-23.8%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-23.8% (n=8)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$2.0423</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.0901</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">8/8</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">8/8</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-gmesh-configured"></span>gmesh-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh"><title>gmesh, lookup: 5/5</title></rect><text x="95.66666666666666" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="133.33333333333331" y="34" width="71.33333333333333" height="250" rx="4" class="bar-baseline"><title>baseline, lookup: 5/5</title></rect><text x="168.99999999999997" y="28" class="bar-label" text-anchor="middle">5/5</text><rect x="206.66666666666666" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, lookup: 5/5</title></rect><text x="242.33333333333331" y="28" class="bar-label" text-anchor="middle">5/5</text><text x="169" y="304" class="axis-label" text-anchor="middle">lookup</text><rect x="310" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh"><title>gmesh, scenario: 3/3</title></rect><text x="345.6666666666667" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="383.3333333333333" y="34" width="71.33333333333333" height="250" rx="4" class="bar-baseline"><title>baseline, scenario: 3/3</title></rect><text x="419" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="456.66666666666663" y="34" width="71.33333333333333" height="250" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, scenario: 3/3</title></rect><text x="492.3333333333333" y="28" class="bar-label" text-anchor="middle">3/3</text><text x="419" y="304" class="axis-label" text-anchor="middle">scenario</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>lookup</td><td>gmesh</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>baseline</td><td>5/5</td><td>100%</td></tr><tr><td>lookup</td><td>gmesh-configured</td><td>5/5</td><td>100%</td></tr><tr><td>scenario</td><td>gmesh</td><td>3/3</td><td>100%</td></tr><tr><td>scenario</td><td>baseline</td><td>3/3</td><td>100%</td></tr><tr><td>scenario</td><td>gmesh-configured</td><td>3/3</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>lookup</td><td>55488</td><td>65137</td><td>14.8%</td><td>5</td></tr><tr><td>scenario</td><td>136156</td><td>76045</td><td>-79.0%</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>lookup</td><td>gmesh</td><td>5</td><td>511</td><td>6418</td><td>48553</td><td>5</td></tr><tr><td>lookup</td><td>baseline</td><td>8</td><td>879</td><td>7027</td><td>57223</td><td>5</td></tr><tr><td>scenario</td><td>gmesh</td><td>11</td><td>4433</td><td>11098</td><td>120614</td><td>3</td></tr><tr><td>scenario</td><td>baseline</td><td>9</td><td>1512</td><td>6473</td><td>68051</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-gmesh-configured"></span>gmesh-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 400" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="384" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>tt-find-impl-completionverifier</title>tt-find-impl-completionveri…</text><rect x="220" y="21" width="69.75555334805566" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-find-impl-completionverifier: 40572 tokens</title></rect><text x="295.7555533480556" y="30.333333333333332" class="bar-label" text-anchor="start">40572</text><rect x="220" y="33.666666666666664" width="144.13087332941078" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-find-impl-completionverifier: 83831 tokens</title></rect><text x="370.13087332941075" y="43" class="bar-label" text-anchor="start">83831</text><rect x="220" y="46.33333333333333" width="63.47150160086194" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-find-impl-completionverifier: 36917 tokens</title></rect><text x="289.4715016008619" y="55.666666666666664" class="bar-label" text-anchor="start">36917</text><text x="212" y="89" class="axis-label" text-anchor="end"><title>tt-find-impl-budgetestimator</title>tt-find-impl-budgetestimator</text><rect x="220" y="67" width="69.72288659478707" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-find-impl-budgetestimator: 40553 tokens</title></rect><text x="295.72288659478704" y="76.33333333333333" class="bar-label" text-anchor="start">40553</text><rect x="220" y="79.66666666666667" width="84.0481175544637" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-find-impl-budgetestimator: 48885 tokens</title></rect><text x="310.0481175544637" y="89" class="bar-label" text-anchor="start">48885</text><rect x="220" y="92.33333333333333" width="63.505887656934135" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-find-impl-budgetestimator: 36937 tokens</title></rect><text x="289.50588765693414" y="101.66666666666666" class="bar-label" text-anchor="start">36937</text><text x="212" y="135" class="axis-label" text-anchor="end"><title>tt-deps-incoming-db-connection</title>tt-deps-incoming-db-connection</text><rect x="220" y="113" width="112.89286069062484" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-deps-incoming-db-connection: 65662 tokens</title></rect><text x="338.89286069062484" y="122.33333333333333" class="bar-label" text-anchor="start">65662</text><rect x="220" y="125.66666666666667" width="150.05387148784646" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-deps-incoming-db-connection: 87276 tokens</title></rect><text x="376.05387148784644" y="135" class="bar-label" text-anchor="start">87276</text><rect x="220" y="138.33333333333334" width="200.9091291158199" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-deps-incoming-db-connection: 116855 tokens</title></rect><text x="426.9091291158199" y="147.66666666666669" class="bar-label" text-anchor="start">116855</text><text x="212" y="181" class="axis-label" text-anchor="end"><title>tt-references-requiretask</title>tt-references-requiretask</text><rect x="220" y="159" width="106.54863334530478" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-references-requiretask: 61972 tokens</title></rect><text x="332.5486333453048" y="168.33333333333334" class="bar-label" text-anchor="start">61972</text><rect x="220" y="171.66666666666666" width="113.74219627560807" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-references-requiretask: 66156 tokens</title></rect><text x="339.7421962756081" y="181" class="bar-label" text-anchor="start">66156</text><rect x="220" y="184.33333333333334" width="132.5376145246701" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-references-requiretask: 77088 tokens</title></rect><text x="358.53761452467006" y="193.66666666666669" class="bar-label" text-anchor="start">77088</text><text x="212" y="227" class="axis-label" text-anchor="end"><title>tt-outline-lifecycle-vs-small</title>tt-outline-lifecycle-vs-small</text><rect x="220" y="205" width="118.07999724911552" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-outline-lifecycle-vs-small: 68679 tokens</title></rect><text x="344.07999724911554" y="214.33333333333334" class="bar-label" text-anchor="start">68679</text><rect x="220" y="217.66666666666666" width="67.97607494631954" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-outline-lifecycle-vs-small: 39537 tokens</title></rect><text x="293.97607494631956" y="227" class="bar-label" text-anchor="start">39537</text><rect x="220" y="230.33333333333334" width="71.32355750494777" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-outline-lifecycle-vs-small: 41484 tokens</title></rect><text x="297.32355750494776" y="239.66666666666669" class="bar-label" text-anchor="start">41484</text><text x="212" y="273" class="axis-label" text-anchor="end"><title>tt-scenario-impact-requireproject</title>tt-scenario-impact-requirep…</text><rect x="220" y="251" width="109.28748271145514" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-impact-requireproject: 63565 tokens</title></rect><text x="335.28748271145514" y="260.3333333333333" class="bar-label" text-anchor="start">63565</text><rect x="220" y="263.6666666666667" width="85.23787509456166" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-impact-requireproject: 49577 tokens</title></rect><text x="311.2378750945617" y="273" class="bar-label" text-anchor="start">49577</text><rect x="220" y="276.3333333333333" width="100.10468643737535" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-scenario-impact-requireproject: 58224 tokens</title></rect><text x="326.10468643737534" y="285.66666666666663" class="bar-label" text-anchor="start">58224</text><text x="212" y="319" class="axis-label" text-anchor="end"><title>tt-scenario-deletesafe-taskcode</title>tt-scenario-deletesafe-task…</text><rect x="220" y="297" width="142.9909755706175" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-deletesafe-taskcode: 83168 tokens</title></rect><text x="368.9909755706175" y="306.3333333333333" class="bar-label" text-anchor="start">83168</text><rect x="220" y="309.6666666666667" width="111.7770331710821" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-deletesafe-taskcode: 65013 tokens</title></rect><text x="337.7770331710821" y="319" class="bar-label" text-anchor="start">65013</text><rect x="220" y="322.3333333333333" width="130.81831172106033" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-scenario-deletesafe-taskcode: 76088 tokens</title></rect><text x="356.81831172106035" y="331.66666666666663" class="bar-label" text-anchor="start">76088</text><text x="212" y="365" class="axis-label" text-anchor="end"><title>tt-scenario-bugtrace-createtasks-selfdep</title>tt-scenario-bugtrace-create…</text><rect x="220" y="343" width="450" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-scenario-bugtrace-createtasks-selfdep: 261734 tokens</title></rect><text x="676" y="352.3333333333333" class="bar-label" text-anchor="start">261734</text><rect x="220" y="355.6666666666667" width="195.21823683587152" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-scenario-bugtrace-createtasks-selfdep: 113545 tokens</title></rect><text x="421.2182368358715" y="365" class="bar-label" text-anchor="start">113545</text><rect x="220" y="368.3333333333333" width="288.15171127939055" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-scenario-bugtrace-createtasks-selfdep: 167598 tokens</title></rect><text x="514.1517112793906" y="377.66666666666663" class="bar-label" text-anchor="start">167598</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>gmesh</td><td>1/1</td><td>40572</td><td>40572</td><td>40572</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>baseline</td><td>1/1</td><td>83831</td><td>83831</td><td>83831</td><td>1/1</td></tr><tr><td>tt-find-impl-completionverifier</td><td>-</td><td>gmesh-configured</td><td>1/1</td><td>36917</td><td>36917</td><td>36917</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>gmesh</td><td>1/1</td><td>40553</td><td>40553</td><td>40553</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>baseline</td><td>1/1</td><td>48885</td><td>48885</td><td>48885</td><td>1/1</td></tr><tr><td>tt-find-impl-budgetestimator</td><td>-</td><td>gmesh-configured</td><td>1/1</td><td>36937</td><td>36937</td><td>36937</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh</td><td>1/1</td><td>65662</td><td>65662</td><td>65662</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>baseline</td><td>1/1</td><td>87276</td><td>87276</td><td>87276</td><td>1/1</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh-configured</td><td>1/1</td><td>116855</td><td>116855</td><td>116855</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>gmesh</td><td>1/1</td><td>61972</td><td>61972</td><td>61972</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>baseline</td><td>1/1</td><td>66156</td><td>66156</td><td>66156</td><td>1/1</td></tr><tr><td>tt-references-requiretask</td><td>-</td><td>gmesh-configured</td><td>1/1</td><td>77088</td><td>77088</td><td>77088</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>gmesh</td><td>1/1</td><td>68679</td><td>68679</td><td>68679</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>baseline</td><td>1/1</td><td>39537</td><td>39537</td><td>39537</td><td>1/1</td></tr><tr><td>tt-outline-lifecycle-vs-small</td><td>-</td><td>gmesh-configured</td><td>1/1</td><td>41484</td><td>41484</td><td>41484</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>63565</td><td>63565</td><td>63565</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>49577</td><td>49577</td><td>49577</td><td>1/1</td></tr><tr><td>tt-scenario-impact-requireproject</td><td>gmesh</td><td>gmesh-configured</td><td>1/1</td><td>58224</td><td>58224</td><td>58224</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>gmesh</td><td>1/1</td><td>83168</td><td>83168</td><td>83168</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>baseline</td><td>1/1</td><td>65013</td><td>65013</td><td>65013</td><td>1/1</td></tr><tr><td>tt-scenario-deletesafe-taskcode</td><td>parity</td><td>gmesh-configured</td><td>1/1</td><td>76088</td><td>76088</td><td>76088</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>gmesh</td><td>1/1</td><td>261734</td><td>261734</td><td>261734</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>baseline</td><td>1/1</td><td>113545</td><td>113545</td><td>113545</td><td>1/1</td></tr><tr><td>tt-scenario-bugtrace-createtasks-selfdep</td><td>gmesh</td><td>gmesh-configured</td><td>1/1</td><td>167598</td><td>167598</td><td>167598</td><td>1/1</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Expected-winner check: 0/2 tasks with a declared expected winner matched the observed lower-token arm; mismatches: tt-scenario-impact-requireproject, tt-scenario-bugtrace-createtasks-selfdep.</li>
+    <li>Task &quot;tt-scenario-deletesafe-taskcode&quot; is declared expectedWinner:&quot;parity&quot; but its arms&#39; mean tokens differ by 28% (gmesh 83168, baseline 65013) — an unexpected asymmetry worth a second look.</li>
+    <li>Bottom line: across 8 compared tasks, gmesh used -23.8% fewer tokens (unconditional), -23.8% fewer paired (n=8). Oracle pass rate — gmesh: 8/8 (100%), baseline: 8/8 (100%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="muted">Narrative generation skipped (disabled or unavailable).</p>
+</div>
+</body>
+</html>
