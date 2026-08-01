@@ -53,6 +53,43 @@ export const KUNGFU_TOOLS =
   "mcp__kungfu__file_outline,mcp__kungfu__search_text,mcp__kungfu__affected";
 
 /**
+ * `--tools` (the `KUNGFU_TOOLS` constant above) only restricts the *built-in*
+ * tool set (Read/Grep/Bash/etc.) — confirmed via `claude -p --help` and live
+ * transcripts of a kungfu-arm run showing calls to `mcp__kungfu__semantic_search`
+ * and `mcp__kungfu__find_files`, neither of which is in `KUNGFU_TOOLS`. It has
+ * zero effect on `mcp__`-namespaced tools, so every historical kungfu-arm run
+ * in this project actually measured kungfu's full 40-tool surface, not the
+ * intended curated 6.
+ *
+ * The only mechanism that actually shrinks what's sent to the model is a
+ * `--disallowedTools` *deny* rule (confirmed against `code.claude.com/docs/en/permissions`:
+ * "A bare tool name... removes the tool from Claude's context entirely, so
+ * Claude never sees it" — allow rules never do this, and this holds regardless
+ * of `--permission-mode bypassPermissions`, which only skips permission
+ * *prompts*, a separate and later mechanism). kungfu has no tool-subset config
+ * of its own, so this is the only available fix: enumerate every kungfu tool
+ * *not* in the curated set and deny it explicitly.
+ *
+ * Captured via a live `tools/list` probe against `kungfu mcp` v2.6.2 — the
+ * same version `KUNGFU_TOOLS`'s own doc comment cites — and is every kungfu
+ * tool except the curated 6 in `KUNGFU_TOOLS` above. Like `KUNGFU_TOOLS`
+ * itself, this is unvendored third-party surface: if kungfu's own tool set
+ * ever changes, this list must be regenerated (re-run the probe, diff against
+ * `KUNGFU_TOOLS`) rather than assumed still accurate.
+ */
+export const KUNGFU_DENIED_TOOLS =
+  "mcp__kungfu__annotate_file,mcp__kungfu__annotation_queue,mcp__kungfu__ask_context," +
+  "mcp__kungfu__change_timeline,mcp__kungfu__commit_context,mcp__kungfu__coupling," +
+  "mcp__kungfu__debug_trace,mcp__kungfu__edit_context,mcp__kungfu__embeddings_build," +
+  "mcp__kungfu__embeddings_status,mcp__kungfu__explore_file,mcp__kungfu__explore_symbol," +
+  "mcp__kungfu__file_history,mcp__kungfu__find_files,mcp__kungfu__hotspots,mcp__kungfu__investigate," +
+  "mcp__kungfu__memory_add,mcp__kungfu__memory_archive,mcp__kungfu__memory_get,mcp__kungfu__memory_list," +
+  "mcp__kungfu__memory_search,mcp__kungfu__memory_update,mcp__kungfu__onboard,mcp__kungfu__pr_context," +
+  "mcp__kungfu__project_status,mcp__kungfu__reindex,mcp__kungfu__repo_outline,mcp__kungfu__review," +
+  "mcp__kungfu__semantic_search,mcp__kungfu__smart_test,mcp__kungfu__symbol_history," +
+  "mcp__kungfu__test_subjects,mcp__kungfu__usage_stats,mcp__kungfu__verify_change";
+
+/**
  * The one and only difference between the `gmesh` and `gmesh-trusted` arms.
  *
  * Appended to the task prompt at run time, never stored in a corpus's
@@ -86,4 +123,8 @@ export function armTools(arm: Arm): string {
 
 export function armPrompt(prompt: string, arm: Arm): string {
   return arm === "gmesh-trusted" ? prompt + TRUSTED_ARM_PROMPT_SUFFIX : prompt;
+}
+
+export function armDisallowedTools(arm: Arm): string | undefined {
+  return arm === "kungfu" ? KUNGFU_DENIED_TOOLS : undefined;
 }
