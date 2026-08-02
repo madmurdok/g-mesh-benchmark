@@ -152,19 +152,19 @@
     }
   },
   {
-    "id": "tt-implement-selfdep-temp-id-fix",
+    "id": "tt-implement-release-cancelled-task-bug",
     "kind": "implement",
     "category": "implementation",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "createTasks", "file": "src/domain/tasks.ts" },
-    "prompt": "Users report that `create_tasks` sometimes fails with a confusing 'A task cannot depend on itself' error on a batch where no single spec's `depends_on` list literally repeats a real task id anywhere. Find the root cause and fix it in the actual code: a batch where one spec's `depends_on` references its own `temp_id` should fail with a clear error that names the problematic `temp_id`, instead of the current opaque self-dependency error. Don't change how a real, direct self-dependency (an existing task depending on itself by its real id) is rejected — that must keep working exactly as before.",
+    "target": { "symbol": "releaseTask", "file": "src/domain/lifecycle.ts" },
+    "prompt": "Users report that a task they explicitly cancelled sometimes reappears as pending and actionable again, days later, with no error message and nothing in the logs — the cancellation reason is still recorded on it, but its cancelled state is gone and get_next_task hands it out again. Find out how this can happen and fix it in the actual code, without changing how releasing a normal (non-cancelled) task works, or how claiming and cancelling tasks already work.",
     "oracle": {
       "mode": "test",
       "holdoutFiles": {
-        "tests/__bench_holdout__/selfdep-temp-id.test.ts": "corpora/task-tracker-mcp/fixtures/tt-implement-selfdep-temp-id-fix/selfdep-temp-id.test.ts"
+        "tests/__bench_holdout__/release-cancelled.test.ts": "corpora/task-tracker-mcp/fixtures/tt-implement-release-cancelled-task-bug/release-cancelled.test.ts"
       },
-      "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/dependencies.test.ts tests/create-tasks.test.ts tests/__bench_holdout__/selfdep-temp-id.test.ts"
+      "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/lifecycle.test.ts tests/status.test.ts tests/ownership.test.ts tests/__bench_holdout__/release-cancelled.test.ts"
     }
   }
 ]

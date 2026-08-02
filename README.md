@@ -51,6 +51,19 @@ tokens per run — see the design doc's failure-modes section for budget caps.
   full registry, e.g. `npm run token-economy -- ex-find-impl-trail-crossfile`.
 - `G_MESH_BENCH_WARM_CACHE=yes|no` — skip the interactive cache warm-up prompt
   for scripted/CI invocations.
+- `G_MESH_BENCH_EXCALIDRAW_SCOPE=low|normal|high` — how many of excalidraw's
+  three `implementation` tasks a full registry run covers: 1/2/3, cheapest
+  first (default `low`). Two separate costs motivate it. Every
+  `implementation` task gets a throwaway clone per (task, arm, repetition) and
+  installs the corpus's dependencies there before its test command can run;
+  for excalidraw that is ~60-90s of `yarn install` every single time. And
+  `ex-implement-library-dedup` — the one only `high` includes — routinely
+  costs an arm call more than `MAX_BUDGET_USD`: both arms have been observed
+  producing a correct fix and still being recorded `budget_exceeded` before
+  grading, so including it can spend real money for no signal. Naming tasks
+  explicitly (`npm run token-economy -- ex-implement-library-dedup`) bypasses
+  this, as it bypasses every other default; task-tracker-mcp's own
+  `implementation` task installs in ~11s and is never gated.
 - `G_MESH_BENCH_HTML_NARRATIVE=yes|no` — whether to spend one extra cheap-model
   call generating a plain-English summary paragraph for the HTML report
   (default `yes`; `no` skips the call entirely, no spend). Applies to both
