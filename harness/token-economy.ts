@@ -21,6 +21,7 @@ import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
+import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
@@ -135,6 +136,41 @@ function requestedTaskIds(): string[] {
   return process.argv.slice(2);
 }
 
+/**
+ * Whether a task's agent needs write access to its cwd — true only for
+ * `oracle.mode === "test"` tasks, which are graded on the edits they make
+ * rather than on what they say. Also the trigger for giving such a task its
+ * own throwaway clone in main(): the two must stay in lockstep, so both read
+ * this one predicate.
+ */
+function taskEditsCode(task: BenchTask): boolean {
+  return task.oracle.mode === "test";
+}
+
+/** The pass/fail verdict for one run, normalized across the two grading paths (see gradeRun). */
+interface GradingOutcome {
+  passed: boolean;
+  reason?: string;
+  /** Real API spend for grading: judge mode only; test mode runs a local process and spends nothing. */
+  judgeCostUsd: number;
+}
+
+/**
+ * Routes a finished run to the grader its oracle mode calls for: test-mode
+ * oracles are graded by running the corpus's test suite against the (edited)
+ * cwd, every other mode by text-checking the answer. The two produce
+ * deliberately different shapes — see lib/testRunner.ts for why they aren't one
+ * function — so they're normalized here, at the single point runArm consumes.
+ */
+async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promise<GradingOutcome> {
+  if (taskEditsCode(task)) {
+    const verdict = await runAcceptanceTest(cwd, task.oracle);
+    return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
+  }
+  const verdict = await checkOracle(resultText, task.oracle);
+  return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: verdict.judgeCostUsd ?? 0 };
+}
+
 async function runArm(
   cwd: string,
   task: BenchTask,
@@ -147,7 +183,7 @@ async function runArm(
     cwd,
     prompt: armPrompt(task.prompt, arm),
     mcpConfig: armMcpConfig(arm),
-    tools: armTools(arm),
+    tools: armTools(arm, { allowEdit: taskEditsCode(task) }),
     disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
@@ -157,8 +193,11 @@ async function runArm(
   // "budget_exceeded", so every oracle mode scores it as a miss anyway — but a
   // judge would first pay for a real API call to say so. Skipping it is the
   // prospective half of the combined budget bound; combinedBudgetStatus below
-  // is the retrospective half.
-  const oracle = result.status === "ok" ? await checkOracle(result.resultText, task.oracle) : undefined;
+  // is the retrospective half. A test-mode oracle is skipped for the same
+  // reason minus the money: an agent that errored out or ran out of budget
+  // mid-edit may well have left the corpus half-edited, and grading that says
+  // nothing about the arm.
+  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task) : undefined;
   const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
   const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
   if (status === "budget_exceeded" && result.status === "ok") {
@@ -493,14 +532,27 @@ async function main() {
       for (let rep = 1; rep <= reps; rep++) {
         for (const arm of arms) {
           console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
-          const armCwd =
-            arm === "kungfu" && kungfuCwd !== undefined
+          // A task graded by `mode: "test"` hands the agent Edit/Write, so its
+          // cwd is about to be modified. The shared `cwd` above is either the
+          // live registered checkout (kind=local) or a cache reused by every
+          // other task in this run — writing into either would corrupt the rest
+          // of the benchmark, and for kind=local, the user's actual working
+          // tree. Same reason kungfu/gmesh-configured take a throwaway clone,
+          // except this one can't be shared: each (task, arm, rep) needs the
+          // corpus back in its unfixed state, so the clone is per run.
+          const armCwd = taskEditsCode(task)
+            ? await resolveFresh(corpus)
+            : arm === "kungfu" && kungfuCwd !== undefined
               ? kungfuCwd
               : arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
                 : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
                   ? kungfuConfiguredCwd
                   : cwd;
+          // Logged (and left on disk) so a surprising verdict can be examined
+          // afterwards — the agent's actual diff is the only real evidence of
+          // what it did, and it lives nowhere else.
+          if (taskEditsCode(task)) console.log(`  edit sandbox: ${armCwd}`);
           runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
         }
       }

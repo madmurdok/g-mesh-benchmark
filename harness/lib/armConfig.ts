@@ -210,10 +210,34 @@ export function armMcpConfig(arm: Arm) {
   return buildGmeshArmConfig();
 }
 
-export function armTools(arm: Arm): string {
-  if (arm === "baseline") return BASELINE_TOOLS;
-  if (arm === "kungfu" || arm === "kungfu-configured") return KUNGFU_TOOLS;
-  return GMESH_TOOLS;
+/**
+ * Appended to whatever the arm's normal tool list is when a task actually has
+ * to change code (`oracle.mode === "test"`). Every arm gets the identical
+ * addition, so the gmesh-vs-baseline comparison still differs only in search
+ * tooling.
+ *
+ * `Bash` is deliberately not included. With it, an agent can run the corpus's
+ * test suite in a loop until it goes green, and the measurement stops being
+ * "did better code search produce a correct edit" and becomes "how many
+ * self-test iterations did each arm burn" — a different experiment, with much
+ * higher and much noisier cost. Worth revisiting as a separate arm one day,
+ * but not as a silent property of this one.
+ */
+export const EDIT_TOOLS = "Edit,Write";
+
+export interface ArmToolsOptions {
+  /** Grant EDIT_TOOLS on top of the arm's normal list — set for `oracle.mode === "test"` tasks only. */
+  allowEdit?: boolean;
+}
+
+export function armTools(arm: Arm, opts: ArmToolsOptions = {}): string {
+  const base =
+    arm === "baseline"
+      ? BASELINE_TOOLS
+      : arm === "kungfu" || arm === "kungfu-configured"
+        ? KUNGFU_TOOLS
+        : GMESH_TOOLS;
+  return opts.allowEdit ? `${base},${EDIT_TOOLS}` : base;
 }
 
 export function armPrompt(prompt: string, arm: Arm): string {
