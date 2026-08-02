@@ -54,7 +54,17 @@ export interface CorpusEntry {
  * default when a task's oracle omits `mode` entirely, so every existing
  * corpora/*.json entry keeps grading exactly as before v2.
  */
-export type GradingMode = "substring" | "pool" | "judge";
+/**
+ * "test" (added post-v2) is the only mode that doesn't grade the arm's *prose*
+ * at all: the agent is expected to have edited real code, so the verdict comes
+ * from running the corpus's own test suite plus a held-out acceptance test
+ * copied in only after the agent's turn ends (see lib/testRunner.ts). It is
+ * dispatched in token-economy.ts's runArm() before checkOracle() is reached —
+ * process exit code and text matching have nothing in common beyond the
+ * boolean they produce, so folding it into oracleCheck.ts would mean a mode
+ * that ignores every argument that function takes.
+ */
+export type GradingMode = "substring" | "pool" | "judge" | "test";
 
 /**
  * "scenario" (added post-v2) covers tasks framed around a concrete dev
@@ -73,13 +83,21 @@ export type GradingMode = "substring" | "pool" | "judge";
  * prose plan), same as every other category; no code is actually written.
  * See `implementation` for the category that does write code.
  */
+/**
+ * "implementation" (added post-v2) is the first category where the agent
+ * actually changes the corpus: it gets Edit/Write on top of the arm's usual
+ * read-only tools, runs against a throwaway clone of its own (never the shared
+ * warm cwd), and is graded by `mode: "test"` — the corpus's real test suite
+ * plus a held-out acceptance test — instead of by anything it says in prose.
+ */
 export type TaskCategory =
   | "lookup"
   | "multi-hop"
   | "ambiguous-name"
   | "control"
   | "scenario"
-  | "feature-request";
+  | "feature-request"
+  | "implementation";
 
 /** Task author's hypothesis about which arm should win, surfaced in report.ts for interpretation only — never gates pass/fail. */
 export type ExpectedWinner = "gmesh" | "baseline" | "parity";
@@ -96,6 +114,24 @@ export interface Oracle {
   minMatches?: number;
   /** judge mode — natural-language pass criteria evaluated by lib/judge.ts */
   rubric?: string;
+  /**
+   * test mode — acceptance files copied into the run's cwd *after* the agent's
+   * turn has ended, keyed by destination path relative to that cwd, valued by
+   * source path relative to this repo's root (conventionally
+   * `corpora/<corpus>/fixtures/<task-id>/...`).
+   *
+   * Held out rather than shipped with the corpus so the agent can neither read
+   * the acceptance criteria off disk nor edit the test into passing — it only
+   * ever sees the prompt.
+   */
+  holdoutFiles?: Record<string, string>;
+  /**
+   * test mode — shell command run inside the run's cwd once the holdout files
+   * are in place. Exit code 0 is the entire pass/fail verdict. Deliberately a
+   * full command string (not just a test-runner name) so a corpus that needs
+   * its dependencies installed in the throwaway clone first can say so.
+   */
+  testCommand?: string;
 }
 
 export interface TaskTarget {

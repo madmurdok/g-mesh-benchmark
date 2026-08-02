@@ -150,5 +150,21 @@
       "mode": "judge",
       "rubric": "The question: how would you implement a bulk-cancel-all-open-tasks-in-an-epic operation in this codebase. Ground truth, confirmed by reading the actual code: (1) src/domain/lifecycle.ts's cancelTask function is the existing single-task primitive whose behavior/guards the plan must build on rather than inventing unrelated logic — it already throws if the task's status is 'done' or 'cancelled', and checks owner_session_id/lock_expires_at unless a force flag is passed. A correct plan may either call cancelTask directly per task (handling the exceptions it throws), or explicitly propose sharing/extracting its existing checks into a shared helper so both cancelTask and the new bulk operation use the same logic without cancelTask's own exceptions as loop control flow — both are valid engineering choices; what fails is a plan that ignores cancelTask's existing guards entirely and reinvents unrelated ad hoc cancellation logic from scratch. (2) Listing a specific epic's tasks already has a precedent in src/domain/status.ts: epicTaskCounts/getEpicStatus queries `SELECT id, status FROM tasks WHERE epic_id = ?` — the correct answer should point at this epic_id-scoped query shape (or getEpicStatus/listEpicsWithStatus), not invent an unrelated way to enumerate an epic's tasks. (3) Because cancelTask throws on a task that is already done/cancelled, a bulk operation that just loops and calls cancelTask on every task in the epic would crash on the first already-finished one — the answer must explicitly say to filter out done/cancelled tasks before calling cancelTask (or otherwise skip/catch that case per task) rather than assuming a bare loop works. (4) The answer must also address that a task currently claimed/locked by another session will make cancelTask throw a conflict error unless force is passed, and say something concrete about that (e.g. pass force, or skip locked tasks, or surface the conflict) rather than ignoring it entirely. PASS only if the answer's plan (a) demonstrably builds on cancelTask's existing guards (by calling it directly or by sharing/extracting its logic) rather than ignoring it and reinventing unrelated cancellation logic, (b) correctly describes getting an epic's tasks via the epic_id-scoped query/status-domain functions, (c) explicitly handles skipping already-done/cancelled tasks before calling cancelTask, and (d) explicitly addresses the locked/claimed-task case. FAIL if the plan ignores cancelTask's existing guards entirely and reinvents unrelated cancellation logic, invents a wrong way to enumerate an epic's tasks (e.g. searching all tasks with no epic filter), omits handling already-done/cancelled tasks (i.e. describes a bare loop that would crash), or never mentions the locked-task/force case at all. Wording, exact function names for a brand-new bulk function, and additional correct detail do not matter."
     }
+  },
+  {
+    "id": "tt-implement-selfdep-temp-id-fix",
+    "kind": "implement",
+    "category": "implementation",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "createTasks", "file": "src/domain/tasks.ts" },
+    "prompt": "Users report that `create_tasks` sometimes fails with a confusing 'A task cannot depend on itself' error on a batch where no single spec's `depends_on` list literally repeats a real task id anywhere. Find the root cause and fix it in the actual code: a batch where one spec's `depends_on` references its own `temp_id` should fail with a clear error that names the problematic `temp_id`, instead of the current opaque self-dependency error. Don't change how a real, direct self-dependency (an existing task depending on itself by its real id) is rejected — that must keep working exactly as before.",
+    "oracle": {
+      "mode": "test",
+      "holdoutFiles": {
+        "tests/__bench_holdout__/selfdep-temp-id.test.ts": "corpora/task-tracker-mcp/fixtures/tt-implement-selfdep-temp-id-fix/selfdep-temp-id.test.ts"
+      },
+      "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/dependencies.test.ts tests/create-tasks.test.ts tests/__bench_holdout__/selfdep-temp-id.test.ts"
+    }
   }
 ]

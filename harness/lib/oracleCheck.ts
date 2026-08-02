@@ -154,5 +154,15 @@ export async function checkOracle(resultText: string, oracle: Oracle): Promise<O
       return checkPool(resultText, oracle);
     case "judge":
       return checkJudge(resultText, oracle);
+    case "test":
+      // Unreachable by construction: token-economy.ts's runArm() routes
+      // test-mode oracles to lib/testRunner.ts before it ever gets here,
+      // because grading them needs the run's cwd (which this function has no
+      // access to) and ignores resultText entirely. Throwing rather than
+      // silently returning `passed: false` so a future caller that forgets the
+      // branch fails loudly instead of scoring every run as a miss.
+      throw new Error(
+        'Oracle mode "test" is graded by lib/testRunner.ts against the run cwd, not by checkOracle().',
+      );
   }
 }
