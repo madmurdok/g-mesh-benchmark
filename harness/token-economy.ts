@@ -127,16 +127,27 @@ function repetitionCount(): number {
 
 /**
  * Which of excalidraw's `implementation` tasks a full, unfiltered run
- * includes. Ordered cheapest-first: `low` is the fast one (a pure-function
- * merge test), the later presets add the two that render the whole editor.
+ * includes, ordered by measured API spend per arm call (the test commands cost
+ * about the same as each other — they're all dominated by the same `yarn
+ * install`, so what actually varies is the agent):
+ *
+ *   elbow-zero-position   ~$0.23-0.25
+ *   linear-editor-order   ~$0.20-0.27
+ *   library-dedup         ~$0.80-1.05
+ *
+ * library-dedup is last on purpose. It is the only one of the three that
+ * regularly runs into MAX_BUDGET_USD — both arms have been observed producing
+ * a correct fix and still being recorded `budget_exceeded` before grading, so
+ * a run that includes it can spend real money and learn nothing. Keeping it
+ * behind an explicit `high` makes that an opt-in rather than the default.
  */
 const EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS = {
-  low: ["ex-implement-library-dedup"],
-  normal: ["ex-implement-library-dedup", "ex-implement-mutateelement-elbow-zero-position"],
+  low: ["ex-implement-mutateelement-elbow-zero-position"],
+  normal: ["ex-implement-mutateelement-elbow-zero-position", "ex-implement-linear-editor-order-crash"],
   high: [
-    "ex-implement-library-dedup",
     "ex-implement-mutateelement-elbow-zero-position",
     "ex-implement-linear-editor-order-crash",
+    "ex-implement-library-dedup",
   ],
 } as const;
 type ExcalidrawScopeMode = keyof typeof EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS;

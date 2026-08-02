@@ -42,8 +42,22 @@ function withScopeEnv<T>(value: string | undefined, fn: () => T): T {
 
 test("the scope defaults to the single cheapest excalidraw implementation task", () => {
   assert.deepEqual(withScopeEnv(undefined, excalidrawImplementationScope), [
-    "ex-implement-library-dedup",
+    "ex-implement-mutateelement-elbow-zero-position",
   ]);
+});
+
+test("the priciest task is only ever reached by asking for it explicitly", () => {
+  // It routinely trips MAX_BUDGET_USD, so a default run must not pay for it.
+  for (const preset of ["low", "normal"]) {
+    assert.equal(
+      withScopeEnv(preset, excalidrawImplementationScope).includes("ex-implement-library-dedup"),
+      false,
+    );
+  }
+  assert.equal(
+    withScopeEnv("high", excalidrawImplementationScope).includes("ex-implement-library-dedup"),
+    true,
+  );
 });
 
 test("presets are cumulative, cheapest first", () => {
@@ -60,16 +74,20 @@ test("an unrecognized preset name is rejected rather than silently defaulted", (
 });
 
 test("an unfiltered run keeps every non-implementation excalidraw task regardless of scope", () => {
-  const selected = selectTasksForCorpus("excalidraw", EX_TASKS, [], ["ex-implement-library-dedup"]);
+  const selected = selectTasksForCorpus("excalidraw", EX_TASKS, [], [
+    "ex-implement-mutateelement-elbow-zero-position",
+  ]);
   assert.deepEqual(selected.map((t) => t.id), [
     "ex-lookup-something",
-    "ex-implement-library-dedup",
+    "ex-implement-mutateelement-elbow-zero-position",
   ]);
 });
 
 test("the scope never touches another corpus's implementation tasks", () => {
   const ttTasks = [task("tt-implement-release-cancelled-task-bug", "implementation")];
-  const selected = selectTasksForCorpus("task-tracker-mcp", ttTasks, [], ["ex-implement-library-dedup"]);
+  const selected = selectTasksForCorpus("task-tracker-mcp", ttTasks, [], [
+    "ex-implement-mutateelement-elbow-zero-position",
+  ]);
   assert.deepEqual(selected.map((t) => t.id), ["tt-implement-release-cancelled-task-bug"]);
 });
 
@@ -79,10 +97,10 @@ test("an explicit CLI selection bypasses the scope entirely", () => {
   const selected = selectTasksForCorpus(
     "excalidraw",
     EX_TASKS,
-    ["ex-implement-linear-editor-order-crash"],
     ["ex-implement-library-dedup"],
+    ["ex-implement-mutateelement-elbow-zero-position"],
   );
-  assert.deepEqual(selected.map((t) => t.id), ["ex-implement-linear-editor-order-crash"]);
+  assert.deepEqual(selected.map((t) => t.id), ["ex-implement-library-dedup"]);
 });
 
 test("an explicit selection naming another corpus's task yields nothing here", () => {
