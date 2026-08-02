@@ -126,6 +126,77 @@ function repetitionCount(): number {
 }
 
 /**
+ * Which of excalidraw's `implementation` tasks a full, unfiltered run
+ * includes. Ordered cheapest-first: `low` is the fast one (a pure-function
+ * merge test), the later presets add the two that render the whole editor.
+ */
+const EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS = {
+  low: ["ex-implement-library-dedup"],
+  normal: ["ex-implement-library-dedup", "ex-implement-mutateelement-elbow-zero-position"],
+  high: [
+    "ex-implement-library-dedup",
+    "ex-implement-mutateelement-elbow-zero-position",
+    "ex-implement-linear-editor-order-crash",
+  ],
+} as const;
+type ExcalidrawScopeMode = keyof typeof EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS;
+
+/**
+ * G_MESH_BENCH_EXCALIDRAW_SCOPE picks how many of excalidraw's
+ * `implementation` tasks a full registry run covers. Unlike every other
+ * `implementation` task, these each pay excalidraw's ~90s `yarn install` into
+ * a throwaway clone *per (task, arm, repetition)* before their test command
+ * can run at all, so running all three by default would add roughly half an
+ * hour of pure install time to an otherwise unchanged benchmark.
+ *
+ * Defaults to "low" — the same "expensive extras are opt-in" stance as
+ * G_MESH_BENCH_INCLUDE_TRUSTED and friends, except this one can't default to
+ * nothing: these are real corpus tasks, so the floor is the cheapest single
+ * one rather than zero.
+ */
+export function excalidrawImplementationScope(): readonly string[] {
+  const raw = process.env.G_MESH_BENCH_EXCALIDRAW_SCOPE ?? "low";
+  const normalized = raw.trim().toLowerCase();
+  if (normalized in EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS) {
+    return EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS[normalized as ExcalidrawScopeMode];
+  }
+  throw new Error(
+    `Invalid G_MESH_BENCH_EXCALIDRAW_SCOPE value "${raw}"; expected "low", "normal", or "high".`,
+  );
+}
+
+/**
+ * Which of a corpus's tasks this run actually executes.
+ *
+ * Two independent filters, in precedence order: an explicit CLI selection
+ * means "run exactly these" and short-circuits everything else, the way it
+ * already overrides every other default in this harness. Otherwise the
+ * excalidraw scope preset applies — and only to excalidraw's `implementation`
+ * tasks, since it exists to cap that corpus's per-run `yarn install` bill;
+ * task-tracker-mcp's own `implementation` task installs in ~11s and is never
+ * gated by it.
+ *
+ * Pulled out of main()'s loop so the precedence is testable without running a
+ * benchmark (see token-economy.test.ts).
+ */
+export function selectTasksForCorpus(
+  corpusId: string,
+  corpusTasks: readonly BenchTask[],
+  selectedTaskIds: readonly string[],
+  excalidrawScope: readonly string[],
+): BenchTask[] {
+  if (selectedTaskIds.length > 0) {
+    return corpusTasks.filter((t) => selectedTaskIds.includes(t.id));
+  }
+  return corpusTasks.filter(
+    (t) =>
+      corpusId !== "excalidraw" ||
+      t.category !== "implementation" ||
+      excalidrawScope.includes(t.id),
+  );
+}
+
+/**
  * Extra CLI args (`npm run token-economy -- id1 id2`) select a subset of
  * task ids to run instead of the full registry — useful for cheaply
  * re-testing one or two tasks without paying for the whole batch. Empty
@@ -465,6 +536,11 @@ async function main() {
     console.log(`Running ${selectedTaskIds.length} of ${total} tasks: ${selectedTaskIds.join(", ")}`);
   }
 
+  // Resolved (and therefore validated) before anything spends money, so a
+  // typo'd preset name fails immediately instead of after the cache warm-up
+  // and the first few runs.
+  const excalidrawScope = excalidrawImplementationScope();
+
   const runs: TokenEconomyRun[] = [];
 
   if (await shouldWarmCache()) {
@@ -502,8 +578,7 @@ async function main() {
 
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
-    const tasks =
-      selectedTaskIds.length > 0 ? corpusTasks.filter((t) => selectedTaskIds.includes(t.id)) : corpusTasks;
+    const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
     // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,

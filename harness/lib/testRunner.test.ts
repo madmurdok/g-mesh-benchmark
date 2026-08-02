@@ -9,7 +9,8 @@ import { runAcceptanceTest } from "./testRunner.js";
  * Any file that's guaranteed to exist in this repo and is cheap to read — the
  * point of these tests is the copy/spawn plumbing, not the fixture's contents.
  */
-const HOLDOUT_SRC = "corpora/task-tracker-mcp/fixtures/tt-implement-selfdep-temp-id-fix/selfdep-temp-id.test.ts";
+const HOLDOUT_SRC =
+  "corpora/task-tracker-mcp/fixtures/tt-implement-release-cancelled-task-bug/release-cancelled.test.ts";
 
 async function withTempCwd(fn: (cwd: string) => Promise<void>): Promise<void> {
   const cwd = await mkdtemp(path.join(tmpdir(), "gmesh-bench-testrunner-"));
@@ -30,7 +31,7 @@ test("copies holdout files into the cwd, creating missing parent dirs", async ()
 
     assert.equal(result.passed, true);
     const copied = await readFile(path.join(cwd, "tests/__bench_holdout__/acceptance.test.ts"), "utf-8");
-    assert.match(copied, /createTasks/);
+    assert.match(copied, /releaseTask/);
   });
 });
 
