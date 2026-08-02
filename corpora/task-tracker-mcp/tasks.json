@@ -31,7 +31,7 @@
     "category": "lookup",
     "revealsLocation": false,
     "target": { "symbol": "", "file": "src/db/connection.ts" },
-    "prompt": "In this repository, find the module that sets up the database connection (the central sqlite db-open/init code), then list at least 5 files across the codebase that import from it.",
+    "prompt": "In this repository, find the module that sets up the database connection (the central sqlite db-open/init code), then list every file under src/ (not test files) that imports from it — both direct value imports and type-only imports (`import type`) count as importing it.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
