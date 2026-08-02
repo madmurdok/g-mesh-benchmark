@@ -65,7 +65,21 @@ export type GradingMode = "substring" | "pool" | "judge";
  * a framing tag, not a claim about tool-call complexity; see
  * docs/results/ for whether the framing measurably changes agent behavior.
  */
-export type TaskCategory = "lookup" | "multi-hop" | "ambiguous-name" | "control" | "scenario";
+/**
+ * "feature-request" (added post-v2) covers tasks framed as a real product ask
+ * ("we want X") rather than a diagnostic question about existing behavior —
+ * `scenario`'s bug-tracing/impact-analysis framing is retrospective, this one
+ * is prospective. Still investigation-only (read-only tools, judge-graded
+ * prose plan), same as every other category; no code is actually written.
+ * See `implementation` for the category that does write code.
+ */
+export type TaskCategory =
+  | "lookup"
+  | "multi-hop"
+  | "ambiguous-name"
+  | "control"
+  | "scenario"
+  | "feature-request";
 
 /** Task author's hypothesis about which arm should win, surfaced in report.ts for interpretation only — never gates pass/fail. */
 export type ExpectedWinner = "gmesh" | "baseline" | "parity";
