@@ -13,7 +13,7 @@ import type { Arm } from "./types.js";
  * (matching this codebase's existing precedent).
  */
 export const MODEL = "claude-sonnet-5";
-export const MAX_BUDGET_USD = 1.0;
+export const MAX_BUDGET_USD = 2.0;
 export const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
 export const BASELINE_TOOLS = "Read,Grep,Glob";
 
