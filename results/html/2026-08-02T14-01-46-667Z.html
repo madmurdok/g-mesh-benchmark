@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>g-mesh-bench token-economy run</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --gridline: #e1e0d9;
+    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
+    --gmesh: #2a78d6;
+    --baseline: #eb6834;
+    --gmesh-trusted: #1baf7a;
+    --kungfu: #8b5cf6;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 24px clamp(16px, 4vw, 48px) 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --gridline: #2c2c2a;
+      --gmesh: #3987e5;
+      --baseline: #d95926;
+      --gmesh-trusted: #199e70;
+      --kungfu: #a78bfa;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --gridline: #2c2c2a;
+    --gmesh: #3987e5;
+    --baseline: #d95926;
+    --gmesh-trusted: #199e70;
+    --kungfu: #a78bfa;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 12px; }
+  .timestamp { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 24px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .stat-tile { background: var(--surface-2); border-radius: 8px; padding: 12px 16px; flex: 1 1 160px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; }
+  .stat-label { color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch-gmesh { background: var(--gmesh); }
+  .swatch-baseline { background: var(--baseline); }
+  .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
+  .swatch-kungfu { background: var(--kungfu); }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart.chart-wide { min-width: 640px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .bar-label { fill: var(--text-secondary); font-size: 11px; }
+  .bar-gmesh { fill: var(--gmesh); }
+  .bar-baseline { fill: var(--baseline); }
+  .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
+  .bar-kungfu { fill: var(--kungfu); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  ul.analysis { padding-left: 20px; line-height: 1.6; }
+  .narrative-text { line-height: 1.6; }
+  .muted { color: var(--text-secondary); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>g-mesh-bench token-economy run</h1>
+  <p class="timestamp">Generated 2026-08-02T14:36:39.832Z &middot; run timestamp 2026-08-02T14:01:46.667Z</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="stat-value">-7.1%</div><div class="stat-label">Unconditional reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">-6.6% (n=17)</div><div class="stat-label">Paired reduction</div></div>
+    <div class="stat-tile"><div class="stat-value">$7.4940</div><div class="stat-label">Arm spend</div></div>
+    <div class="stat-tile"><div class="stat-value">$0.1115</div><div class="stat-label">Judge spend</div></div>
+    <div class="stat-tile"><div class="stat-value">20/21</div><div class="stat-label">gmesh oracle pass rate</div></div>
+    <div class="stat-tile"><div class="stat-value">18/21</div><div class="stat-label">baseline oracle pass rate</div></div>
+  </div>
+
+  <h2>Oracle pass rate by category</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-gmesh-configured"></span>gmesh-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 560 340" class="chart" role="img" aria-label="Oracle pass rate by category"><line x1="44" y1="284" x2="544" y2="284" class="gridline" /><text x="36" y="288" class="axis-label" text-anchor="end">0%</text><line x1="44" y1="221.5" x2="544" y2="221.5" class="gridline" /><text x="36" y="225.5" class="axis-label" text-anchor="end">25%</text><line x1="44" y1="159" x2="544" y2="159" class="gridline" /><text x="36" y="163" class="axis-label" text-anchor="end">50%</text><line x1="44" y1="96.5" x2="544" y2="96.5" class="gridline" /><text x="36" y="100.5" class="axis-label" text-anchor="end">75%</text><line x1="44" y1="34" x2="544" y2="34" class="gridline" /><text x="36" y="38" class="axis-label" text-anchor="end">100%</text><rect x="60" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh"><title>gmesh, ambiguous-name: 6/6</title></rect><text x="81.77777777777777" y="28" class="bar-label" text-anchor="middle">6/6</text><rect x="105.55555555555554" y="34" width="43.55555555555555" height="250" rx="4" class="bar-baseline"><title>baseline, ambiguous-name: 6/6</title></rect><text x="127.33333333333331" y="28" class="bar-label" text-anchor="middle">6/6</text><rect x="151.1111111111111" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ambiguous-name: 6/6</title></rect><text x="172.88888888888886" y="28" class="bar-label" text-anchor="middle">6/6</text><text x="127.33333333333333" y="304" class="axis-label" text-anchor="middle">ambiguous-name</text><rect x="226.66666666666666" y="54.83333333333337" width="43.55555555555555" height="229.16666666666663" rx="4" class="bar-gmesh"><title>gmesh, lookup: 11/12</title></rect><text x="248.44444444444443" y="48.83333333333337" class="bar-label" text-anchor="middle">11/12</text><rect x="272.22222222222223" y="96.5" width="43.55555555555555" height="187.5" rx="4" class="bar-baseline"><title>baseline, lookup: 9/12</title></rect><text x="294" y="90.5" class="bar-label" text-anchor="middle">9/12</text><rect x="317.77777777777777" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, lookup: 12/12</title></rect><text x="339.55555555555554" y="28" class="bar-label" text-anchor="middle">12/12</text><text x="294" y="304" class="axis-label" text-anchor="middle">lookup</text><rect x="393.3333333333333" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh"><title>gmesh, multi-hop: 3/3</title></rect><text x="415.1111111111111" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="438.88888888888886" y="34" width="43.55555555555555" height="250" rx="4" class="bar-baseline"><title>baseline, multi-hop: 3/3</title></rect><text x="460.66666666666663" y="28" class="bar-label" text-anchor="middle">3/3</text><rect x="484.4444444444444" y="34" width="43.55555555555555" height="250" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, multi-hop: 3/3</title></rect><text x="506.2222222222222" y="28" class="bar-label" text-anchor="middle">3/3</text><text x="460.66666666666663" y="304" class="axis-label" text-anchor="middle">multi-hop</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>gmesh</td><td>6/6</td><td>100%</td></tr><tr><td>ambiguous-name</td><td>baseline</td><td>6/6</td><td>100%</td></tr><tr><td>ambiguous-name</td><td>gmesh-configured</td><td>6/6</td><td>100%</td></tr><tr><td>lookup</td><td>gmesh</td><td>11/12</td><td>92%</td></tr><tr><td>lookup</td><td>baseline</td><td>9/12</td><td>75%</td></tr><tr><td>lookup</td><td>gmesh-configured</td><td>12/12</td><td>100%</td></tr><tr><td>multi-hop</td><td>gmesh</td><td>3/3</td><td>100%</td></tr><tr><td>multi-hop</td><td>baseline</td><td>3/3</td><td>100%</td></tr><tr><td>multi-hop</td><td>gmesh-configured</td><td>3/3</td><td>100%</td></tr></tbody></table></div>
+
+  <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>251960</td><td>153318</td><td>-64.3%</td><td>6</td></tr><tr><td>lookup</td><td>73656</td><td>57863</td><td>-27.3%</td><td>8</td></tr><tr><td>multi-hop</td><td>161504</td><td>347582</td><td>53.5%</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody><tr><td>ambiguous-name</td><td>gmesh</td><td>20</td><td>3684</td><td>8992</td><td>239264</td><td>6</td></tr><tr><td>ambiguous-name</td><td>baseline</td><td>14</td><td>3831</td><td>8613</td><td>140860</td><td>6</td></tr><tr><td>lookup</td><td>gmesh</td><td>7</td><td>613</td><td>7201</td><td>65835</td><td>8</td></tr><tr><td>lookup</td><td>baseline</td><td>7</td><td>643</td><td>4418</td><td>52795</td><td>8</td></tr><tr><td>multi-hop</td><td>gmesh</td><td>12</td><td>4515</td><td>13121</td><td>143857</td><td>3</td></tr><tr><td>multi-hop</td><td>baseline</td><td>23</td><td>13443</td><td>61365</td><td>272751</td><td>3</td></tr></tbody></table></div>
+
+  <h2>Mean tokens by task</h2>
+  <div class="legend"><span class="legend-item"><span class="swatch swatch-gmesh"></span>gmesh</span><span class="legend-item"><span class="swatch swatch-baseline"></span>baseline</span><span class="legend-item"><span class="swatch swatch-gmesh-configured"></span>gmesh-configured</span></div>
+  <div class="chart-wrap"><svg viewBox="0 0 760 354" class="chart chart-wide" role="img" aria-label="Mean tokens by task"><line x1="220" y1="16" x2="220" y2="338" class="gridline" /><text x="212" y="43" class="axis-label" text-anchor="end"><title>tt-deps-incoming-db-connection</title>tt-deps-incoming-db-connection</text><rect x="220" y="21" width="89.67773176076868" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, tt-deps-incoming-db-connection: 81144 tokens</title></rect><text x="315.67773176076867" y="30.333333333333332" class="bar-label" text-anchor="start">81144</text><rect x="220" y="33.666666666666664" width="76.19647179886846" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, tt-deps-incoming-db-connection: 68945 tokens</title></rect><text x="302.19647179886846" y="43" class="bar-label" text-anchor="start">68945</text><rect x="220" y="46.33333333333333" width="68.67061690717125" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, tt-deps-incoming-db-connection: 62136 tokens</title></rect><text x="294.6706169071713" y="55.666666666666664" class="bar-label" text-anchor="start">62136</text><text x="212" y="89" class="axis-label" text-anchor="end"><title>ex-references-pointfrom-highfanout</title>ex-references-pointfrom-hig…</text><rect x="220" y="67" width="78.5696450923392" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-references-pointfrom-highfanout: 71093 tokens</title></rect><text x="304.5696450923392" y="76.33333333333333" class="bar-label" text-anchor="start">71093</text><rect x="220" y="79.66666666666667" width="62.44149750026401" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-references-pointfrom-highfanout: 56499 tokens</title></rect><text x="288.441497500264" y="89" class="bar-label" text-anchor="start">56499</text><rect x="220" y="92.33333333333333" width="96.01589483344236" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-references-pointfrom-highfanout: 86879 tokens</title></rect><text x="322.01589483344236" y="101.66666666666666" class="bar-label" text-anchor="start">86879</text><text x="212" y="135" class="axis-label" text-anchor="end"><title>ex-find-callers-mutateelement</title>ex-find-callers-mutateelement</text><rect x="220" y="113" width="49.08106970853742" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-find-callers-mutateelement: 44410 tokens</title></rect><text x="275.0810697085374" y="122.33333333333333" class="bar-label" text-anchor="start">44410</text><rect x="220" y="125.66666666666667" width="44.017170284127516" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-find-callers-mutateelement: 39828 tokens</title></rect><text x="270.01717028412753" y="135" class="bar-label" text-anchor="start">39828</text><rect x="220" y="138.33333333333334" width="45.881595934275815" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-find-callers-mutateelement: 41515 tokens</title></rect><text x="271.8815959342758" y="147.66666666666669" class="bar-label" text-anchor="start">41515</text><text x="212" y="181" class="axis-label" text-anchor="end"><title>ex-deps-package-math-incoming</title>ex-deps-package-math-incoming</text><rect x="220" y="159" width="64.68794437135755" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-deps-package-math-incoming: 58532 tokens</title></rect><text x="290.68794437135756" y="168.33333333333334" class="bar-label" text-anchor="start">58532</text><rect x="220" y="171.66666666666666" width="44.40361219422543" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-deps-package-math-incoming: 40178 tokens</title></rect><text x="270.40361219422545" y="181" class="bar-label" text-anchor="start">40178</text><rect x="220" y="184.33333333333334" width="52.77013480645978" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-deps-package-math-incoming: 47748 tokens</title></rect><text x="278.7701348064598" y="193.66666666666669" class="bar-label" text-anchor="start">47748</text><text x="212" y="227" class="axis-label" text-anchor="end"><title>ex-ambiguous-clamp-math-utils</title>ex-ambiguous-clamp-math-utils</text><rect x="220" y="205" width="106.91768267474616" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-ambiguous-clamp-math-utils: 96743 tokens</title></rect><text x="332.9176826747462" y="214.33333333333334" class="bar-label" text-anchor="start">96743</text><rect x="220" y="217.66666666666666" width="92.74974233112762" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-ambiguous-clamp-math-utils: 83923 tokens</title></rect><text x="318.7497423311276" y="227" class="bar-label" text-anchor="start">83923</text><rect x="220" y="230.33333333333334" width="84.83118288636618" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-ambiguous-clamp-math-utils: 76758 tokens</title></rect><text x="310.83118288636615" y="239.66666666666669" class="bar-label" text-anchor="start">76758</text><text x="212" y="273" class="axis-label" text-anchor="end"><title>ex-ambiguous-exporttosvg-public-api</title>ex-ambiguous-exporttosvg-pu…</text><rect x="220" y="251" width="450" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-ambiguous-exporttosvg-public-api: 407176 tokens</title></rect><text x="676" y="260.3333333333333" class="bar-label" text-anchor="start">407176</text><rect x="220" y="263.6666666666667" width="246.1354990344069" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-ambiguous-exporttosvg-public-api: 222712 tokens</title></rect><text x="472.1354990344069" y="273" class="bar-label" text-anchor="start">222712</text><rect x="220" y="276.3333333333333" width="152.44672864909472" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-ambiguous-exporttosvg-public-api: 137939 tokens</title></rect><text x="378.4467286490947" y="285.66666666666663" class="bar-label" text-anchor="start">137939</text><text x="212" y="319" class="axis-label" text-anchor="end"><title>ex-multihop-mutateelement-nondeleted-callers</title>ex-multihop-mutateelement-n…</text><rect x="220" y="297" width="178.4901136198977" height="10.666666666666666" rx="4" class="bar-gmesh"><title>gmesh, ex-multihop-mutateelement-nondeleted-callers: 161504 tokens</title></rect><text x="404.49011361989767" y="306.3333333333333" class="bar-label" text-anchor="start">161504</text><rect x="220" y="309.6666666666667" width="384.13799426783976" height="10.666666666666666" rx="4" class="bar-baseline"><title>baseline, ex-multihop-mutateelement-nondeleted-callers: 347582 tokens</title></rect><text x="610.1379942678398" y="319" class="bar-label" text-anchor="start">347582</text><rect x="220" y="322.3333333333333" width="149.08553132999708" height="10.666666666666666" rx="4" class="bar-gmesh-configured"><title>gmesh-configured, ex-multihop-mutateelement-nondeleted-callers: 134898 tokens</title></rect><text x="375.0855313299971" y="331.66666666666663" class="bar-label" text-anchor="start">134898</text></svg></div>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh</td><td>3/3</td><td>81144</td><td>66857</td><td>109278</td><td>3/3</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>baseline</td><td>3/3</td><td>68945</td><td>54073</td><td>86005</td><td>3/3</td></tr><tr><td>tt-deps-incoming-db-connection</td><td>-</td><td>gmesh-configured</td><td>3/3</td><td>62136</td><td>61434</td><td>62563</td><td>3/3</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>71093</td><td>69529</td><td>74178</td><td>3/3</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>56499</td><td>50631</td><td>67327</td><td>3/3</td></tr><tr><td>ex-references-pointfrom-highfanout</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>86879</td><td>63199</td><td>132243</td><td>3/3</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>44410</td><td>44371</td><td>44439</td><td>3/3</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>39828</td><td>34192</td><td>51040</td><td>0/3</td></tr><tr><td>ex-find-callers-mutateelement</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>41515</td><td>41403</td><td>41710</td><td>3/3</td></tr><tr><td>ex-deps-package-math-incoming</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>58532</td><td>43059</td><td>66288</td><td>2/3</td></tr><tr><td>ex-deps-package-math-incoming</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>40178</td><td>33936</td><td>52630</td><td>3/3</td></tr><tr><td>ex-deps-package-math-incoming</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>47748</td><td>40482</td><td>61790</td><td>3/3</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>96743</td><td>89030</td><td>111738</td><td>3/3</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>83923</td><td>70090</td><td>92840</td><td>3/3</td></tr><tr><td>ex-ambiguous-clamp-math-utils</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>76758</td><td>63162</td><td>83706</td><td>3/3</td></tr><tr><td>ex-ambiguous-exporttosvg-public-api</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>407176</td><td>225272</td><td>607310</td><td>3/3</td></tr><tr><td>ex-ambiguous-exporttosvg-public-api</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>222712</td><td>149459</td><td>284848</td><td>3/3</td></tr><tr><td>ex-ambiguous-exporttosvg-public-api</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>137939</td><td>105764</td><td>201324</td><td>3/3</td></tr><tr><td>ex-multihop-mutateelement-nondeleted-callers</td><td>gmesh</td><td>gmesh</td><td>3/3</td><td>161504</td><td>134927</td><td>181152</td><td>3/3</td></tr><tr><td>ex-multihop-mutateelement-nondeleted-callers</td><td>gmesh</td><td>baseline</td><td>3/3</td><td>347582</td><td>259779</td><td>456192</td><td>3/3</td></tr><tr><td>ex-multihop-mutateelement-nondeleted-callers</td><td>gmesh</td><td>gmesh-configured</td><td>3/3</td><td>134898</td><td>123707</td><td>150930</td><td>3/3</td></tr></tbody></table></div>
+
+  <h2>Automated observations</h2>
+  <ul class="analysis">
+    <li>Expected-winner check: 1/5 tasks with a declared expected winner matched the observed lower-token arm; mismatches: ex-references-pointfrom-highfanout, ex-deps-package-math-incoming, ex-ambiguous-clamp-math-utils, ex-ambiguous-exporttosvg-public-api.</li>
+    <li>Bottom line: across 7 compared tasks, gmesh used -7.1% fewer tokens (unconditional), -6.6% fewer paired (n=17). Oracle pass rate — gmesh: 20/21 (95%), baseline: 18/21 (86%).</li>
+  </ul>
+
+  <h2>Summary</h2>
+  <p class="narrative-text">This benchmark compared g-mesh to traditional code navigation tools (grep, Read, Glob) across 7 representative tasks. G-mesh consumed 7.1% fewer tokens unconditionally, with a 6.6% improvement in paired comparisons across 17 instances. More significantly, g-mesh demonstrated superior accuracy: a 95% oracle pass rate versus 86% for the baseline.</p><p class="narrative-text">However, important caveats apply. The expected-winner predictions proved unreliable—only 1 of 5 tasks with a declared preference matched observed results. Four tasks expected to favor the baseline or show no difference actually diverged from predictions, including high-fanout reference searches, package dependency incoming analysis, and multiple ambiguous symbol-resolution scenarios.</p><p class="narrative-text">Token savings are modest, so developers should not expect dramatic cost reductions. The real advantage is accuracy: g-mesh correctly answered roughly 2 additional oracle questions per 21 attempts. Whether adoption makes sense depends on your team&#39;s priorities. If correctness in cross-file analysis is paramount and you can tolerate modest token overhead in unpredictable cases, the 9% accuracy improvement may justify the switch. If token efficiency dominates, the baseline remains competitive for many common tasks.</p>
+</div>
+</body>
+</html>

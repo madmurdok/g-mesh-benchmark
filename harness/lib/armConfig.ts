@@ -120,6 +120,13 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * lives in two other places outside this repo and must be kept in sync with
  * both by hand if either changes, same manually-synced caveat this file
  * already states for KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS above.
+ *
+ * The bullet after the `resolved: false` one below (on a `symbol_id`
+ * anchoring an already-disambiguated name) was validated here first — a
+ * targeted token-economy run against ex-ambiguous-exporttosvg-public-api
+ * (turns 19.3->9.0, cost $0.196->$0.099, oracle still 3/3) plus 5 regression
+ * tasks with no oracle drop — then ported to `~/.claude/CLAUDE.md` and
+ * g-mesh/README.md; all three copies are back in sync as of that port.
  */
 export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript projects)
 
@@ -135,6 +142,7 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
   - If a \`symbol_name\` turns out ambiguous, the result carries \`ambiguous: true\` with a ranked candidate list — re-query using a candidate's \`id\` as \`symbol_id\`, not its \`qualifiedName\` (the same qualifiedName can name more than one declaration).
 - Typical flow: call \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` directly with \`symbol_name\` when it's likely unique; only call \`find_definition\` first if you expect ambiguity or need the declaration site itself. Use \`get_file_outline\` first if you don't already know the right symbol name.
 - A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
+- Resolving an ambiguous name (the bullet above on \`ambiguous: true\` candidates) to a specific \`symbol_id\` doesn't reopen the completeness question: a \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` page anchored by that \`symbol_id\` carries the exact same \`resolved: true\`/no-\`allUnresolved\` guarantee as an unambiguous \`symbol_name\` query. Once you've picked the right candidate, treat its result as final — don't grep/Read each returned call site file-by-file to reconfirm it's "really" that symbol and not the same-named other one, and don't run a second, broad text search across the repo to check for anything the query might have missed. Both duplicate work the tool has already resolved, the same way re-verifying a plain unambiguous result would.
 - \`find_implementations\` only returns direct implementors/extenders by default — a class extending a class that implements the anchor interface won't show up in a \`hasMore: false\` page. For the whole hierarchy, re-call with \`transitive: true\` (walks the same edges transitively, up to a bounded depth, resumable via \`resume_token\`).
 `;
 
