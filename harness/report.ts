@@ -78,7 +78,7 @@ function printCorrectness(runs: TokenEconomyRun[]): void {
 }
 
 /**
- * Paired gmesh-vs-baseline token savings by category, printed right after the
+ * Paired primary-arm-vs-baseline token savings by category, printed right after the
  * correctness table — the single blended PAIRED reduction number further
  * below averages over all tasks, which hides categories like "multihop"
  * (few tasks, largest g-mesh advantage) inside 17 easier tasks where a fixed
@@ -90,7 +90,10 @@ function printCategoryTokenSavings(runs: TokenEconomyRun[]): void {
   if (rows.length === 0) return;
 
   console.log("# Token savings by category (paired, oracle-passed pairs only)\n");
-  console.log("| Category | gmesh mean tokens | baseline mean tokens | Savings | Pairs (n) |");
+  // Header names whichever arm computeCategoryTokenTable actually compared
+  // (see reportData.ts's primaryComparisonArm) instead of always saying
+  // "gmesh" — every row shares one arm, so rows[0] is authoritative.
+  console.log(`| Category | ${rows[0]!.arm} mean tokens | baseline mean tokens | Savings | Pairs (n) |`);
   console.log("|---|---|---|---|---|");
   for (const row of rows) {
     console.log(
@@ -196,9 +199,9 @@ async function reportTokenEconomy(): Promise<void> {
 
   console.log("\n## Aggregate\n");
   console.log(`- Tasks compared: ${aggregate.taskCount}`);
-  console.log(`- Total mean tokens — gmesh: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`);
-  console.log(`- Token reduction, UNCONDITIONAL (gmesh vs baseline, every ok run regardless of oracle result): ${aggregate.unconditionalReductionPct.toFixed(1)}%`);
-  console.log(`- Oracle pass rate — gmesh: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`);
+  console.log(`- Total mean tokens — ${aggregate.arm}: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`);
+  console.log(`- Token reduction, UNCONDITIONAL (${aggregate.arm} vs baseline, every ok run regardless of oracle result): ${aggregate.unconditionalReductionPct.toFixed(1)}%`);
+  console.log(`- Oracle pass rate — ${aggregate.arm}: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`);
 
   const paired = pairedTokenTotals(runs);
   const pairedReduction =

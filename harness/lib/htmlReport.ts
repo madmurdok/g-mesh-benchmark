@@ -183,14 +183,15 @@ function correctnessTableHtml(rows: CorrectnessRow[]): string {
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-function categoryTokenTableHtml(rows: CategoryTokenRow[]): string {
+/** `primaryArm` names the column `gmeshMeanTokens` holds — see reportData.ts's primaryComparisonArm. */
+function categoryTokenTableHtml(rows: CategoryTokenRow[], primaryArm: Arm): string {
   const body = rows
     .map(
       (r) =>
         `<tr><td>${escapeHtml(r.category)}</td><td>${fmt0(r.gmeshMeanTokens)}</td><td>${fmt0(r.baselineMeanTokens)}</td><td>${r.savingsPct.toFixed(1)}%</td><td>${r.pairCount}</td></tr>`,
     )
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>${escapeHtml(primaryArm)} mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 /**
@@ -380,7 +381,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     ${statTile("Paired reduction", pairedReductionPct !== null ? `${pairedReductionPct.toFixed(1)}% (n=${paired.pairCount})` : `n/a (n=${paired.pairCount})`)}
     ${statTile("Arm spend", `$${fmt4(armSpend)}`)}
     ${statTile("Judge spend", `$${fmt4(judgeSpend)}`)}
-    ${statTile("gmesh oracle pass rate", `${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}`)}
+    ${statTile(`${aggregate.arm} oracle pass rate`, `${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}`)}
     ${statTile("baseline oracle pass rate", `${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`)}
   </div>
 
@@ -390,8 +391,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   ${correctnessTableHtml(correctnessTable)}
 
   <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
-  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
-  ${categoryTokenTableHtml(categoryTokenTable)}
+  <p class="muted">${escapeHtml(aggregate.arm)} vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  ${categoryTokenTableHtml(categoryTokenTable, aggregate.arm)}
 
   <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
   <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>

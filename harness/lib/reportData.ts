@@ -61,6 +61,39 @@ export function armsPresent(runs: TokenEconomyRun[]): Arm[] {
 }
 
 /**
+ * The arm every headline number in this file compares *against* baseline —
+ * the first non-baseline arm ARM_ORDER ranks among the ones actually present.
+ *
+ * Every aggregate below used to hardcode the literal `"gmesh"`, which was
+ * correct while bare gmesh was the only g-mesh arm. Once `gmesh-configured`
+ * became the default primary arm (see types.ts's ARM_ORDER) that hardcoding
+ * silently zeroed the entire headline/narrative layer on any run set without a
+ * bare-`gmesh` run in it: pairCount 0, "across 0 compared tasks", and an LLM
+ * narrative declaring a perfectly good 186-run regression unanalyzable. The
+ * per-task table never had the bug because it iterates armsPresent().
+ *
+ * Deriving the arm from ARM_ORDER rather than naming one keeps historical
+ * reports bit-for-bit stable: a run set whose only non-baseline arm is bare
+ * `gmesh` resolves to `"gmesh"`, exactly what was hardcoded before. A set with
+ * both resolves to `gmesh-configured`, which is the point — it is the arm the
+ * benchmark is now primarily about. Unknown arms (a record written by a future
+ * harness) are eligible too, via armsPresent()'s alphabetical tail, so a new
+ * arm name yields a real comparison instead of an empty report.
+ *
+ * undefined only when the run set has no non-baseline arm at all; callers
+ * substitute `"gmesh"` there, which reproduces the old all-zeros output for
+ * such (already meaningless) sets rather than inventing a different one.
+ */
+export function primaryComparisonArm(runs: TokenEconomyRun[]): Arm | undefined {
+  return armsPresent(runs).find((arm) => arm !== "baseline");
+}
+
+/** primaryComparisonArm with the historical hardcoded value as the no-arm-present fallback — see its doc. */
+function primaryArmOr(runs: TokenEconomyRun[], fallback: Arm = "gmesh"): Arm {
+  return primaryComparisonArm(runs) ?? fallback;
+}
+
+/**
  * Mean of one tool-call bucket over just the runs that recorded it, or null
  * when none did — see ArmAggregate's meanSearchToolCalls doc for why "unknown"
  * and "zero" must not collapse into the same number here.
@@ -238,15 +271,20 @@ export function pairedArmsTokenTotals(runs: TokenEconomyRun[], armA: Arm, armB: 
  * arm's own answer quality calls into question, so a token "win" can't be
  * hiding behind the other arm's oracle false-negative (or vice versa).
  *
- * Kept as its own gmesh/baseline-named function (rather than folded into
+ * Kept as its own headline-named function (rather than folded into
  * pairedArmsTokenTotals) because it is the headline number the existing
  * findings docs and report sections are written against; only its internals
  * are now shared. Runs from any third arm are ignored here, so the number is
  * unchanged by the existence of `gmesh-trusted`.
+ *
+ * The `totalGmesh` field name is historical: it carries whichever arm
+ * primaryComparisonArm() resolved, reported in `arm` so callers can label it
+ * honestly instead of always printing "gmesh".
  */
-export function pairedTokenTotals(runs: TokenEconomyRun[]): { totalGmesh: number; totalBaseline: number; pairCount: number } {
-  const { totalA, totalB, pairCount } = pairedTotals(runs, "gmesh", "baseline");
-  return { totalGmesh: totalA, totalBaseline: totalB, pairCount };
+export function pairedTokenTotals(runs: TokenEconomyRun[]): { arm: Arm; totalGmesh: number; totalBaseline: number; pairCount: number } {
+  const arm = primaryArmOr(runs);
+  const { totalA, totalB, pairCount } = pairedTotals(runs, arm, "baseline");
+  return { arm, totalGmesh: totalA, totalBaseline: totalB, pairCount };
 }
 
 /**
@@ -330,6 +368,8 @@ export function computeCorrectnessTable(runs: TokenEconomyRun[]): CorrectnessRow
 
 export interface CategoryTokenRow {
   category: string;
+  /** Which arm `gmeshMeanTokens` belongs to — see primaryComparisonArm; the field name is historical. */
+  arm: Arm;
   gmeshMeanTokens: number;
   baselineMeanTokens: number;
   savingsPct: number;
@@ -337,7 +377,8 @@ export interface CategoryTokenRow {
 }
 
 /**
- * Paired gmesh-vs-baseline token savings by category — same pairing
+ * Paired primary-arm-vs-baseline token savings by category (see
+ * primaryComparisonArm for which arm that is) — same pairing
  * discipline as pairedTokenTotals/pairedArmsTokenTotals (only (taskId,
  * repetition) pairs where both arms ran ok AND passed oracle, summed then
  * divided by pairCount), just scoped to one category's runs at a time instead
@@ -349,14 +390,19 @@ export interface CategoryTokenRow {
  */
 export function computeCategoryTokenTable(runs: TokenEconomyRun[]): CategoryTokenRow[] {
   const categories = [...new Set(runs.map((r) => r.category ?? UNCATEGORIZED))].sort();
+  // Resolved once over the whole run set, not per category: a category that
+  // happens to lack the primary arm must drop out (pairCount 0), never quietly
+  // fall back to a different arm than the rows around it.
+  const arm = primaryArmOr(runs);
 
   const rows: CategoryTokenRow[] = [];
   for (const category of categories) {
     const categoryRuns = runs.filter((r) => (r.category ?? UNCATEGORIZED) === category);
-    const paired = pairedArmsTokenTotals(categoryRuns, "gmesh", "baseline");
+    const paired = pairedArmsTokenTotals(categoryRuns, arm, "baseline");
     if (paired.pairCount === 0) continue;
     rows.push({
       category,
+      arm,
       gmeshMeanTokens: paired.totalA / paired.pairCount,
       baselineMeanTokens: paired.totalB / paired.pairCount,
       savingsPct: paired.totalB > 0 ? ((paired.totalB - paired.totalA) / paired.totalB) * 100 : 0,
@@ -377,7 +423,7 @@ export interface CategoryTokenBreakdownRow {
 }
 
 /**
- * Same category x gmesh/baseline pairing as computeCategoryTokenTable, but
+ * Same category x primary-arm/baseline pairing as computeCategoryTokenTable, but
  * broken into the four token fields tokensSpent() sums together instead of
  * the summed total. The sum hides real mechanism: on "lookup", gmesh pays
  * more in BOTH cacheCreate and cacheRead (a fixed schema tax with nothing
@@ -400,22 +446,25 @@ export interface CategoryTokenBreakdownRow {
 export function computeCategoryTokenBreakdown(runs: TokenEconomyRun[]): CategoryTokenBreakdownRow[] {
   const categories = [...new Set(runs.map((r) => r.category ?? UNCATEGORIZED))].sort();
   const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
+  // Same whole-run-set resolution as computeCategoryTokenTable, so the two
+  // tables never end up describing different arms for the same category.
+  const primaryArm = primaryArmOr(runs);
 
   const rows: CategoryTokenBreakdownRow[] = [];
   for (const category of categories) {
     const categoryRuns = runs.filter((r) => (r.category ?? UNCATEGORIZED) === category);
-    const { pairs } = pairedRuns(categoryRuns, "gmesh", "baseline");
+    const { pairs } = pairedRuns(categoryRuns, primaryArm, "baseline");
     if (pairs.length === 0) continue;
 
-    const gmeshRuns = pairs.map((p) => p.a);
+    const primaryRuns = pairs.map((p) => p.a);
     const baselineRuns = pairs.map((p) => p.b);
     rows.push({
       category,
-      arm: "gmesh",
-      meanInputTokens: mean(gmeshRuns.map((r) => r.inputTokens)),
-      meanOutputTokens: mean(gmeshRuns.map((r) => r.outputTokens)),
-      meanCacheCreationTokens: mean(gmeshRuns.map((r) => r.cacheCreationTokens)),
-      meanCacheReadTokens: mean(gmeshRuns.map((r) => r.cacheReadTokens)),
+      arm: primaryArm,
+      meanInputTokens: mean(primaryRuns.map((r) => r.inputTokens)),
+      meanOutputTokens: mean(primaryRuns.map((r) => r.outputTokens)),
+      meanCacheCreationTokens: mean(primaryRuns.map((r) => r.cacheCreationTokens)),
+      meanCacheReadTokens: mean(primaryRuns.map((r) => r.cacheReadTokens)),
       pairCount: pairs.length,
     });
     rows.push({
@@ -507,6 +556,8 @@ export function computeTaskTable(runs: TokenEconomyRun[]): TaskRow[] {
 
 export interface Aggregate {
   taskCount: number;
+  /** Which arm every `*Gmesh*` field below describes — see primaryComparisonArm; those field names are historical. */
+  arm: Arm;
   totalGmeshTokens: number;
   totalBaselineTokens: number;
   unconditionalReductionPct: number;
@@ -518,6 +569,7 @@ export interface Aggregate {
 
 export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
   const taskTable = computeTaskTable(runs);
+  const arm = primaryArmOr(runs);
 
   let taskCount = 0;
   let totalGmeshTokens = 0;
@@ -527,18 +579,19 @@ export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
   let baselineOracleOk = 0;
   let baselineOracleTotal = 0;
 
-  // Deliberately gmesh-vs-baseline only: this is the headline comparison the
-  // findings docs are written against, and folding a third arm into these
-  // totals would silently change what "unconditional reduction" means.
+  // Deliberately two-arm only (primary vs baseline): this is the headline
+  // comparison the findings docs are written against, and folding a third arm
+  // into these totals would silently change what "unconditional reduction"
+  // means.
   for (const row of taskTable) {
-    const gmesh = taskRowCell(row, "gmesh")?.agg;
+    const primary = taskRowCell(row, arm)?.agg;
     const baseline = taskRowCell(row, "baseline")?.agg;
-    if (gmesh && baseline) {
+    if (primary && baseline) {
       taskCount++;
-      totalGmeshTokens += gmesh.meanTokens;
+      totalGmeshTokens += primary.meanTokens;
       totalBaselineTokens += baseline.meanTokens;
-      gmeshOracleOk += gmesh.passCount;
-      gmeshOracleTotal += gmesh.okCount;
+      gmeshOracleOk += primary.passCount;
+      gmeshOracleTotal += primary.okCount;
       baselineOracleOk += baseline.passCount;
       baselineOracleTotal += baseline.okCount;
     }
@@ -549,6 +602,7 @@ export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
 
   return {
     taskCount,
+    arm,
     totalGmeshTokens,
     totalBaselineTokens,
     unconditionalReductionPct,
@@ -559,30 +613,43 @@ export function computeAggregate(runs: TokenEconomyRun[]): Aggregate {
   };
 }
 
-/** Per-task paired mean tokens (gmesh vs baseline), restricted to oraclePassed:true pairs for that task only. */
-function perTaskPairedMeans(runs: TokenEconomyRun[], taskId: string): { gmeshMean: number; baselineMean: number; pairCount: number } | null {
+/**
+ * Per-task paired mean tokens (the primary comparison arm vs baseline),
+ * restricted to oraclePassed:true pairs for that task only. `primaryArm` is
+ * passed in rather than re-resolved per task so every bullet computeAnalysis
+ * emits describes the same arm, and so a task whose runs happen to omit that
+ * arm returns null instead of comparing a different one.
+ */
+function perTaskPairedMeans(
+  runs: TokenEconomyRun[],
+  taskId: string,
+  primaryArm: Arm,
+): { primaryMean: number; baselineMean: number; pairCount: number } | null {
   const taskRuns = runs.filter(
-    (r) => r.taskId === taskId && r.status === "ok" && (r.arm === "gmesh" || r.arm === "baseline"),
+    (r) => r.taskId === taskId && r.status === "ok" && (r.arm === primaryArm || r.arm === "baseline"),
   );
-  const byRep = new Map<number, { gmesh?: TokenEconomyRun; baseline?: TokenEconomyRun }>();
+  const byRep = new Map<number, { primary?: TokenEconomyRun; baseline?: TokenEconomyRun }>();
   for (const r of taskRuns) {
     const pair = byRep.get(r.repetition) ?? {};
-    pair[r.arm as "gmesh" | "baseline"] = r;
+    // primaryArm === "baseline" is impossible (primaryComparisonArm excludes
+    // it), so this branch can't overwrite the baseline side with itself.
+    if (r.arm === primaryArm) pair.primary = r;
+    else pair.baseline = r;
     byRep.set(r.repetition, pair);
   }
 
-  let gmeshTotal = 0;
+  let primaryTotal = 0;
   let baselineTotal = 0;
   let pairCount = 0;
-  for (const { gmesh, baseline } of byRep.values()) {
-    if (!gmesh || !baseline) continue;
-    if (!gmesh.oraclePassed || !baseline.oraclePassed) continue;
-    gmeshTotal += tokensSpent(gmesh);
+  for (const { primary, baseline } of byRep.values()) {
+    if (!primary || !baseline) continue;
+    if (!primary.oraclePassed || !baseline.oraclePassed) continue;
+    primaryTotal += tokensSpent(primary);
     baselineTotal += tokensSpent(baseline);
     pairCount++;
   }
   if (pairCount === 0) return null;
-  return { gmeshMean: gmeshTotal / pairCount, baselineMean: baselineTotal / pairCount, pairCount };
+  return { primaryMean: primaryTotal / pairCount, baselineMean: baselineTotal / pairCount, pairCount };
 }
 
 /**
@@ -598,6 +665,10 @@ export function computeAnalysis(
   paired: { totalGmesh: number; totalBaseline: number; pairCount: number },
 ): string[] {
   const bullets: string[] = [];
+  // Re-resolved from `runs` rather than read off `aggregate`/`paired`: all
+  // three derive from the same run set, and this keeps the bullets correct
+  // even if a caller hands in an aggregate computed elsewhere.
+  const primaryArm = primaryArmOr(runs);
 
   const pairedReductionPct = paired.totalBaseline > 0 ? ((paired.totalBaseline - paired.totalGmesh) / paired.totalBaseline) * 100 : null;
 
@@ -610,24 +681,25 @@ export function computeAnalysis(
     );
   }
 
-  // gmesh-vs-baseline divergence only — the gmesh-trusted comparison gets its
-  // own dedicated bullet below rather than being mixed into this one.
-  const byCategory = new Map<string, { gmesh?: CorrectnessRow; baseline?: CorrectnessRow }>();
+  // Primary-vs-baseline divergence only — the gmesh-trusted comparison gets
+  // its own dedicated bullet below rather than being mixed into this one.
+  const byCategory = new Map<string, { primary?: CorrectnessRow; baseline?: CorrectnessRow }>();
   for (const row of correctnessTable) {
-    if (row.arm !== "gmesh" && row.arm !== "baseline") continue;
+    if (row.arm !== primaryArm && row.arm !== "baseline") continue;
     const entry = byCategory.get(row.category) ?? {};
-    entry[row.arm] = row;
+    if (row.arm === primaryArm) entry.primary = row;
+    else entry.baseline = row;
     byCategory.set(row.category, entry);
   }
-  for (const [category, { gmesh, baseline }] of byCategory) {
-    if (!gmesh || !baseline) continue;
-    const gmeshPct = (gmesh.passed / gmesh.total) * 100;
+  for (const [category, { primary, baseline }] of byCategory) {
+    if (!primary || !baseline) continue;
+    const primaryPct = (primary.passed / primary.total) * 100;
     const baselinePct = (baseline.passed / baseline.total) * 100;
-    if (Math.abs(gmeshPct - baselinePct) >= 20) {
-      const winner = gmeshPct > baselinePct ? "gmesh" : "baseline";
+    if (Math.abs(primaryPct - baselinePct) >= 20) {
+      const winner = primaryPct > baselinePct ? primaryArm : "baseline";
       bullets.push(
-        `Category "${category}": oracle pass rates diverge by ${Math.abs(gmeshPct - baselinePct).toFixed(0)} points ` +
-          `(gmesh ${gmesh.passed}/${gmesh.total}, baseline ${baseline.passed}/${baseline.total}) — ${winner} passes ` +
+        `Category "${category}": oracle pass rates diverge by ${Math.abs(primaryPct - baselinePct).toFixed(0)} points ` +
+          `(${primaryArm} ${primary.passed}/${primary.total}, baseline ${baseline.passed}/${baseline.total}) — ${winner} passes ` +
           `substantially more often.`,
       );
     }
@@ -638,9 +710,12 @@ export function computeAnalysis(
     let matches = 0;
     const mismatches: string[] = [];
     for (const t of winnerTasks) {
-      const means = perTaskPairedMeans(runs, t.taskId);
+      const means = perTaskPairedMeans(runs, t.taskId, primaryArm);
       if (!means) continue;
-      const observedWinner = means.gmeshMean < means.baselineMean ? "gmesh" : "baseline";
+      // Compared against the literal "gmesh"/"baseline" of ExpectedWinner
+      // (types.ts): that field is the task author's hypothesis about g-mesh
+      // vs. plain grep/Read, not a claim about one specific g-mesh arm.
+      const observedWinner = means.primaryMean < means.baselineMean ? "gmesh" : "baseline";
       if (observedWinner === t.expectedWinner) {
         matches++;
       } else {
@@ -658,13 +733,13 @@ export function computeAnalysis(
 
   const parityTasks = taskTable.filter((t) => t.expectedWinner === "parity");
   for (const t of parityTasks) {
-    const means = perTaskPairedMeans(runs, t.taskId);
+    const means = perTaskPairedMeans(runs, t.taskId, primaryArm);
     if (!means || means.baselineMean === 0) continue;
-    const gap = Math.abs(means.gmeshMean - means.baselineMean) / means.baselineMean;
+    const gap = Math.abs(means.primaryMean - means.baselineMean) / means.baselineMean;
     if (gap > 0.25) {
       bullets.push(
         `Task "${t.taskId}" is declared expectedWinner:"parity" but its arms' mean tokens differ by ` +
-          `${(gap * 100).toFixed(0)}% (gmesh ${means.gmeshMean.toFixed(0)}, baseline ${means.baselineMean.toFixed(0)}) — ` +
+          `${(gap * 100).toFixed(0)}% (${primaryArm} ${means.primaryMean.toFixed(0)}, baseline ${means.baselineMean.toFixed(0)}) — ` +
           `an unexpected asymmetry worth a second look.`,
       );
     }
@@ -728,10 +803,10 @@ export function computeAnalysis(
   const overallGmeshPct = aggregate.gmeshOracleTotal > 0 ? (aggregate.gmeshOracleOk / aggregate.gmeshOracleTotal) * 100 : null;
   const overallBaselinePct = aggregate.baselineOracleTotal > 0 ? (aggregate.baselineOracleOk / aggregate.baselineOracleTotal) * 100 : null;
   bullets.push(
-    `Bottom line: across ${aggregate.taskCount} compared tasks, gmesh used ${aggregate.unconditionalReductionPct.toFixed(1)}% ` +
+    `Bottom line: across ${aggregate.taskCount} compared tasks, ${primaryArm} used ${aggregate.unconditionalReductionPct.toFixed(1)}% ` +
       `fewer tokens (unconditional)` +
       (pairedReductionPct !== null ? `, ${pairedReductionPct.toFixed(1)}% fewer paired (n=${paired.pairCount})` : "") +
-      `. Oracle pass rate — gmesh: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}` +
+      `. Oracle pass rate — ${primaryArm}: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}` +
       (overallGmeshPct !== null ? ` (${overallGmeshPct.toFixed(0)}%)` : "") +
       `, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}` +
       (overallBaselinePct !== null ? ` (${overallBaselinePct.toFixed(0)}%)` : "") +
