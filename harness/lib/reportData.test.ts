@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { TokenEconomyRun } from "../token-economy.js";
-import { computeCategoryTokenBreakdown, UNCATEGORIZED } from "./reportData.js";
+import { aggregateGroup, computeCategoryTokenBreakdown, UNCATEGORIZED } from "./reportData.js";
 import type { Arm } from "./types.js";
 
 /**
@@ -27,6 +27,10 @@ function run(overrides: {
   cacheCreationTokens?: number;
   status?: TokenEconomyRun["status"];
   oraclePassed?: boolean;
+  numTurns?: number;
+  searchToolCalls?: number;
+  editToolCalls?: number;
+  otherToolCalls?: number;
 }): TokenEconomyRun {
   return {
     taskId: overrides.taskId ?? `task-${seq++}`,
@@ -41,7 +45,10 @@ function run(overrides: {
     outputTokens: overrides.outputTokens ?? 0,
     cacheReadTokens: overrides.cacheReadTokens ?? 0,
     cacheCreationTokens: overrides.cacheCreationTokens ?? 0,
-    numTurns: 1,
+    numTurns: overrides.numTurns ?? 1,
+    searchToolCalls: overrides.searchToolCalls,
+    editToolCalls: overrides.editToolCalls,
+    otherToolCalls: overrides.otherToolCalls,
     durationMs: 1,
     costUsd: 0,
     judgeCostUsd: 0,
@@ -117,4 +124,50 @@ test("categories are independent: pairing in one category never borrows runs fro
   const multiHopBaseline = rows.find((r) => r.category === "multi-hop" && r.arm === "baseline")!;
   assert.equal(multiHopBaseline.meanCacheCreationTokens, 18000);
   assert.equal(multiHopBaseline.meanCacheReadTokens, 0);
+});
+
+// --- aggregateGroup: turn / tool-call means ---------------------------------
+
+test("means turns and each tool-call bucket over a group's ok runs", () => {
+  const agg = aggregateGroup("t1", "gmesh-configured", [
+    run({ taskId: "t1", arm: "gmesh-configured", numTurns: 10, searchToolCalls: 8, editToolCalls: 2, otherToolCalls: 0 }),
+    run({ taskId: "t1", arm: "gmesh-configured", numTurns: 6, searchToolCalls: 4, editToolCalls: 0, otherToolCalls: 0 }),
+  ])!;
+
+  assert.equal(agg.meanNumTurns, 8);
+  assert.equal(agg.meanSearchToolCalls, 6);
+  assert.equal(agg.meanEditToolCalls, 1);
+  assert.equal(agg.meanOtherToolCalls, 0);
+});
+
+test("a non-ok run is excluded from the turn and tool-call means, same as from the token means", () => {
+  const agg = aggregateGroup("t1", "gmesh-configured", [
+    run({ taskId: "t1", arm: "gmesh-configured", numTurns: 4, searchToolCalls: 4 }),
+    run({ taskId: "t1", arm: "gmesh-configured", numTurns: 40, searchToolCalls: 40, status: "budget_exceeded" }),
+  ])!;
+
+  assert.equal(agg.meanNumTurns, 4);
+  assert.equal(agg.meanSearchToolCalls, 4);
+});
+
+test("tool-call means are null, not 0, for runs recorded before the harness counted tool calls", () => {
+  // "unknown" and "made no search calls" are different claims; a historical
+  // cell must not assert the second one.
+  const agg = aggregateGroup("t1", "gmesh", [run({ taskId: "t1", arm: "gmesh", numTurns: 5 })])!;
+
+  assert.equal(agg.meanNumTurns, 5);
+  assert.equal(agg.meanSearchToolCalls, null);
+  assert.equal(agg.meanEditToolCalls, null);
+  assert.equal(agg.meanOtherToolCalls, null);
+});
+
+test("a group mixing pre- and post-instrumentation runs means only the runs that recorded a tally", () => {
+  // Averaging the older runs in as 0 would understate the real figure by
+  // exactly the share of history in the group.
+  const agg = aggregateGroup("t1", "gmesh", [
+    run({ taskId: "t1", arm: "gmesh", numTurns: 9 }),
+    run({ taskId: "t1", arm: "gmesh", numTurns: 9, searchToolCalls: 7, editToolCalls: 0, otherToolCalls: 0 }),
+  ])!;
+
+  assert.equal(agg.meanSearchToolCalls, 7);
 });

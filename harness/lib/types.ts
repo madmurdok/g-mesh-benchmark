@@ -35,10 +35,26 @@ export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu" | "gmesh-con
 
 /**
  * Fixed presentation order for arms in every table, chart and legend.
- * `gmesh`/`baseline` stay first so reports built from pre-`gmesh-trusted`
- * history render exactly as they did before that arm existed.
+ *
+ * `gmesh-configured` leads because it is the default primary arm — g-mesh as
+ * anyone actually runs it, with the CLAUDE.md guidance in place — and
+ * `baseline` follows it as the thing it is being compared against. Bare
+ * `gmesh` (now opt-in via G_MESH_BENCH_INCLUDE_BARE_GMESH) keeps third place
+ * so a report built purely from pre-swap history still renders gmesh/baseline
+ * in their old relative order, then the remaining opt-in arms.
+ *
+ * Both `*-configured` arms were missing from this list entirely until the
+ * swap; they rendered via armsPresent()'s unknown-arms-last fallback, i.e.
+ * always last regardless of what they were. Listing them fixes that.
  */
-export const ARM_ORDER: readonly Arm[] = ["gmesh", "baseline", "gmesh-trusted", "kungfu"];
+export const ARM_ORDER: readonly Arm[] = [
+  "gmesh-configured",
+  "baseline",
+  "gmesh",
+  "gmesh-trusted",
+  "kungfu",
+  "kungfu-configured",
+];
 
 export interface CorpusEntry {
   id: string;

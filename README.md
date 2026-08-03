@@ -29,6 +29,11 @@ Tracks three metrics, kept strictly separate — never merged into one report:
   `session-<timestamp>.html` the same way. `npm run report` additionally writes
   `results/html/cumulative.html` (and `session-cumulative.html` for
   `npm run report -- session-economy`), overwritten every run (gitignored, not kept).
+  Its per-task table reports each arm's mean turns split by what the turns were
+  spent on — `8.0 (6.0 search, 2.0 edit)` — since on `implementation` tasks a raw
+  turn count mixes navigation (the thing g-mesh is supposed to cut) with editing
+  (the same job either way). Runs recorded before the harness parsed per-turn tool
+  names show the bare turn count instead of a misleading 0.
 
 ## Running an experiment
 
@@ -44,6 +49,14 @@ npm run report          # aggregate whichever results/<experiment>/ you point it
 (`cd ../g-mesh/core && cargo build --release`,
 `cd ../g-mesh/plugins/js-ts && npm install && npm run build`) and spends real API
 tokens per run — see the design doc's failure-modes section for budget caps.
+
+A default `token-economy` run compares two arms: **`gmesh-configured`** — g-mesh's
+MCP tools plus the CLAUDE.md guidance an actual project would have, written into a
+throwaway clone and auto-loaded by Claude Code — against **`baseline`**
+(Read/Grep/Glob only). The configured arm is the default on purpose: the benchmark's
+claim is about g-mesh as it is really used, and nobody ships it with no guidance at
+all. Bare `gmesh` (the tools, no CLAUDE.md) is still available, now as an opt-in
+extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
 
 `token-economy` also supports:
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
@@ -68,6 +81,14 @@ tokens per run — see the design doc's failure-modes section for budget caps.
   call generating a plain-English summary paragraph for the HTML report
   (default `yes`; `no` skips the call entirely, no spend). Applies to both
   `token-economy` (per-run report) and `report` (cumulative report).
+- `G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no` — also run the bare `gmesh` arm
+  (default `no`): g-mesh's tools with no CLAUDE.md guidance at all. It was the
+  default primary arm until `gmesh-configured` took over, so turn it on to
+  reproduce the old bare-vs-baseline comparison, or to measure what the
+  CLAUDE.md guidance is itself worth by running bare and configured side by
+  side. Adds a full extra run per (task, repetition). (Replaces the former
+  `G_MESH_BENCH_INCLUDE_CONFIGURED`, which gated the arm that is now the
+  default.)
 - `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — also run a third `gmesh-trusted` arm
   (default `no`): the same MCP config and tool list as `gmesh`, plus a
   harness-injected instruction not to re-verify g-mesh's results by hand. It

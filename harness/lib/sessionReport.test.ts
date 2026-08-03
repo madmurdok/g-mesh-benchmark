@@ -149,8 +149,13 @@ test("rows are grouped per arm and sorted by corpus, then arm order, then positi
     run({ corpusId: "c", arm: "gmesh", sequenceIndex: 1, sessionLength: 2, cacheCreationTokens: 8 }),
   ]);
 
+  // Arm order is ARM_ORDER's, not this fixture's insertion order — and
+  // ARM_ORDER now leads with the primary arm (`gmesh-configured`) followed by
+  // `baseline`, which puts bare `gmesh` after baseline rather than before it.
+  // The assertion here is "grouped by arm, in ARM_ORDER, positions ascending";
+  // the specific pair is incidental.
   assert.deepEqual(
     rows.map((r) => `${r.arm}:${r.sequenceIndex}`),
-    ["gmesh:1", "gmesh:2", "baseline:1", "baseline:2"],
+    ["baseline:1", "baseline:2", "gmesh:1", "gmesh:2"],
   );
 });
