@@ -3,6 +3,7 @@ import { writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadBenchConfig } from "./benchConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -88,7 +89,7 @@ export function buildTranscriptLabel(corpusId: string, taskId: string, arm: stri
  */
 export function shouldSaveTranscripts(): boolean {
   const envOverride = process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
-  if (envOverride === undefined) return false;
+  if (envOverride === undefined) return loadBenchConfig().runClaude.saveTranscripts;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;

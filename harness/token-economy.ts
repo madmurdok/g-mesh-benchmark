@@ -13,6 +13,7 @@ import {
   armPrompt,
   armTools,
 } from "./lib/armConfig.js";
+import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
@@ -133,7 +134,7 @@ type RepetitionMode = keyof typeof REPETITION_PRESETS;
  * for a quick sanity check, not for trusting the resulting numbers.
  */
 function repetitionCount(): number {
-  const raw = process.env.G_MESH_BENCH_REPS ?? "normal";
+  const raw = process.env.G_MESH_BENCH_REPS ?? loadBenchConfig().tokenEconomy.repetitions;
   const normalized = raw.trim().toLowerCase();
   if (normalized in REPETITION_PRESETS) return REPETITION_PRESETS[normalized as RepetitionMode];
   throw new Error(`Invalid G_MESH_BENCH_REPS value "${raw}"; expected "low", "normal", or "max".`);
@@ -180,7 +181,7 @@ type ExcalidrawScopeMode = keyof typeof EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS;
  * one rather than zero.
  */
 export function excalidrawImplementationScope(): readonly string[] {
-  const raw = process.env.G_MESH_BENCH_EXCALIDRAW_SCOPE ?? "low";
+  const raw = process.env.G_MESH_BENCH_EXCALIDRAW_SCOPE ?? loadBenchConfig().tokenEconomy.excalidrawScope;
   const normalized = raw.trim().toLowerCase();
   if (normalized in EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS) {
     return EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS[normalized as ExcalidrawScopeMode];
@@ -342,7 +343,7 @@ async function runArm(
  */
 function shouldGenerateNarrative(): boolean {
   const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
-  if (envOverride === undefined) return true;
+  if (envOverride === undefined) return loadBenchConfig().tokenEconomy.htmlNarrative;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
@@ -444,6 +445,12 @@ async function shouldWarmCache(): Promise<boolean> {
     if (["no", "n", "false"].includes(normalized)) return false;
     throw new Error(`Invalid G_MESH_BENCH_WARM_CACHE value "${envOverride}"; expected "yes" or "no".`);
   }
+
+  // Config's warmCache short-circuits exactly like the env var would when set
+  // to a real boolean; "prompt" (the default) falls through to today's
+  // existing TTY-check-then-readline behavior unchanged.
+  const configured = loadBenchConfig().tokenEconomy.warmCache;
+  if (typeof configured === "boolean") return configured;
 
   if (!process.stdin.isTTY) {
     console.log(
@@ -595,11 +602,13 @@ async function main() {
   // actually runs it without the CLAUDE.md guidance. Bare gmesh is opt-in (see
   // shouldIncludeBareGmeshArm). Every other arm stays opt-in as before, so the
   // extra-arm warning below is still only ever logged when a flag is on.
-  const arms: Arm[] = ["gmesh-configured", "baseline"];
-  if (includeBareGmesh) arms.push("gmesh");
-  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
-  if (includeKungfu) arms.push("kungfu");
-  if (includeKungfuConfigured) arms.push("kungfu-configured");
+  const baseArms = loadBenchConfig().tokenEconomy.arms;
+  const toInclude: Arm[] = [];
+  if (includeBareGmesh) toInclude.push("gmesh");
+  if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
+  if (includeKungfu) toInclude.push("kungfu");
+  if (includeKungfuConfigured) toInclude.push("kungfu-configured");
+  const arms = applyArmIncludeOverrides(baseArms, toInclude);
   if (arms.length > 2) {
     console.log(
       `Arms per (task, rep): ${arms.join(", ")}. Extra arms are full extra runs of every task: ` +

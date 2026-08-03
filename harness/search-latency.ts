@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadBenchConfig } from "./lib/benchConfig.js";
 import { resolveWarm } from "./lib/corpusResolver.js";
 import { connectMcpClient } from "./lib/mcpClient.js";
 import { gmeshBinaryPath } from "./lib/mcpConfig.js";
@@ -48,7 +49,7 @@ const SYMBOL_TOOLS = new Set<ToolName>([
  */
 function sampleCount(): number {
   const raw = process.env.G_MESH_BENCH_SEARCH_SAMPLES;
-  if (raw === undefined) return 20;
+  if (raw === undefined) return loadBenchConfig().searchLatency.samples;
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) {
     throw new Error(`Invalid G_MESH_BENCH_SEARCH_SAMPLES value "${raw}"; expected a positive integer.`);

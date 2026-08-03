@@ -35,6 +35,43 @@ Tracks three metrics, kept strictly separate — never merged into one report:
   (the same job either way). Runs recorded before the harness parsed per-turn tool
   names show the bare turn count instead of a misleading 0.
 
+## Configuration
+
+Runtime defaults (default arms, repetition/scope presets, narrative/warm-cache/
+transcript gates, search sample count) live in a checked-in
+`g-mesh-bench.config.json` at the repo root instead of being hardcoded per
+script. Precedence: **env var (if set) > config file value (if present) >
+hardcoded default (if the file is absent or a field is omitted)**. A repo with
+no config file at all behaves byte-identically to today — `loadBenchConfig()`
+(see `harness/lib/benchConfig.ts`) falls back to its own `DEFAULT_CONFIG`
+verbatim.
+
+```json
+{
+  "tokenEconomy": {
+    "arms": ["gmesh-configured", "baseline"],
+    "repetitions": "normal",
+    "excalidrawScope": "low",
+    "htmlNarrative": true,
+    "warmCache": "prompt"
+  },
+  "sessionEconomy": {
+    "arms": ["gmesh", "baseline"],
+    "repetitions": "normal"
+  },
+  "searchLatency": { "samples": 20 },
+  "report": { "htmlNarrative": true },
+  "runClaude": { "saveTranscripts": false }
+}
+```
+
+`tokenEconomy.arms`/`sessionEconomy.arms` are each experiment's default arm
+list; the `G_MESH_BENCH_INCLUDE_*` toggles below still work exactly as before,
+additively appending an arm to whichever list the config resolves to rather
+than replacing it. `G_MESH_BENCH_BINARY`/`G_MESH_BENCH_KUNGFU_BINARY` are
+deliberately **not** part of this file — both are absolute, machine-local
+filesystem paths, so they stay env-only (see `harness/lib/mcpConfig.ts`).
+
 ## Running an experiment
 
 ```bash
@@ -60,10 +97,15 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
 
 `token-economy` also supports:
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
+  Default now comes from `g-mesh-bench.config.json`'s `tokenEconomy.repetitions`; the env
+  var still overrides it per-run.
 - `npm run token-economy -- <taskId...>` — run only the named task(s) instead of the
   full registry, e.g. `npm run token-economy -- ex-find-impl-trail-crossfile`.
 - `G_MESH_BENCH_WARM_CACHE=yes|no` — skip the interactive cache warm-up prompt
-  for scripted/CI invocations.
+  for scripted/CI invocations. Default now comes from `g-mesh-bench.config.json`'s
+  `tokenEconomy.warmCache` (`true`/`false` skip the prompt the same way the env var
+  would; `"prompt"`, the default, keeps today's interactive behavior); the env var
+  still overrides it per-run.
 - `G_MESH_BENCH_EXCALIDRAW_SCOPE=low|normal|high` — how many of excalidraw's
   three `implementation` tasks a full registry run covers: 1/2/3, cheapest
   first (default `low`). Two separate costs motivate it. Every
@@ -76,11 +118,17 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
   grading, so including it can spend real money for no signal. Naming tasks
   explicitly (`npm run token-economy -- ex-implement-library-dedup`) bypasses
   this, as it bypasses every other default; task-tracker-mcp's own
-  `implementation` task installs in ~11s and is never gated.
+  `implementation` task installs in ~11s and is never gated. Default preset now
+  comes from `g-mesh-bench.config.json`'s `tokenEconomy.excalidrawScope`; the
+  env var still overrides it per-run.
 - `G_MESH_BENCH_HTML_NARRATIVE=yes|no` — whether to spend one extra cheap-model
   call generating a plain-English summary paragraph for the HTML report
   (default `yes`; `no` skips the call entirely, no spend). Applies to both
-  `token-economy` (per-run report) and `report` (cumulative report).
+  `token-economy` (per-run report) and `report` (cumulative report). Default now
+  comes from `g-mesh-bench.config.json`'s `tokenEconomy.htmlNarrative` (for
+  `token-economy`) and `report.htmlNarrative` (for `report` — a separate field
+  on purpose, see the Configuration section above); the env var still overrides
+  either per-run.
 - `G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no` — also run the bare `gmesh` arm
   (default `no`): g-mesh's tools with no CLAUDE.md guidance at all. It was the
   default primary arm until `gmesh-configured` took over, so turn it on to
@@ -88,7 +136,9 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
   CLAUDE.md guidance is itself worth by running bare and configured side by
   side. Adds a full extra run per (task, repetition). (Replaces the former
   `G_MESH_BENCH_INCLUDE_CONFIGURED`, which gated the arm that is now the
-  default.)
+  default.) The gate itself is unchanged; it now appends onto whichever arm
+  list `g-mesh-bench.config.json`'s `tokenEconomy.arms` resolves to, rather
+  than onto a hardcoded literal.
 - `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — also run a third `gmesh-trusted` arm
   (default `no`): the same MCP config and tool list as `gmesh`, plus a
   harness-injected instruction not to re-verify g-mesh's results by hand. It
@@ -98,6 +148,8 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
   the multi-hop self-verification pattern" for the investigation that motivated
   it. Adds a full third run per (task, repetition), so budget ~1.5x the usual
   API spend; with the flag off, nothing about the run or the report changes.
+  Same "appends onto the config-driven arm list" note as
+  `G_MESH_BENCH_INCLUDE_BARE_GMESH` above applies here too.
 - `G_MESH_BENCH_INCLUDE_KUNGFU=yes|no` — also run a `kungfu` arm (default `no`):
   a third-party code-intelligence MCP server
   ([denyzhirkov/kungfu](https://github.com/denyzhirkov/kungfu)), restricted to
@@ -106,7 +158,8 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
   exact mapping and its two documented gaps: no reference-graph tool distinct
   from the call graph, and no interface-implementation tool at all). Requires
   `kungfu` on PATH (or `G_MESH_BENCH_KUNGFU_BINARY` pointed at it); adds a full
-  extra run per (task, repetition).
+  extra run per (task, repetition). Same "appends onto the config-driven arm
+  list" note applies here too.
 
 ### `session-economy` — the same comparison, amortized instead of isolated
 
@@ -140,13 +193,17 @@ npm run report -- session-economy              # cumulative report across past r
 - `G_MESH_BENCH_SESSION_REPS=low|normal|max` — independent chains per (corpus,
   arm): 1/2/3 (default `normal`). Deliberately a *separate* variable from
   `G_MESH_BENCH_REPS`, with smaller presets: one repetition here costs a whole
-  chain (5 or 15 calls per arm), not a single call.
+  chain (5 or 15 calls per arm), not a single call. Default now comes from
+  `g-mesh-bench.config.json`'s `sessionEconomy.repetitions`; the env var still
+  overrides it per-run.
 - `npm run session-economy -- <corpusId...>` — run only the named corpus/corpora.
   Corpus-level only, never a task subset: a chain's premise is one realistic
   session over that codebase's whole question list, so an arbitrary subset would
   change what a sequence position means.
 - `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — same third `gmesh-trusted` arm as above
   (default `no`); here it adds a whole extra chain per (corpus, repetition).
+  Appends onto whichever arm list `g-mesh-bench.config.json`'s
+  `sessionEconomy.arms` resolves to, same as `token-economy`'s toggles above.
 - `G_MESH_BENCH_BINARY` — path to the g-mesh binary, same as `token-economy`.
 - No cache warm-up knob (unlike `token-economy`'s `G_MESH_BENCH_WARM_CACHE`) and
   no narrative call: pre-warming would hide exactly the curve this experiment
