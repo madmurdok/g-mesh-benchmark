@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadBenchConfig } from "./lib/benchConfig.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { generateNarrative } from "./lib/narrative.js";
 import {
@@ -53,7 +54,7 @@ async function buildCurrentHashByTaskId(): Promise<Map<string, string>> {
  */
 function shouldGenerateNarrative(): boolean {
   const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
-  if (envOverride === undefined) return true;
+  if (envOverride === undefined) return loadBenchConfig().report.htmlNarrative;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;

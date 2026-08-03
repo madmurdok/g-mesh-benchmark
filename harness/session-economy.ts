@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
+import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import { resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
@@ -97,7 +98,7 @@ type SessionRepetitionMode = keyof typeof SESSION_REPETITION_PRESETS;
  * Presets are correspondingly smaller: 1/2/3.
  */
 function sessionRepetitionCount(): number {
-  const raw = process.env.G_MESH_BENCH_SESSION_REPS ?? "normal";
+  const raw = process.env.G_MESH_BENCH_SESSION_REPS ?? loadBenchConfig().sessionEconomy.repetitions;
   const normalized = raw.trim().toLowerCase();
   if (normalized in SESSION_REPETITION_PRESETS) {
     return SESSION_REPETITION_PRESETS[normalized as SessionRepetitionMode];
@@ -355,9 +356,11 @@ async function main() {
   const corpora = selectedCorpusIds.length > 0 ? registry.filter((c) => selectedCorpusIds.includes(c.id)) : registry;
 
   const reps = sessionRepetitionCount();
-  const arms: Arm[] = ["gmesh", "baseline"];
-  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
-  if (includeKungfu) arms.push("kungfu");
+  const baseArms = loadBenchConfig().sessionEconomy.arms;
+  const toInclude: Arm[] = [];
+  if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
+  if (includeKungfu) toInclude.push("kungfu");
+  const arms = applyArmIncludeOverrides(baseArms, toInclude);
   console.log(
     `Chains per (corpus, arm): ${reps} | arms: ${arms.join(", ")} | corpora: ${corpora.map((c) => c.id).join(", ")}`,
   );
