@@ -20,7 +20,7 @@ import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
-import { runClaude } from "./lib/runClaude.js";
+import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
@@ -283,6 +283,7 @@ async function runArm(
     disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
+    transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, repetition),
   });
   // Grading a failed arm run is pointless and, in judge mode, not free:
   // runClaude returns an empty resultText for both "error" and
