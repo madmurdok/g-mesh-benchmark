@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
-import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { McpServerConfig } from "./mcpConfig.js";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export interface RunClaudeOptions {
   cwd: string;
@@ -46,6 +49,84 @@ export interface RunClaudeOptions {
    * (unlike resumeSessionId/--resume above).
    */
   disallowedTools?: string;
+
+  /**
+   * Identifies this run for the raw transcript file saved under
+   * `results/transcripts/<run-timestamp>/<transcriptLabel>.ndjson` — see
+   * `buildTranscriptLabel()` below for the `<corpusId>-<taskId>-<arm>-rep<N>`
+   * format every caller uses to build it.
+   *
+   * Only takes effect when `G_MESH_BENCH_SAVE_TRANSCRIPTS=yes` (see
+   * `shouldSaveTranscripts()`); omitted (the default, and what a plain
+   * warm-up call in token-economy.ts/session-economy.ts does) means this run
+   * is never saved even when the env var is on — a cache warm-up isn't a
+   * measurement worth keeping a transcript of, so callers simply don't build
+   * a label for it.
+   */
+  transcriptLabel?: string;
+}
+
+/**
+ * Builds the `<corpusId>-<taskId>-<arm>-rep<N>` label every caller uses for
+ * `RunClaudeOptions.transcriptLabel`, so token-economy.ts's runArm() and
+ * session-economy.ts's runSessionChain() format it identically rather than
+ * each hand-rolling the same template string.
+ */
+export function buildTranscriptLabel(corpusId: string, taskId: string, arm: string, repetition: number): string {
+  return `${corpusId}-${taskId}-${arm}-rep${repetition}`;
+}
+
+/**
+ * G_MESH_BENCH_SAVE_TRANSCRIPTS=yes|no gates writing each run's raw
+ * `--output-format stream-json` NDJSON stdout to disk (see `saveTranscript`
+ * below). Default no: the stdout this harness already produces is otherwise
+ * discarded right after parseStreamJson() tallies it, so an unattended
+ * multi-hundred-run benchmark would otherwise silently start writing one
+ * NDJSON file per (task, arm, repetition) — a lot of disk for something only
+ * needed when actually debugging a specific run. Same parsing style as
+ * token-economy.ts's shouldWarmCache()/shouldIncludeTrustedArm() and friends.
+ */
+export function shouldSaveTranscripts(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_SAVE_TRANSCRIPTS value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * One shared timestamp for every transcript a single process invocation
+ * saves — computed lazily (on the first run that actually needs one) rather
+ * than at module load, so a benchmark run with the env var off never touches
+ * the clock for this at all. Mirrors the existing `results/<experiment>/
+ * <timestamp>.json` convention (one timestamp per script invocation), just
+ * computed here instead of threaded down from token-economy.ts/
+ * session-economy.ts's own `main()` — the two won't be byte-identical, but
+ * both are taken within the same benchmark run and that's all a debugging
+ * transcript directory needs to be traceable.
+ */
+let transcriptRunTimestamp: string | undefined;
+function transcriptDirName(): string {
+  if (transcriptRunTimestamp === undefined) {
+    transcriptRunTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  }
+  return transcriptRunTimestamp;
+}
+
+/**
+ * Writes one run's raw stream-json stdout to
+ * `results/transcripts/<run-timestamp>/<label>.ndjson` — the one place in
+ * this harness that still has the raw NDJSON before parseStreamJson()
+ * discards everything but the tool-name tally. Not unit-tested against a
+ * real filesystem (same bar this codebase already applies to other real I/O,
+ * e.g. corpusResolver.ts's cloneAt/cloneLocal); shouldSaveTranscripts() and
+ * buildTranscriptLabel() above are the pure, testable parts.
+ */
+async function saveTranscript(label: string, stdout: string): Promise<void> {
+  const dir = path.join(ROOT, "results/transcripts", transcriptDirName());
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, `${label}.ndjson`), stdout);
 }
 
 /**
@@ -273,6 +354,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       child.on("error", reject);
       child.on("close", () => resolve(out));
     });
+
+    if (opts.transcriptLabel !== undefined && shouldSaveTranscripts()) {
+      await saveTranscript(opts.transcriptLabel, stdout);
+    }
 
     const { result: parsed, toolCalls } = parseStreamJson(stdout);
     // No result event anywhere in the stream — same failure as an unparseable

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyToolCall, parseStreamJson } from "./runClaude.js";
+import { buildTranscriptLabel, classifyToolCall, parseStreamJson, shouldSaveTranscripts } from "./runClaude.js";
 
 /**
  * Covers the `--output-format stream-json` parsing/tallying without spending
@@ -179,4 +179,50 @@ test("classifies anything outside those sets as other rather than silently dropp
   assert.equal(classifyToolCall("Task"), "other");
   // Not a substring match: only the `mcp__` *prefix* counts as an MCP tool.
   assert.equal(classifyToolCall("NotAnMcp__thing"), "other");
+});
+
+test("builds the corpusId-taskId-arm-repN transcript label callers pass through", () => {
+  assert.equal(
+    buildTranscriptLabel("task-tracker-mcp", "implement-foo", "gmesh-configured", 2),
+    "task-tracker-mcp-implement-foo-gmesh-configured-rep2",
+  );
+});
+
+test("shouldSaveTranscripts defaults to false when G_MESH_BENCH_SAVE_TRANSCRIPTS is unset", () => {
+  const prior = process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+  delete process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+  try {
+    assert.equal(shouldSaveTranscripts(), false);
+  } finally {
+    if (prior === undefined) delete process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+    else process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = prior;
+  }
+});
+
+test("shouldSaveTranscripts accepts yes/y/true and no/n/false, case- and whitespace-insensitively", () => {
+  const prior = process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+  try {
+    for (const truthy of ["yes", "Y", " true ", "TRUE"]) {
+      process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = truthy;
+      assert.equal(shouldSaveTranscripts(), true, `expected "${truthy}" to be truthy`);
+    }
+    for (const falsy of ["no", "N", " false ", "FALSE"]) {
+      process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = falsy;
+      assert.equal(shouldSaveTranscripts(), false, `expected "${falsy}" to be falsy`);
+    }
+  } finally {
+    if (prior === undefined) delete process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+    else process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = prior;
+  }
+});
+
+test("shouldSaveTranscripts throws on an unrecognized value instead of silently defaulting", () => {
+  const prior = process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+  process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = "maybe";
+  try {
+    assert.throws(() => shouldSaveTranscripts(), /Invalid G_MESH_BENCH_SAVE_TRANSCRIPTS value "maybe"/);
+  } finally {
+    if (prior === undefined) delete process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
+    else process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = prior;
+  }
 });

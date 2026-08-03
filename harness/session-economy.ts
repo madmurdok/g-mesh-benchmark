@@ -6,7 +6,7 @@ import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, arm
 import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
-import { runClaude } from "./lib/runClaude.js";
+import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
@@ -255,6 +255,7 @@ async function runSessionChain(
       model: MODEL,
       maxBudgetUsd: MAX_BUDGET_USD,
       resumeSessionId,
+      transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, sessionRepetition),
     });
 
     // Same prospective half of the combined budget bound as token-economy's
