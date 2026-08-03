@@ -1,3 +1,4 @@
+import type { McpServerConfig } from "./mcpConfig.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
 import type { Arm } from "./types.js";
 
@@ -195,20 +196,68 @@ exact path. Otherwise, if you reach for Read / grep / find — stop and route ab
 `;
 
 /**
+ * Everything `claude -p` needs to know about one arm, in one place.
+ *
+ * Split out of what used to be three separate if/else chains (armMcpConfig,
+ * armTools, armDisallowedTools) all keyed on the same `Arm` union: adding an
+ * arm meant remembering to touch each of them, and a per-arm dispatch spread
+ * across N functions is exactly the shape that lets an arm be added — or
+ * swapped — in some places and forgotten in others.
+ */
+export interface ArmDefinition {
+  /**
+   * A factory, not a value: buildGmeshArmConfig()/buildKungfuArmConfig() read
+   * their binary path from the environment at call time (see mcpConfig.ts's
+   * gmeshBinaryPath/kungfuBinaryPath), and every caller has always received a
+   * freshly built object it may mutate.
+   */
+  mcpConfig: () => McpServerConfig;
+  /** `--tools` allow list; built-in tools only, see KUNGFU_DENIED_TOOLS on why that isn't enough for MCP tools. */
+  tools: string;
+  /** `--disallowedTools` deny list; omitted for arms that need no tool removed from the model's context. */
+  disallowedTools?: string;
+  /** Appended to the task prompt by armPrompt(); omitted for arms that run the prompt verbatim. */
+  promptSuffix?: string;
+}
+
+/**
  * gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools
  * and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md
- * (gmesh-configured) differs. Same story for kungfu-configured vs kungfu:
- * identical tools/MCP config, only the loaded CLAUDE.md (and thus cwd)
- * differs — unlike gmesh-configured, kungfu-configured doesn't fall through
- * to a shared default branch here, since plain `kungfu` isn't the default
- * case, so it needs an explicit check alongside it in all three functions
- * below.
+ * (gmesh-configured, handled by corpusResolver.ts via the run's cwd, not here)
+ * differs. Sharing one base definition rather than repeating the fields is
+ * what makes that guarantee structural: the tool list and MCP config *cannot*
+ * drift apart, which is the property lib/types.ts's Arm doc claims for
+ * gmesh-trusted ("byte-for-byte the same MCP config and tool list as gmesh").
  */
-export function armMcpConfig(arm: Arm) {
-  if (arm === "baseline") return buildBaselineArmConfig();
-  if (arm === "kungfu" || arm === "kungfu-configured") return buildKungfuArmConfig();
-  return buildGmeshArmConfig();
-}
+const GMESH_ARM: ArmDefinition = {
+  mcpConfig: buildGmeshArmConfig,
+  tools: GMESH_TOOLS,
+};
+
+/** Same story for kungfu-configured vs kungfu: identical tools/MCP config, only the loaded CLAUDE.md (and thus cwd) differs. */
+const KUNGFU_ARM: ArmDefinition = {
+  mcpConfig: buildKungfuArmConfig,
+  tools: KUNGFU_TOOLS,
+  disallowedTools: KUNGFU_DENIED_TOOLS,
+};
+
+/**
+ * The single table every per-arm accessor below reads from. Adding an arm is
+ * one entry here plus the `Arm` union and ARM_ORDER in lib/types.ts — the
+ * `Record<Arm, ...>` makes a missing entry a type error rather than a silent
+ * fall-through to whatever the old chains' default branch happened to be.
+ */
+export const ARM_DEFINITIONS: Record<Arm, ArmDefinition> = {
+  gmesh: GMESH_ARM,
+  baseline: {
+    mcpConfig: buildBaselineArmConfig,
+    tools: BASELINE_TOOLS,
+  },
+  "gmesh-trusted": { ...GMESH_ARM, promptSuffix: TRUSTED_ARM_PROMPT_SUFFIX },
+  kungfu: KUNGFU_ARM,
+  "gmesh-configured": GMESH_ARM,
+  "kungfu-configured": KUNGFU_ARM,
+};
 
 /**
  * Appended to whatever the arm's normal tool list is when a task actually has
@@ -230,20 +279,20 @@ export interface ArmToolsOptions {
   allowEdit?: boolean;
 }
 
+export function armMcpConfig(arm: Arm): McpServerConfig {
+  return ARM_DEFINITIONS[arm].mcpConfig();
+}
+
 export function armTools(arm: Arm, opts: ArmToolsOptions = {}): string {
-  const base =
-    arm === "baseline"
-      ? BASELINE_TOOLS
-      : arm === "kungfu" || arm === "kungfu-configured"
-        ? KUNGFU_TOOLS
-        : GMESH_TOOLS;
+  const base = ARM_DEFINITIONS[arm].tools;
   return opts.allowEdit ? `${base},${EDIT_TOOLS}` : base;
 }
 
 export function armPrompt(prompt: string, arm: Arm): string {
-  return arm === "gmesh-trusted" ? prompt + TRUSTED_ARM_PROMPT_SUFFIX : prompt;
+  const suffix = ARM_DEFINITIONS[arm].promptSuffix;
+  return suffix === undefined ? prompt : prompt + suffix;
 }
 
 export function armDisallowedTools(arm: Arm): string | undefined {
-  return arm === "kungfu" || arm === "kungfu-configured" ? KUNGFU_DENIED_TOOLS : undefined;
+  return ARM_DEFINITIONS[arm].disallowedTools;
 }
