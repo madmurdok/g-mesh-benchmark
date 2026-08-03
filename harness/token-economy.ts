@@ -70,6 +70,20 @@ export interface TokenEconomyRun {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   numTurns: number;
+  /**
+   * Tool calls this run made, split by purpose (see runClaude.ts's
+   * classifyToolCall): `search` is Read/Grep/Glob plus every `mcp__*` tool,
+   * `edit` is Edit/Write, `other` is anything else. Flat rather than nested to
+   * match the rest of this interface.
+   *
+   * Optional because runs recorded before the harness could see per-turn tool
+   * names (it read only the CLI's final aggregate) genuinely don't have them —
+   * same reason `category`/`expectedWinner` are optional. Consumers must treat
+   * `undefined` as "unknown", not as 0.
+   */
+  searchToolCalls?: number;
+  editToolCalls?: number;
+  otherToolCalls?: number;
   durationMs: number;
   /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
@@ -304,6 +318,9 @@ async function runArm(
     cacheReadTokens: result.usage.cacheReadTokens,
     cacheCreationTokens: result.usage.cacheCreationTokens,
     numTurns: result.numTurns,
+    searchToolCalls: result.toolCalls.search,
+    editToolCalls: result.toolCalls.edit,
+    otherToolCalls: result.toolCalls.other,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
     judgeCostUsd,
@@ -367,18 +384,28 @@ function shouldIncludeKungfuArm(): boolean {
 }
 
 /**
- * G_MESH_BENCH_INCLUDE_CONFIGURED=yes|no gates the `gmesh-configured` arm —
- * same opt-in-only pattern as shouldIncludeTrustedArm()/shouldIncludeKungfuArm(),
- * for the same reason: a default run's output must stay exactly what it was
- * before this arm existed.
+ * G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no gates the bare `gmesh` arm, which is
+ * no longer part of a default run.
+ *
+ * The swap: `gmesh-configured` — g-mesh plus the CLAUDE.md guidance an actual
+ * project would have — is what real usage looks like, so it is what the
+ * default two-arm comparison now measures. Bare `gmesh` (the tools with no
+ * guidance at all) measures a configuration nobody ships, so it drops to the
+ * same opt-in tier as gmesh-trusted/kungfu rather than being paid for on every
+ * run. Turn it on to reproduce the old bare-vs-baseline comparison, or to
+ * measure what the CLAUDE.md itself is worth (bare vs configured, side by side).
+ *
+ * This replaces the former G_MESH_BENCH_INCLUDE_CONFIGURED flag, which gated
+ * the arm that is now unconditional — keeping it would have meant a flag whose
+ * only effect was to add a second, duplicate copy of an arm already running.
  */
-function shouldIncludeConfiguredArm(): boolean {
-  const envOverride = process.env.G_MESH_BENCH_INCLUDE_CONFIGURED;
+function shouldIncludeBareGmeshArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_BARE_GMESH;
   if (envOverride === undefined) return false;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
-  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_CONFIGURED value "${envOverride}"; expected "yes" or "no".`);
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_BARE_GMESH value "${envOverride}"; expected "yes" or "no".`);
 }
 
 /**
@@ -453,20 +480,28 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
 }
 
 /**
- * Two calls, not three, even when gmesh-trusted is enabled: what gets warmed
- * is the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
- * gmesh's (same MCP config, same tool list) — the arms differ only after that
- * prefix, in the user prompt. A third warm-up would spend money to warm a
- * cache entry that is already warm.
+ * One call per *distinct cache prefix*, not one per arm: what gets warmed is
+ * the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
+ * gmesh's (same MCP config, same tool list) — those two arms differ only after
+ * that prefix, in the user prompt. An extra warm-up would spend money to warm
+ * a cache entry that is already warm.
+ *
+ * The gmesh warm-up is therefore skipped entirely unless an arm that shares
+ * that prefix (bare `gmesh` or `gmesh-trusted`, both opt-in now) is actually
+ * running — gmesh-configured's CLAUDE.md is system-level context, so its
+ * prefix is a different one, warmed from its own cwd below.
  */
 async function warmCache(
+  arms: readonly Arm[],
   cwd: string,
   kungfuCwd: string | undefined,
   configuredCwd: string | undefined,
   kungfuConfiguredCwd: string | undefined,
 ): Promise<void> {
-  console.log("Warming prompt cache: gmesh arm...");
-  await warmArm(cwd, "gmesh");
+  if (arms.includes("gmesh") || arms.includes("gmesh-trusted")) {
+    console.log("Warming prompt cache: gmesh arm...");
+    await warmArm(cwd, "gmesh");
+  }
   console.log("Warming prompt cache: baseline arm...");
   await warmArm(cwd, "baseline");
   if (kungfuCwd !== undefined) {
@@ -520,7 +555,7 @@ async function main() {
   }
 
   const includeKungfu = shouldIncludeKungfuArm();
-  const includeConfigured = shouldIncludeConfiguredArm();
+  const includeBareGmesh = shouldIncludeBareGmeshArm();
   const includeKungfuConfigured = shouldIncludeKungfuConfiguredArm();
   if ((includeKungfu || includeKungfuConfigured) && !kungfuBinaryIsAvailable()) {
     console.error(
@@ -554,31 +589,15 @@ async function main() {
 
   const runs: TokenEconomyRun[] = [];
 
-  if (await shouldWarmCache()) {
-    const firstCorpus = registry[0];
-    if (!firstCorpus) {
-      throw new Error("Cannot warm cache: corpus registry is empty.");
-    }
-    const warmupCwd = await resolveWarm(firstCorpus);
-    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
-    const warmupConfiguredCwd = includeConfigured
-      ? await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD)
-      : undefined;
-    const warmupKungfuConfiguredCwd = includeKungfuConfigured
-      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
-      : undefined;
-    await warmCache(warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
-  }
-
-  const reps = repetitionCount();
-  console.log(`Repetitions per (task, arm): ${reps}`);
-
-  // Only ever logged when a flag is on, so a default run's output is
-  // unchanged from before these extra arms existed.
-  const arms: Arm[] = ["gmesh", "baseline"];
+  // gmesh-configured, not bare gmesh, is the default primary arm: the
+  // benchmark's claim is about g-mesh as it is actually used, and nobody
+  // actually runs it without the CLAUDE.md guidance. Bare gmesh is opt-in (see
+  // shouldIncludeBareGmeshArm). Every other arm stays opt-in as before, so the
+  // extra-arm warning below is still only ever logged when a flag is on.
+  const arms: Arm[] = ["gmesh-configured", "baseline"];
+  if (includeBareGmesh) arms.push("gmesh");
   if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
   if (includeKungfu) arms.push("kungfu");
-  if (includeConfigured) arms.push("gmesh-configured");
   if (includeKungfuConfigured) arms.push("kungfu-configured");
   if (arms.length > 2) {
     console.log(
@@ -587,11 +606,37 @@ async function main() {
     );
   }
 
+  // After the arm list, not before it: which cache prefixes are worth warming
+  // is entirely a function of which arms are running.
+  if (await shouldWarmCache()) {
+    const firstCorpus = registry[0];
+    if (!firstCorpus) {
+      throw new Error("Cannot warm cache: corpus registry is empty.");
+    }
+    const warmupCwd = await resolveWarm(firstCorpus);
+    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
+    const warmupConfiguredCwd = await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD);
+    const warmupKungfuConfiguredCwd = includeKungfuConfigured
+      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+      : undefined;
+    await warmCache(arms, warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
+  }
+
+  const reps = repetitionCount();
+  console.log(`Repetitions per (task, arm): ${reps}`);
+
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
     const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
+    // The three shared per-corpus clones below exist only for read-only tasks:
+    // an edit task resolves its own clone per (task, arm, rep) instead. Skip
+    // them entirely when this corpus is running edit tasks only, or a run
+    // naming just `ex-implement-...` would pay for a full extra excalidraw
+    // clone (now once per default run, since gmesh-configured is no longer
+    // opt-in) and never read it.
+    const hasReadOnlyTask = tasks.some((t) => !taskEditsCode(t));
     // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,
     // which indexes into ~/.g-mesh, never the project dir. Running it against
     // the shared `cwd` above would plant that directory inside the live,
@@ -599,18 +644,18 @@ async function main() {
     // task #57's explicit constraint). One throwaway clone per corpus, reused
     // across every kungfu-arm call for that corpus, same resolveFresh()
     // precedent used elsewhere in this harness for exactly this reason.
-    const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
+    const kungfuCwd = hasReadOnlyTask && arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
     // gmesh-configured needs a real CLAUDE.md written into its cwd — for the
     // same reason kungfu gets a throwaway clone above, this must never touch
     // the live, registry-registered checkout, so it gets its own fresh clone
     // with the trust snippet appended to (or creating) a CLAUDE.md there.
-    const configuredCwd = arms.includes("gmesh-configured")
+    const configuredCwd = hasReadOnlyTask && arms.includes("gmesh-configured")
       ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
       : undefined;
     // kungfu-configured needs its own throwaway clone for the same reason
     // gmesh-configured does above: a real CLAUDE.md must be written into its
     // cwd, and that must never be the live, registry-registered checkout.
-    const kungfuConfiguredCwd = arms.includes("kungfu-configured")
+    const kungfuConfiguredCwd = hasReadOnlyTask && arms.includes("kungfu-configured")
       ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
       : undefined;
 
@@ -626,8 +671,23 @@ async function main() {
           // tree. Same reason kungfu/gmesh-configured take a throwaway clone,
           // except this one can't be shared: each (task, arm, rep) needs the
           // corpus back in its unfixed state, so the clone is per run.
+          //
+          // A *-configured arm needs its CLAUDE.md in that per-run clone too,
+          // which is why this branches on the arm rather than handing every
+          // edit task a bare resolveFresh(). It used to short-circuit on
+          // taskEditsCode() alone, so gmesh-configured silently ran with no
+          // CLAUDE.md at all on exactly the category where the guidance
+          // matters most — i.e. it was bare gmesh under another name. Note
+          // these deliberately do NOT reuse the shared per-corpus
+          // configuredCwd/kungfuConfiguredCwd below: those are for read-only
+          // tasks, and an edit task must start from the unfixed corpus every
+          // repetition.
           const armCwd = taskEditsCode(task)
-            ? await resolveFresh(corpus)
+            ? arm === "gmesh-configured"
+              ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
+              : arm === "kungfu-configured"
+                ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+                : await resolveFresh(corpus)
             : arm === "kungfu" && kungfuCwd !== undefined
               ? kungfuCwd
               : arm === "gmesh-configured" && configuredCwd !== undefined

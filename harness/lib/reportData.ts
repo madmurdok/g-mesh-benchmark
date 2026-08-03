@@ -13,6 +13,23 @@ export interface ArmAggregate {
   bestTokens: number;
   worstTokens: number;
   meanCostUsd: number;
+  /** Mean over the same ok runs as meanTokens. Context for the tool-call means below: "N turns, of which M were search calls". */
+  meanNumTurns: number;
+  /**
+   * Mean tool calls per ok run, split by purpose (see runClaude.ts's
+   * classifyToolCall) — how much of an arm's turn budget went on *finding*
+   * things versus *doing* things, which a raw turn count can't distinguish.
+   *
+   * null when no ok run in the group recorded tool calls at all: every run
+   * predating the harness's stream-json parsing has no such data, and a
+   * historical cell must say "unknown" rather than claim a confident 0. When
+   * only some runs in a group have it (a task re-run across the change), the
+   * mean covers exactly those runs — averaging in the older ones as 0 would
+   * understate the real figure.
+   */
+  meanSearchToolCalls: number | null;
+  meanEditToolCalls: number | null;
+  meanOtherToolCalls: number | null;
 }
 
 // Sums every token that actually moved through the context (input + output +
@@ -43,6 +60,17 @@ export function armsPresent(runs: TokenEconomyRun[]): Arm[] {
   return [...known, ...unknown];
 }
 
+/**
+ * Mean of one tool-call bucket over just the runs that recorded it, or null
+ * when none did — see ArmAggregate's meanSearchToolCalls doc for why "unknown"
+ * and "zero" must not collapse into the same number here.
+ */
+function meanRecordedToolCalls(runs: TokenEconomyRun[], pick: (r: TokenEconomyRun) => number | undefined): number | null {
+  const values = runs.map(pick).filter((v): v is number => v !== undefined);
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
 export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[]): ArmAggregate | null {
   const ok = group.filter((r) => r.status === "ok");
   if (ok.length === 0) return null;
@@ -58,6 +86,10 @@ export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[
     bestTokens: Math.min(...tokens),
     worstTokens: Math.max(...tokens),
     meanCostUsd: ok.reduce((a, r) => a + r.costUsd, 0) / ok.length,
+    meanNumTurns: ok.reduce((a, r) => a + r.numTurns, 0) / ok.length,
+    meanSearchToolCalls: meanRecordedToolCalls(ok, (r) => r.searchToolCalls),
+    meanEditToolCalls: meanRecordedToolCalls(ok, (r) => r.editToolCalls),
+    meanOtherToolCalls: meanRecordedToolCalls(ok, (r) => r.otherToolCalls),
   };
 }
 
@@ -399,9 +431,38 @@ export function computeCategoryTokenBreakdown(runs: TokenEconomyRun[]): Category
   return rows;
 }
 
+/**
+ * "8.0 (6.0 search, 2.0 edit)" — an arm's mean turns for one task, split by
+ * what those turns were spent on. Shared by both report surfaces (the HTML
+ * task table and report.ts's markdown one) so they can't drift apart on a
+ * number readers compare across them.
+ *
+ * Falls back to the bare turn count for runs recorded before the harness could
+ * see tool names (see ArmAggregate's meanSearchToolCalls), rather than a "0
+ * search" that would read as a measurement instead of a gap. The `other`
+ * bucket is shown only when non-zero: it should stay empty (no arm is granted
+ * tools outside the search/edit sets), so a visible one is a finding.
+ */
+export function formatTurnsWithToolCalls(agg: ArmAggregate): string {
+  const turns = agg.meanNumTurns.toFixed(1);
+  if (agg.meanSearchToolCalls === null && agg.meanEditToolCalls === null) return turns;
+  const parts = [
+    `${(agg.meanSearchToolCalls ?? 0).toFixed(1)} search`,
+    `${(agg.meanEditToolCalls ?? 0).toFixed(1)} edit`,
+  ];
+  if ((agg.meanOtherToolCalls ?? 0) > 0) parts.push(`${(agg.meanOtherToolCalls ?? 0).toFixed(1)} other`);
+  return `${turns} (${parts.join(", ")})`;
+}
+
 export interface TaskArmCell {
   arm: Arm;
-  /** null when no run of this arm for this task finished ok (see groupLength to tell "none attempted" from "all failed"). */
+  /**
+   * null when no run of this arm for this task finished ok (see groupLength to
+   * tell "none attempted" from "all failed"). Carries the per-cell means the
+   * task table renders — tokens, cost, turns, and the search/edit tool-call
+   * split — so this stays one aggregate rather than a growing set of parallel
+   * fields that could disagree about which runs they averaged.
+   */
   agg: ArmAggregate | null;
   groupLength: number;
 }

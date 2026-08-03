@@ -288,6 +288,14 @@ async function runSessionChain(
       cacheReadTokens: result.usage.cacheReadTokens,
       cacheCreationTokens: result.usage.cacheCreationTokens,
       numTurns: result.numTurns,
+      // Recorded here for the same reason token-economy's runArm does it: the
+      // stream now carries per-turn tool names, and a chained run's
+      // search-vs-edit split is exactly as meaningful as an isolated one's.
+      // (skippedRun above deliberately omits these — a call that never
+      // happened has no tally, which is not the same as a tally of zero.)
+      searchToolCalls: result.toolCalls.search,
+      editToolCalls: result.toolCalls.edit,
+      otherToolCalls: result.toolCalls.other,
       durationMs: result.durationMs,
       costUsd: result.costUsd,
       judgeCostUsd,
