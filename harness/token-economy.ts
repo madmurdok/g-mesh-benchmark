@@ -13,7 +13,7 @@ import {
   armPrompt,
   armTools,
 } from "./lib/armConfig.js";
-import { resolveConfigured, resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
+import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
@@ -630,6 +630,16 @@ async function main() {
     const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
+    // resolveWarm() reuses the same absolute path across runs, so g-mesh's
+    // index there is only cold on the very first-ever invocation against
+    // this cache path - warm it explicitly anyway so that first run isn't
+    // unluckier than every one after it. Gated on the bare `gmesh` arm
+    // actually running: `baseline` never calls g-mesh, and gmesh-configured
+    // uses `configuredCwd` below instead of this shared `cwd`.
+    if (arms.includes("gmesh")) {
+      console.log(`[${corpus.id}] warming g-mesh index for the bare gmesh arm's shared checkout...`);
+      await warmGmeshIndex(cwd);
+    }
     // The three shared per-corpus clones below exist only for read-only tasks:
     // an edit task resolves its own clone per (task, arm, rep) instead. Skip
     // them entirely when this corpus is running edit tasks only, or a run
@@ -652,6 +662,14 @@ async function main() {
     const configuredCwd = hasReadOnlyTask && arms.includes("gmesh-configured")
       ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
       : undefined;
+    // This clone is brand-new every corpus (resolveConfigured() always
+    // mkdtemp()s), so g-mesh's own index for it is cold every time - warm it
+    // once here, before any task in the loop below reuses this same cwd for
+    // its first measured g-mesh call.
+    if (configuredCwd !== undefined) {
+      console.log(`[${corpus.id}] warming g-mesh index for the shared gmesh-configured checkout...`);
+      await warmGmeshIndex(configuredCwd);
+    }
     // kungfu-configured needs its own throwaway clone for the same reason
     // gmesh-configured does above: a real CLAUDE.md must be written into its
     // cwd, and that must never be the live, registry-registered checkout.
@@ -684,7 +702,18 @@ async function main() {
           // repetition.
           const armCwd = taskEditsCode(task)
             ? arm === "gmesh-configured"
-              ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
+              ? await (async () => {
+                  // Unlike the shared configuredCwd above, this clone is
+                  // fresh every single (task, rep) - never free after the
+                  // first run, since every rep needs the corpus back in its
+                  // unfixed state. Warming here pays a real g-mesh init walk
+                  // every rep, front-loaded into setup instead of leaking
+                  // into the measured call's turn count.
+                  const dest = await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD);
+                  console.log(`  [${task.id}] warming g-mesh index for this rep's edit sandbox...`);
+                  await warmGmeshIndex(dest);
+                  return dest;
+                })()
               : arm === "kungfu-configured"
                 ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
                 : await resolveFresh(corpus)

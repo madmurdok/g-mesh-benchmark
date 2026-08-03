@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
-import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
+import { resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { runClaude } from "./lib/runClaude.js";
@@ -379,6 +379,17 @@ async function main() {
       continue;
     }
     const cwd = await resolveWarm(corpus);
+    // resolveWarm() reuses the same absolute path across runs, so g-mesh's
+    // index there is cold only on the very first-ever invocation against
+    // this cache path - warm it explicitly anyway so that first run isn't
+    // unluckier than every one after it. Gated on the `gmesh` arm actually
+    // running (it's this script's default, but the gate mirrors
+    // token-economy.ts's own pattern and stays correct if that default ever
+    // changes).
+    if (arms.includes("gmesh")) {
+      console.log(`[${corpus.id}] warming g-mesh index for the shared gmesh-arm checkout...`);
+      await warmGmeshIndex(cwd);
+    }
     // Same reasoning as token-economy.ts's #57 fix: kungfu writes a .kungfu/
     // index into its cwd, so its chain must run against a throwaway clone,
     // never the shared `cwd` above (the live, registry-registered checkout).
