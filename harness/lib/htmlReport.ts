@@ -7,6 +7,7 @@ import {
   computeCategoryTokenTable,
   computeCorrectnessTable,
   computeTaskTable,
+  formatDurationSeconds,
   formatTurnsWithToolCalls,
   pairedTokenTotals,
   type Aggregate,
@@ -28,11 +29,13 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function fmt0(n: number): string {
+/** Exported so lib/sessionReport.ts can share it rather than re-declaring the same formatter. */
+export function fmt0(n: number): string {
   return n.toFixed(0);
 }
 
-function fmt4(n: number): string {
+/** Exported so lib/sessionReport.ts can share it rather than re-declaring the same formatter. */
+export function fmt4(n: number): string {
   return n.toFixed(4);
 }
 
@@ -211,8 +214,8 @@ function categoryTokenBreakdownTableHtml(rows: CategoryTokenBreakdownRow[]): str
 
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
-    if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
-    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
+    if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
+    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
   };
   const body = rows
     .map((r) =>
@@ -225,7 +228,7 @@ function tokenTableHtml(rows: TaskRow[]): string {
         .join(""),
     )
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function statTile(label: string, value: string): string {

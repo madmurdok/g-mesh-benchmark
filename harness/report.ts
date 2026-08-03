@@ -12,6 +12,7 @@ import {
   computeCorrectnessTable,
   computeStaleSummary,
   computeTaskTable,
+  formatDurationSeconds,
   formatTurnsWithToolCalls,
   loadRuns,
   pairedTokenTotals,
@@ -172,8 +173,8 @@ async function reportTokenEconomy(): Promise<void> {
   const taskTable = computeTaskTable(runs);
 
   console.log("# Token economy report\n");
-  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Turns (tool calls) | Oracle (pass/ok) |");
-  console.log("|---|---|---|---|---|---|---|---|---|---|");
+  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
+  console.log("|---|---|---|---|---|---|---|---|---|---|---|");
 
   // Iterates whichever arms the loaded runs actually contain (see
   // reportData.ts's armsPresent) — 2-arm history prints exactly as before,
@@ -182,12 +183,12 @@ async function reportTokenEconomy(): Promise<void> {
     for (const { arm, agg, groupLength: group } of row.cells) {
       if (!agg) {
         if (group > 0) {
-          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - | - |`);
+          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
         }
         continue;
       }
       console.log(
-        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
+        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
       );
     }
   }

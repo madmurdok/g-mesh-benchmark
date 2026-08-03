@@ -13,6 +13,8 @@ export interface ArmAggregate {
   bestTokens: number;
   worstTokens: number;
   meanCostUsd: number;
+  /** Mean wall-clock duration (ms) over the same ok runs as meanTokens/meanCostUsd. */
+  meanDurationMs: number;
   /** Mean over the same ok runs as meanTokens. Context for the tool-call means below: "N turns, of which M were search calls". */
   meanNumTurns: number;
   /**
@@ -86,6 +88,7 @@ export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[
     bestTokens: Math.min(...tokens),
     worstTokens: Math.max(...tokens),
     meanCostUsd: ok.reduce((a, r) => a + r.costUsd, 0) / ok.length,
+    meanDurationMs: ok.reduce((a, r) => a + r.durationMs, 0) / ok.length,
     meanNumTurns: ok.reduce((a, r) => a + r.numTurns, 0) / ok.length,
     meanSearchToolCalls: meanRecordedToolCalls(ok, (r) => r.searchToolCalls),
     meanEditToolCalls: meanRecordedToolCalls(ok, (r) => r.editToolCalls),
@@ -452,6 +455,11 @@ export function formatTurnsWithToolCalls(agg: ArmAggregate): string {
   ];
   if ((agg.meanOtherToolCalls ?? 0) > 0) parts.push(`${(agg.meanOtherToolCalls ?? 0).toFixed(1)} other`);
   return `${turns} (${parts.join(", ")})`;
+}
+
+/** Mean wall-clock duration, in seconds, one decimal place — shared by report.ts's markdown table and htmlReport.ts's HTML one so they can't drift apart on the unit. */
+export function formatDurationSeconds(agg: ArmAggregate): string {
+  return `${(agg.meanDurationMs / 1000).toFixed(1)}s`;
 }
 
 export interface TaskArmCell {
