@@ -512,5 +512,46 @@
       },
       "testCommand": "yarn install --silent && npx vitest run packages/element/tests/linearElementEditor.test.tsx packages/excalidraw/tests/contextmenu.test.tsx packages/element/tests/__bench_holdout__/linear-editor-order.test.tsx"
     }
+  },
+  {
+    "id": "ex-default-export-dropdownmenu-group",
+    "kind": "find_definition",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "DropdownMenuGroup", "file": "packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx" },
+    "prompt": "In this repository, there's a component used throughout the dropdown-menu UI that consumers import as DropdownMenuGroup. Find where it's actually declared — including what it's really named inside its own source file, since the value it wraps is default-exported under a different local name than the one it's imported under — and report the file it lives in plus that real internal name.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": ["packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx"],
+      "mustMentionSymbols": ["MenuGroup"]
+    }
+  },
+  {
+    "id": "ex-namespace-import-laserpointer-plerp",
+    "kind": "find_callers",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "plerp", "file": "packages/laser-pointer/src/math.ts" },
+    "prompt": "In this repository's laser-pointer package, find the plerp function (a point-interpolation helper) and determine whether any file calls it through a namespace-style import (e.g. `import * as x from \"...\"` followed by `x.plerp(...)`) rather than a plain named import of plerp itself. If such a call exists, name the calling file.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": ["packages/laser-pointer/src/state.ts"],
+      "mustMentionSymbols": ["plerp"]
+    }
+  },
+  {
+    "id": "ex-control-i18n-dynamic-locale-import",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "setLanguage", "file": "packages/excalidraw/i18n.ts" },
+    "prompt": "In this repository, find the setLanguage function in the i18n module. It dynamically imports a locale data file using a computed path. Can the exact locale file it will load be determined statically just by reading the code, or does it depend on a runtime value? Explain which, and if it depends on a runtime value, say what that value is.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is about setLanguage in packages/excalidraw/i18n.ts, which does `await import(`./locales/${currentLang.code}.json`)` after assigning `currentLang = lang` from its own `lang` parameter. Ground truth: the exact locale file cannot be determined statically just by reading the code - it depends on the runtime value of the `lang` argument passed to setLanguage (equivalently, `currentLang.code` / the language code in effect when it's called), not on any compile-time constant. PASS if the answer correctly states that the exact target file cannot be statically determined and depends on a runtime value (e.g., the language code argument, `currentLang.code`, or an equivalent description of a runtime-supplied language selection), and does not claim a single fixed locale file (e.g. en.json) as the only possible target. FAIL if the answer claims the import always resolves to one specific fixed locale file, or omits that the target depends on a runtime-determined language code."
+    }
   }
 ]
