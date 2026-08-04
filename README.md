@@ -15,6 +15,92 @@ Tracks three metrics, kept strictly separate — never merged into one report:
 3. **Cold-start/indexing time** — an NFR metric: how long the first bulk-index walk
    takes, and how it scales with repo size.
 
+## Getting started
+
+Follow these in order the first time; after that, jumping straight to
+[Running an experiment](#running-an-experiment) is enough.
+
+1. **Prerequisites**
+   - Node.js 20+ and `npm`.
+   - The [`claude` CLI](https://claude.com/claude-code) installed and already
+     authenticated (`claude` on `PATH`; try `claude --version` to confirm) —
+     every experiment spawns real `claude -p` calls and pays for them the
+     same way an interactive session would.
+   - `git` (used to clone corpora into throwaway checkouts).
+   - `kungfu` on `PATH` only if you plan to run the optional `kungfu`
+     comparison arm (`G_MESH_BENCH_INCLUDE_KUNGFU=yes` — see below); skip it
+     otherwise.
+
+2. **Clone this repo as a sibling of `g-mesh`, not nested inside it.**
+   `harness/lib/mcpConfig.ts`'s default binary path
+   (`gmeshBinaryPath()`) resolves to `../../../g-mesh/core/target/release/g-mesh`
+   relative to this file — i.e. it expects `g-mesh` and `g-mesh-bench` to sit
+   side by side under the same parent directory:
+   ```
+   some-parent-dir/
+     g-mesh/        <- github.com/<org>/g-mesh
+     g-mesh-bench/  <- this repo
+   ```
+   A different layout works too, via `G_MESH_BENCH_BINARY=/path/to/g-mesh`
+   (see `harness/lib/mcpConfig.ts`), but the sibling layout needs no
+   configuration at all.
+
+3. **Build the g-mesh binary** (only needed once, and again after pulling a
+   newer `g-mesh`):
+   ```bash
+   cd ../g-mesh/core && cargo build --release
+   cd ../g-mesh/plugins/js-ts && npm install && npm run build
+   ```
+
+4. **Install this repo's own dependencies:**
+   ```bash
+   npm install
+   ```
+
+5. **Point `corpora/registry.json` at real codebases.** Its two shipped
+   entries (`task-tracker-mcp`, `excalidraw`) are `"kind": "local"` pointing
+   at absolute paths on the machine this repo was developed on — they will
+   not exist on a fresh clone, and every experiment reads this file to know
+   what to benchmark against. Two ways to fix it, per entry:
+   - **Point `path` at your own local checkout** — clone the corpus
+     yourself, then set `path` to that checkout's absolute path. Fastest to
+     iterate against (no clone-per-run cost for the shared/warm experiments),
+     but the checkout is machine-specific, same as the shipped entries were.
+   - **Switch to `"kind": "git"`** with a `repoUrl` and a pinned `ref`
+     (commit SHA or tag) instead of `path` — portable, no local checkout
+     needed; `corpusResolver.ts` clones it fresh into a throwaway directory
+     as needed. This is the right choice for a corpus you don't already have
+     checked out, or for a config you intend to share/commit.
+
+   Either way, each corpus also needs its own `corpora/<corpus-id>/tasks.json`
+   (already present for the two shipped corpora) — see
+   [Authoring `mode: "pool"` oracle tasks](#authoring-mode-pool-oracle-tasks)
+   below if you're adding a new corpus rather than reusing an existing one.
+
+6. **Run one cheap experiment to confirm everything is wired up**, scoped to
+   the smaller corpus and a single task so the first run costs pennies, not
+   dollars:
+   ```bash
+   npm run token-economy -- tt-find-impl-completionverifier
+   ```
+   This builds the two default arms (`gmesh-configured`, `baseline`), runs
+   that one task once against each, and prints a per-task markdown table plus
+   an aggregate summary to the console.
+
+7. **Read the results.** Every run writes:
+   - A timestamped JSON file under `results/token-economy/` (or
+     `results/session-economy/`, `results/search-latency/`,
+     `results/cold-start/` for the other experiments) — the raw, permanent
+     record.
+   - A self-contained HTML report under `results/html/`, printed at the end
+     of the run (`Wrote HTML report to results/html/<timestamp>.html`) — open
+     it directly in a browser, no server needed.
+
+   From here, [Running an experiment](#running-an-experiment) covers the
+   other experiments and every `G_MESH_BENCH_*` knob, and
+   [Configuration](#configuration) covers moving those same defaults into
+   `g-mesh-bench.config.json` instead of passing them as env vars every time.
+
 ## Layout
 
 - `corpora/` — test codebase registry (`registry.json`) and per-corpus task
@@ -136,10 +222,9 @@ npm run session-economy # experiment 1b: experiment 1, measured inside one conti
 npm run report          # aggregate whichever results/<experiment>/ you point it at
 ```
 
-`token-economy` requires the g-mesh binary to be built
-(`cd ../g-mesh/core && cargo build --release`,
-`cd ../g-mesh/plugins/js-ts && npm install && npm run build`) and spends real API
-tokens per run — see the design doc's failure-modes section for budget caps.
+`token-economy` requires the g-mesh binary to be built (see
+[Getting started](#getting-started) steps 2-3) and spends real API tokens per
+run — see the design doc's failure-modes section for budget caps.
 
 A default `token-economy` run compares two arms: **`gmesh-configured`** — g-mesh's
 MCP tools plus the CLAUDE.md guidance an actual project would have, written into a
