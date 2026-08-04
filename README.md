@@ -201,6 +201,58 @@ MCP server plus a curated tool allowlist and a deny list):
 - Reporting needs nothing: `armsPresent()` renders any arm it finds in the run
   records, sorting names it doesn't rank in `ARM_ORDER` alphabetically last.
 
+**A real worked example**, not a hypothetical one: [Serena](https://github.com/oraios/serena)
+is registered as the `serena` custom arm in this repo's own
+`g-mesh-bench.config.json` (not in any default arm list — add it to
+`tokenEconomy.arms`/`sessionEconomy.arms` locally to include it in a run):
+
+```json
+{
+  "customArms": {
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/oraios/serena",
+        "serena", "start-mcp-server",
+        "--transport", "stdio",
+        "--project-from-cwd",
+        "--enable-web-dashboard", "false",
+        "--open-web-dashboard", "false"
+      ],
+      "tools": [
+        "mcp__serena__find_symbol",
+        "mcp__serena__find_declaration",
+        "mcp__serena__find_referencing_symbols",
+        "mcp__serena__find_implementations",
+        "mcp__serena__get_symbols_overview"
+      ],
+      "deniedTools": ["... the other 47 of Serena's 52 tools — see the config file"],
+      "writesToProjectDir": true
+    }
+  }
+}
+```
+
+Serena is an LSP-wrapper MCP server (`uvx` pulls it fresh from git, no
+persistent install), curated down from its full 52-tool surface to the 5
+with a genuine g-mesh analog: `find_symbol`/`find_declaration` →
+`find_definition`, `find_referencing_symbols` → `find_references`,
+`find_implementations` → `find_implementations`, `get_symbols_overview` →
+`get_file_outline`. `writesToProjectDir: true` because it indexes into a
+`.serena/` directory inside the project it's pointed at, same as kungfu's
+`.kungfu/`.
+
+**Known gap, confirmed by actually running it**: Serena has no analog at
+all for `find_callers`, `find_callees`, or `get_dependencies` — it's a pure
+LSP wrapper with no call-graph or import-graph indexing. Running an
+existing `get_dependencies` task against the `serena` arm showed the model
+falling back to bare `Glob`/`Read`/`Grep` with zero `mcp__serena__*` calls —
+the arm degrades to baseline for that question. The `ex-find-callees-updateelbowarrowpoints` and
+`ex-multihop-elbowarrow-routing-callees` tasks in
+`corpora/excalidraw/tasks.json` specifically probe the outgoing-call-graph
+half of this gap (the incoming/references half is already covered by
+`find_referencing_symbols`).
+
 Known gaps, deliberately not covered in this pass:
 
 - **No `-configured` variant.** Only `gmesh` and `kungfu` have a CLAUDE.md-loaded
