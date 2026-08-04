@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { combinedBudgetStatus } from "./token-economy.js";
+import { combinedBudgetStatus, MAX_COMBINED_BUDGET_USD } from "./token-economy.js";
 
 /**
  * Covers the arm+judge combined budget bound without spending API money: the
@@ -10,7 +10,10 @@ import { combinedBudgetStatus } from "./token-economy.js";
  * Run: npx tsx harness/budgetAccounting.test.ts
  * (no test runner is wired into package.json in this repo).
  *
- * Ceiling under test = MAX_BUDGET_USD (1.0) + JUDGE_MAX_BUDGET_USD (0.05).
+ * Ceiling under test = MAX_COMBINED_BUDGET_USD, imported rather than
+ * hardcoded so a future change to MAX_BUDGET_USD/JUDGE_MAX_BUDGET_USD (e.g.
+ * raising the former to let a slower task finish grading) doesn't silently
+ * desync these tests from the real constant.
  */
 
 test("a substring-mode run (no judge spend) stays ok", () => {
@@ -22,18 +25,18 @@ test("a judge-mode run under the combined ceiling stays ok", () => {
 });
 
 test("a run landing exactly on the combined ceiling is still within budget", () => {
-  assert.equal(combinedBudgetStatus("ok", 1.0, 0.05), "ok");
+  assert.equal(combinedBudgetStatus("ok", MAX_COMBINED_BUDGET_USD, 0), "ok");
 });
 
 test("a successful arm call is marked budget_exceeded when judge spend pushes the pair over the ceiling", () => {
   // The arm call itself succeeded and was under its own MAX_BUDGET_USD cap;
   // only arm + judge together cross the ceiling. This is the case that was
   // silently unaccounted for before.
-  assert.equal(combinedBudgetStatus("ok", 1.0, 0.06), "budget_exceeded");
+  assert.equal(combinedBudgetStatus("ok", MAX_COMBINED_BUDGET_USD, 0.01), "budget_exceeded");
 });
 
 test("arm spend alone can trip the combined ceiling", () => {
-  assert.equal(combinedBudgetStatus("ok", 1.2, 0), "budget_exceeded");
+  assert.equal(combinedBudgetStatus("ok", MAX_COMBINED_BUDGET_USD + 0.2, 0), "budget_exceeded");
 });
 
 test("an already-failed arm run keeps its own status", () => {

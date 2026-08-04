@@ -7,6 +7,8 @@ import {
   computeCategoryTokenTable,
   computeCorrectnessTable,
   computeTaskTable,
+  formatDurationSeconds,
+  formatTurnsWithToolCalls,
   pairedTokenTotals,
   type Aggregate,
   type ArmAggregate,
@@ -27,11 +29,13 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function fmt0(n: number): string {
+/** Exported so lib/sessionReport.ts can share it rather than re-declaring the same formatter. */
+export function fmt0(n: number): string {
   return n.toFixed(0);
 }
 
-function fmt4(n: number): string {
+/** Exported so lib/sessionReport.ts can share it rather than re-declaring the same formatter. */
+export function fmt4(n: number): string {
   return n.toFixed(4);
 }
 
@@ -182,14 +186,15 @@ function correctnessTableHtml(rows: CorrectnessRow[]): string {
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Passed/Total</th><th>Pass rate</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-function categoryTokenTableHtml(rows: CategoryTokenRow[]): string {
+/** `primaryArm` names the column `gmeshMeanTokens` holds — see reportData.ts's primaryComparisonArm. */
+function categoryTokenTableHtml(rows: CategoryTokenRow[], primaryArm: Arm): string {
   const body = rows
     .map(
       (r) =>
         `<tr><td>${escapeHtml(r.category)}</td><td>${fmt0(r.gmeshMeanTokens)}</td><td>${fmt0(r.baselineMeanTokens)}</td><td>${r.savingsPct.toFixed(1)}%</td><td>${r.pairCount}</td></tr>`,
     )
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>gmesh mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>${escapeHtml(primaryArm)} mean tokens</th><th>baseline mean tokens</th><th>Savings</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 /**
@@ -210,8 +215,8 @@ function categoryTokenBreakdownTableHtml(rows: CategoryTokenBreakdownRow[]): str
 
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
-    if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
-    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${agg.passCount}/${agg.okCount}</td>`;
+    if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
+    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
   };
   const body = rows
     .map((r) =>
@@ -224,7 +229,7 @@ function tokenTableHtml(rows: TaskRow[]): string {
         .join(""),
     )
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function statTile(label: string, value: string): string {
@@ -284,11 +289,16 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     --text-secondary: #52514e;
     --muted: #898781;
     --gridline: #e1e0d9;
-    /* Categorical slots 1-4 of this project's dataviz palette: blue, orange, aqua, violet. */
+    /* Categorical slots 1-6 of this project's dataviz palette: blue, orange, green, violet, teal, magenta. */
     --gmesh: #2a78d6;
     --baseline: #eb6834;
     --gmesh-trusted: #1baf7a;
     --kungfu: #8b5cf6;
+    /* gmesh-configured is the default primary arm; without its own slot it
+       would fall through to an unstyled (black) bar and an empty legend
+       swatch, since every bar/swatch class here is per-arm. */
+    --gmesh-configured: #0f8fa8;
+    --kungfu-configured: #c2549d;
     background: var(--surface-1);
     color: var(--text-primary);
     padding: 24px clamp(16px, 4vw, 48px) 64px;
@@ -308,6 +318,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
       --baseline: #d95926;
       --gmesh-trusted: #199e70;
       --kungfu: #a78bfa;
+      --gmesh-configured: #24a6bf;
+      --kungfu-configured: #d76bb2;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -322,6 +334,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     --baseline: #d95926;
     --gmesh-trusted: #199e70;
     --kungfu: #a78bfa;
+    --gmesh-configured: #24a6bf;
+    --kungfu-configured: #d76bb2;
   }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   h2 { font-size: 1.15rem; margin: 40px 0 12px; }
@@ -337,6 +351,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   .swatch-baseline { background: var(--baseline); }
   .swatch-gmesh-trusted { background: var(--gmesh-trusted); }
   .swatch-kungfu { background: var(--kungfu); }
+  .swatch-gmesh-configured { background: var(--gmesh-configured); }
+  .swatch-kungfu-configured { background: var(--kungfu-configured); }
   .chart-wrap { overflow-x: auto; }
   svg.chart { width: 100%; height: auto; display: block; }
   svg.chart.chart-wide { min-width: 640px; }
@@ -347,6 +363,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   .bar-baseline { fill: var(--baseline); }
   .bar-gmesh-trusted { fill: var(--gmesh-trusted); }
   .bar-kungfu { fill: var(--kungfu); }
+  .bar-gmesh-configured { fill: var(--gmesh-configured); }
+  .bar-kungfu-configured { fill: var(--kungfu-configured); }
   .table-wrap { overflow-x: auto; margin-top: 12px; }
   table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
   th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
@@ -366,7 +384,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
     ${statTile("Paired reduction", pairedReductionPct !== null ? `${pairedReductionPct.toFixed(1)}% (n=${paired.pairCount})` : `n/a (n=${paired.pairCount})`)}
     ${statTile("Arm spend", `$${fmt4(armSpend)}`)}
     ${statTile("Judge spend", `$${fmt4(judgeSpend)}`)}
-    ${statTile("gmesh oracle pass rate", `${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}`)}
+    ${statTile(`${aggregate.arm} oracle pass rate`, `${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}`)}
     ${statTile("baseline oracle pass rate", `${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`)}
   </div>
 
@@ -376,8 +394,8 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   ${correctnessTableHtml(correctnessTable)}
 
   <h2>Token savings by category (paired, oracle-passed pairs only)</h2>
-  <p class="muted">gmesh vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
-  ${categoryTokenTableHtml(categoryTokenTable)}
+  <p class="muted">${escapeHtml(aggregate.arm)} vs baseline, restricted to (task, repetition) pairs where both arms ran ok and passed oracle — same pairing discipline as the "Paired reduction" stat above, broken out per category so a category with few tasks (e.g. multihop) isn't diluted by the blended average.</p>
+  ${categoryTokenTableHtml(categoryTokenTable, aggregate.arm)}
 
   <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
   <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>

@@ -1,5 +1,5 @@
 import type { SessionEconomyRun } from "../session-economy.js";
-import { escapeHtml } from "./htmlReport.js";
+import { escapeHtml, fmt0, fmt4 } from "./htmlReport.js";
 import { armsPresent, computeCorrectnessTable, tokensSpent, type CorrectnessRow } from "./reportData.js";
 import { ARM_ORDER, type Arm } from "./types.js";
 
@@ -96,14 +96,6 @@ export function computeSequenceTokenTable(runs: SessionEconomyRun[]): SequencePo
       (a, b) =>
         a.corpusId.localeCompare(b.corpusId) || armRank(a.arm) - armRank(b.arm) || a.sequenceIndex - b.sequenceIndex,
     );
-}
-
-function fmt0(n: number): string {
-  return n.toFixed(0);
-}
-
-function fmt4(n: number): string {
-  return n.toFixed(4);
 }
 
 // ---------------------------------------------------------------------------

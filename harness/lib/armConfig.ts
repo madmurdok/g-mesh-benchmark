@@ -1,5 +1,8 @@
+import type { CustomArmDefinition } from "./benchConfig.js";
+import { loadBenchConfig } from "./benchConfig.js";
+import type { McpServerConfig } from "./mcpConfig.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
-import type { Arm } from "./types.js";
+import type { Arm, BuiltinArm } from "./types.js";
 
 /**
  * The `claude -p` configuration that defines an arm — model, per-call budget
@@ -13,7 +16,7 @@ import type { Arm } from "./types.js";
  * (matching this codebase's existing precedent).
  */
 export const MODEL = "claude-sonnet-5";
-export const MAX_BUDGET_USD = 1.0;
+export const MAX_BUDGET_USD = 2.5;
 export const GMESH_TOOLS = "Read,Grep,Glob,mcp__g-mesh__*";
 export const BASELINE_TOOLS = "Read,Grep,Glob";
 
@@ -120,6 +123,13 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * lives in two other places outside this repo and must be kept in sync with
  * both by hand if either changes, same manually-synced caveat this file
  * already states for KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS above.
+ *
+ * The bullet after the `resolved: false` one below (on a `symbol_id`
+ * anchoring an already-disambiguated name) was validated here first — a
+ * targeted token-economy run against ex-ambiguous-exporttosvg-public-api
+ * (turns 19.3->9.0, cost $0.196->$0.099, oracle still 3/3) plus 5 regression
+ * tasks with no oracle drop — then ported to `~/.claude/CLAUDE.md` and
+ * g-mesh/README.md; all three copies are back in sync as of that port.
  */
 export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript projects)
 
@@ -135,6 +145,7 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
   - If a \`symbol_name\` turns out ambiguous, the result carries \`ambiguous: true\` with a ranked candidate list — re-query using a candidate's \`id\` as \`symbol_id\`, not its \`qualifiedName\` (the same qualifiedName can name more than one declaration).
 - Typical flow: call \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` directly with \`symbol_name\` when it's likely unique; only call \`find_definition\` first if you expect ambiguity or need the declaration site itself. Use \`get_file_outline\` first if you don't already know the right symbol name.
 - A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
+- Resolving an ambiguous name (the bullet above on \`ambiguous: true\` candidates) to a specific \`symbol_id\` doesn't reopen the completeness question: a \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` page anchored by that \`symbol_id\` carries the exact same \`resolved: true\`/no-\`allUnresolved\` guarantee as an unambiguous \`symbol_name\` query. Once you've picked the right candidate, treat its result as final — don't grep/Read each returned call site file-by-file to reconfirm it's "really" that symbol and not the same-named other one, and don't run a second, broad text search across the repo to check for anything the query might have missed. Both duplicate work the tool has already resolved, the same way re-verifying a plain unambiguous result would.
 - \`find_implementations\` only returns direct implementors/extenders by default — a class extending a class that implements the anchor interface won't show up in a \`hasMore: false\` page. For the whole hierarchy, re-call with \`transitive: true\` (walks the same edges transitively, up to a bounded depth, resumable via \`resume_token\`).
 `;
 
@@ -187,31 +198,176 @@ exact path. Otherwise, if you reach for Read / grep / find — stop and route ab
 `;
 
 /**
- * gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools
- * and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md
- * (gmesh-configured) differs. Same story for kungfu-configured vs kungfu:
- * identical tools/MCP config, only the loaded CLAUDE.md (and thus cwd)
- * differs — unlike gmesh-configured, kungfu-configured doesn't fall through
- * to a shared default branch here, since plain `kungfu` isn't the default
- * case, so it needs an explicit check alongside it in all three functions
- * below.
+ * Everything `claude -p` needs to know about one arm, in one place.
+ *
+ * Split out of what used to be three separate if/else chains (armMcpConfig,
+ * armTools, armDisallowedTools) all keyed on the same `Arm` union: adding an
+ * arm meant remembering to touch each of them, and a per-arm dispatch spread
+ * across N functions is exactly the shape that lets an arm be added — or
+ * swapped — in some places and forgotten in others.
  */
-export function armMcpConfig(arm: Arm) {
-  if (arm === "baseline") return buildBaselineArmConfig();
-  if (arm === "kungfu" || arm === "kungfu-configured") return buildKungfuArmConfig();
-  return buildGmeshArmConfig();
+export interface ArmDefinition {
+  /**
+   * A factory, not a value: buildGmeshArmConfig()/buildKungfuArmConfig() read
+   * their binary path from the environment at call time (see mcpConfig.ts's
+   * gmeshBinaryPath/kungfuBinaryPath), and every caller has always received a
+   * freshly built object it may mutate.
+   */
+  mcpConfig: () => McpServerConfig;
+  /** `--tools` allow list; built-in tools only, see KUNGFU_DENIED_TOOLS on why that isn't enough for MCP tools. */
+  tools: string;
+  /** `--disallowedTools` deny list; omitted for arms that need no tool removed from the model's context. */
+  disallowedTools?: string;
+  /** Appended to the task prompt by armPrompt(); omitted for arms that run the prompt verbatim. */
+  promptSuffix?: string;
 }
 
-export function armTools(arm: Arm): string {
-  if (arm === "baseline") return BASELINE_TOOLS;
-  if (arm === "kungfu" || arm === "kungfu-configured") return KUNGFU_TOOLS;
-  return GMESH_TOOLS;
+/**
+ * gmesh-trusted and gmesh-configured deliberately share the gmesh arm's tools
+ * and MCP config; only the prompt (gmesh-trusted) or the loaded CLAUDE.md
+ * (gmesh-configured, handled by corpusResolver.ts via the run's cwd, not here)
+ * differs. Sharing one base definition rather than repeating the fields is
+ * what makes that guarantee structural: the tool list and MCP config *cannot*
+ * drift apart, which is the property lib/types.ts's Arm doc claims for
+ * gmesh-trusted ("byte-for-byte the same MCP config and tool list as gmesh").
+ */
+const GMESH_ARM: ArmDefinition = {
+  mcpConfig: buildGmeshArmConfig,
+  tools: GMESH_TOOLS,
+};
+
+/** Same story for kungfu-configured vs kungfu: identical tools/MCP config, only the loaded CLAUDE.md (and thus cwd) differs. */
+const KUNGFU_ARM: ArmDefinition = {
+  mcpConfig: buildKungfuArmConfig,
+  tools: KUNGFU_TOOLS,
+  disallowedTools: KUNGFU_DENIED_TOOLS,
+};
+
+/**
+ * The single table every per-arm accessor below reads from. Adding a *built-in*
+ * arm is one entry here plus the `BuiltinArm` union and ARM_ORDER in
+ * lib/types.ts — the `Record<BuiltinArm, ...>` makes a missing entry a type
+ * error rather than a silent fall-through to whatever the old chains' default
+ * branch happened to be.
+ *
+ * Keyed by `BuiltinArm`, not `Arm`: an arm registered in
+ * g-mesh-bench.config.json's `customArms` is by definition not known here and
+ * is resolved by the accessors' fallback below (customArmDefinition()). The
+ * exhaustiveness guarantee is therefore still exactly as strong as it was —
+ * it just no longer claims to cover names that only exist at runtime.
+ */
+export const ARM_DEFINITIONS: Record<BuiltinArm, ArmDefinition> = {
+  gmesh: GMESH_ARM,
+  baseline: {
+    mcpConfig: buildBaselineArmConfig,
+    tools: BASELINE_TOOLS,
+  },
+  "gmesh-trusted": { ...GMESH_ARM, promptSuffix: TRUSTED_ARM_PROMPT_SUFFIX },
+  kungfu: KUNGFU_ARM,
+  "gmesh-configured": GMESH_ARM,
+  "kungfu-configured": KUNGFU_ARM,
+};
+
+/**
+ * Appended to whatever the arm's normal tool list is when a task actually has
+ * to change code (`oracle.mode === "test"`). Every arm gets the identical
+ * addition, so the gmesh-vs-baseline comparison still differs only in search
+ * tooling.
+ *
+ * `Bash` is deliberately not included. With it, an agent can run the corpus's
+ * test suite in a loop until it goes green, and the measurement stops being
+ * "did better code search produce a correct edit" and becomes "how many
+ * self-test iterations did each arm burn" — a different experiment, with much
+ * higher and much noisier cost. Worth revisiting as a separate arm one day,
+ * but not as a silent property of this one.
+ */
+export const EDIT_TOOLS = "Edit,Write";
+
+export interface ArmToolsOptions {
+  /** Grant EDIT_TOOLS on top of the arm's normal list — set for `oracle.mode === "test"` tasks only. */
+  allowEdit?: boolean;
+}
+
+/**
+ * The built-in definition for `arm`, or undefined if the name isn't one of
+ * ARM_DEFINITIONS' own keys — the single membership test every accessor below
+ * branches on, so "built-in first, config-registered second" is decided in one
+ * place rather than four.
+ *
+ * `hasOwnProperty` rather than `arm in ARM_DEFINITIONS`: `in` also answers yes
+ * for inherited Object.prototype members, so a custom arm unluckily named
+ * "constructor" or "toString" would otherwise resolve to a prototype value
+ * instead of falling through to the config.
+ */
+function builtinArmDefinition(arm: Arm): ArmDefinition | undefined {
+  return Object.prototype.hasOwnProperty.call(ARM_DEFINITIONS, arm)
+    ? ARM_DEFINITIONS[arm as BuiltinArm]
+    : undefined;
+}
+
+/**
+ * Resolves an arm that isn't built in against g-mesh-bench.config.json's
+ * `customArms` (see benchConfig.ts's CustomArmDefinition), so a new MCP-based
+ * comparison arm needs a config entry and no source change at all.
+ *
+ * Throws naming *both* places an arm can be defined: by the time an arm name
+ * reaches here it has already passed benchConfig.ts's validateArms(), so
+ * getting this error means the caller invented an arm name in code, or the
+ * config file it was validated against isn't the one loaded here.
+ */
+function customArmDefinition(arm: Arm): CustomArmDefinition {
+  const def = loadBenchConfig().customArms[arm];
+  if (def === undefined) {
+    throw new Error(
+      `Unknown arm "${arm}": it is neither a built-in arm (${Object.keys(ARM_DEFINITIONS).join(", ")}) ` +
+        `nor registered under "customArms" in g-mesh-bench.config.json.`,
+    );
+  }
+  return def;
+}
+
+export function armMcpConfig(arm: Arm): McpServerConfig {
+  const builtin = builtinArmDefinition(arm);
+  if (builtin !== undefined) return builtin.mcpConfig();
+  const def = customArmDefinition(arm);
+  // The arm name *is* the MCP server name, which is what makes the arm's
+  // tools `mcp__<arm>__…` — the same names its `tools`/`deniedTools` lists
+  // spell out. Freshly built (args copied, not aliased) for the same reason
+  // the built-in factories are: callers have always been free to mutate it.
+  return { mcpServers: { [arm]: { command: def.command, args: [...def.args] } } };
+}
+
+export function armTools(arm: Arm, opts: ArmToolsOptions = {}): string {
+  const builtin = builtinArmDefinition(arm);
+  // Read/Grep/Glob (BASELINE_TOOLS) are prepended rather than expected in the
+  // config: every arm in this benchmark has them, including baseline, so a
+  // custom arm listing them again would only duplicate entries.
+  const base =
+    builtin !== undefined ? builtin.tools : `${BASELINE_TOOLS},${customArmDefinition(arm).tools.join(",")}`;
+  return opts.allowEdit ? `${base},${EDIT_TOOLS}` : base;
 }
 
 export function armPrompt(prompt: string, arm: Arm): string {
-  return arm === "gmesh-trusted" ? prompt + TRUSTED_ARM_PROMPT_SUFFIX : prompt;
+  // Custom arms get no suffix: the trusted-variant idea (TRUSTED_ARM_PROMPT_SUFFIX)
+  // is written about g-mesh specifically, and there is no per-arm prompt
+  // shaping in the config surface for a custom arm to opt into.
+  const builtin = builtinArmDefinition(arm);
+  if (builtin === undefined) {
+    // Still resolved, not skipped: an unregistered arm must fail here too,
+    // rather than quietly running with an unmodified prompt.
+    customArmDefinition(arm);
+    return prompt;
+  }
+  const suffix = builtin.promptSuffix;
+  return suffix === undefined ? prompt : prompt + suffix;
 }
 
 export function armDisallowedTools(arm: Arm): string | undefined {
-  return arm === "kungfu" || arm === "kungfu-configured" ? KUNGFU_DENIED_TOOLS : undefined;
+  const builtin = builtinArmDefinition(arm);
+  if (builtin !== undefined) return builtin.disallowedTools;
+  const denied = customArmDefinition(arm).deniedTools;
+  // undefined, not "", when there is nothing to deny — an empty --disallowedTools
+  // value is a flag the CLI never needed to see (see runClaude.ts's
+  // disallowedTools doc comment on how it is spliced into argv).
+  return denied === undefined || denied.length === 0 ? undefined : denied.join(",");
 }

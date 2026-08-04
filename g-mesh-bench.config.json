@@ -1,0 +1,16 @@
+{
+  "tokenEconomy": {
+    "arms": ["gmesh-configured", "baseline"],
+    "repetitions": "normal",
+    "excalidrawScope": "low",
+    "htmlNarrative": true,
+    "warmCache": "prompt"
+  },
+  "sessionEconomy": {
+    "arms": ["gmesh", "baseline"],
+    "repetitions": "normal"
+  },
+  "searchLatency": { "samples": 20 },
+  "report": { "htmlNarrative": true },
+  "runClaude": { "saveTranscripts": false }
+}

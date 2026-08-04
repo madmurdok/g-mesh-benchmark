@@ -25,9 +25,13 @@ function buildNarrativePrompt(bullets: string[], aggregate: Aggregate): string {
     "",
     "Aggregate numbers:",
     `- Tasks compared: ${aggregate.taskCount}`,
-    `- Total mean tokens — gmesh: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`,
+    // Named by aggregate.arm, not a hardcoded "gmesh": the numbers describe
+    // whichever arm the report compared (see reportData.ts's
+    // primaryComparisonArm), and telling the model the wrong arm name would
+    // put a wrong claim straight into the report's prose summary.
+    `- Total mean tokens — ${aggregate.arm}: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`,
     `- Unconditional token reduction: ${aggregate.unconditionalReductionPct.toFixed(1)}%`,
-    `- Oracle pass rate — gmesh: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`,
+    `- Oracle pass rate — ${aggregate.arm}: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`,
     "",
     "Automated observations:",
     ...bullets.map((b) => `- ${b}`),

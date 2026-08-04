@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadBenchConfig } from "./lib/benchConfig.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { generateNarrative } from "./lib/narrative.js";
 import {
@@ -12,6 +13,8 @@ import {
   computeCorrectnessTable,
   computeStaleSummary,
   computeTaskTable,
+  formatDurationSeconds,
+  formatTurnsWithToolCalls,
   loadRuns,
   pairedTokenTotals,
   partitionByCurrentDef,
@@ -51,7 +54,7 @@ async function buildCurrentHashByTaskId(): Promise<Map<string, string>> {
  */
 function shouldGenerateNarrative(): boolean {
   const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
-  if (envOverride === undefined) return true;
+  if (envOverride === undefined) return loadBenchConfig().report.htmlNarrative;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
@@ -77,7 +80,7 @@ function printCorrectness(runs: TokenEconomyRun[]): void {
 }
 
 /**
- * Paired gmesh-vs-baseline token savings by category, printed right after the
+ * Paired primary-arm-vs-baseline token savings by category, printed right after the
  * correctness table — the single blended PAIRED reduction number further
  * below averages over all tasks, which hides categories like "multihop"
  * (few tasks, largest g-mesh advantage) inside 17 easier tasks where a fixed
@@ -89,7 +92,10 @@ function printCategoryTokenSavings(runs: TokenEconomyRun[]): void {
   if (rows.length === 0) return;
 
   console.log("# Token savings by category (paired, oracle-passed pairs only)\n");
-  console.log("| Category | gmesh mean tokens | baseline mean tokens | Savings | Pairs (n) |");
+  // Header names whichever arm computeCategoryTokenTable actually compared
+  // (see reportData.ts's primaryComparisonArm) instead of always saying
+  // "gmesh" — every row shares one arm, so rows[0] is authoritative.
+  console.log(`| Category | ${rows[0]!.arm} mean tokens | baseline mean tokens | Savings | Pairs (n) |`);
   console.log("|---|---|---|---|---|");
   for (const row of rows) {
     console.log(
@@ -171,8 +177,8 @@ async function reportTokenEconomy(): Promise<void> {
   const taskTable = computeTaskTable(runs);
 
   console.log("# Token economy report\n");
-  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Oracle (pass/ok) |");
-  console.log("|---|---|---|---|---|---|---|---|---|");
+  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
+  console.log("|---|---|---|---|---|---|---|---|---|---|---|");
 
   // Iterates whichever arms the loaded runs actually contain (see
   // reportData.ts's armsPresent) — 2-arm history prints exactly as before,
@@ -181,12 +187,12 @@ async function reportTokenEconomy(): Promise<void> {
     for (const { arm, agg, groupLength: group } of row.cells) {
       if (!agg) {
         if (group > 0) {
-          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - |`);
+          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
         }
         continue;
       }
       console.log(
-        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${agg.passCount}/${agg.okCount} |`,
+        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
       );
     }
   }
@@ -195,9 +201,9 @@ async function reportTokenEconomy(): Promise<void> {
 
   console.log("\n## Aggregate\n");
   console.log(`- Tasks compared: ${aggregate.taskCount}`);
-  console.log(`- Total mean tokens — gmesh: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`);
-  console.log(`- Token reduction, UNCONDITIONAL (gmesh vs baseline, every ok run regardless of oracle result): ${aggregate.unconditionalReductionPct.toFixed(1)}%`);
-  console.log(`- Oracle pass rate — gmesh: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`);
+  console.log(`- Total mean tokens — ${aggregate.arm}: ${aggregate.totalGmeshTokens.toFixed(0)}, baseline: ${aggregate.totalBaselineTokens.toFixed(0)}`);
+  console.log(`- Token reduction, UNCONDITIONAL (${aggregate.arm} vs baseline, every ok run regardless of oracle result): ${aggregate.unconditionalReductionPct.toFixed(1)}%`);
+  console.log(`- Oracle pass rate — ${aggregate.arm}: ${aggregate.gmeshOracleOk}/${aggregate.gmeshOracleTotal}, baseline: ${aggregate.baselineOracleOk}/${aggregate.baselineOracleTotal}`);
 
   const paired = pairedTokenTotals(runs);
   const pairedReduction =

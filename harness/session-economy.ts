@@ -3,10 +3,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
-import { resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
+import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
+import { resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
-import { runClaude } from "./lib/runClaude.js";
+import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
@@ -97,7 +98,7 @@ type SessionRepetitionMode = keyof typeof SESSION_REPETITION_PRESETS;
  * Presets are correspondingly smaller: 1/2/3.
  */
 function sessionRepetitionCount(): number {
-  const raw = process.env.G_MESH_BENCH_SESSION_REPS ?? "normal";
+  const raw = process.env.G_MESH_BENCH_SESSION_REPS ?? loadBenchConfig().sessionEconomy.repetitions;
   const normalized = raw.trim().toLowerCase();
   if (normalized in SESSION_REPETITION_PRESETS) {
     return SESSION_REPETITION_PRESETS[normalized as SessionRepetitionMode];
@@ -255,6 +256,7 @@ async function runSessionChain(
       model: MODEL,
       maxBudgetUsd: MAX_BUDGET_USD,
       resumeSessionId,
+      transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, sessionRepetition),
     });
 
     // Same prospective half of the combined budget bound as token-economy's
@@ -288,6 +290,14 @@ async function runSessionChain(
       cacheReadTokens: result.usage.cacheReadTokens,
       cacheCreationTokens: result.usage.cacheCreationTokens,
       numTurns: result.numTurns,
+      // Recorded here for the same reason token-economy's runArm does it: the
+      // stream now carries per-turn tool names, and a chained run's
+      // search-vs-edit split is exactly as meaningful as an isolated one's.
+      // (skippedRun above deliberately omits these — a call that never
+      // happened has no tally, which is not the same as a tally of zero.)
+      searchToolCalls: result.toolCalls.search,
+      editToolCalls: result.toolCalls.edit,
+      otherToolCalls: result.toolCalls.other,
       durationMs: result.durationMs,
       costUsd: result.costUsd,
       judgeCostUsd,
@@ -346,9 +356,11 @@ async function main() {
   const corpora = selectedCorpusIds.length > 0 ? registry.filter((c) => selectedCorpusIds.includes(c.id)) : registry;
 
   const reps = sessionRepetitionCount();
-  const arms: Arm[] = ["gmesh", "baseline"];
-  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
-  if (includeKungfu) arms.push("kungfu");
+  const baseArms = loadBenchConfig().sessionEconomy.arms;
+  const toInclude: Arm[] = [];
+  if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
+  if (includeKungfu) toInclude.push("kungfu");
+  const arms = applyArmIncludeOverrides(baseArms, toInclude);
   console.log(
     `Chains per (corpus, arm): ${reps} | arms: ${arms.join(", ")} | corpora: ${corpora.map((c) => c.id).join(", ")}`,
   );
@@ -371,6 +383,17 @@ async function main() {
       continue;
     }
     const cwd = await resolveWarm(corpus);
+    // resolveWarm() reuses the same absolute path across runs, so g-mesh's
+    // index there is cold only on the very first-ever invocation against
+    // this cache path - warm it explicitly anyway so that first run isn't
+    // unluckier than every one after it. Gated on the `gmesh` arm actually
+    // running (it's this script's default, but the gate mirrors
+    // token-economy.ts's own pattern and stays correct if that default ever
+    // changes).
+    if (arms.includes("gmesh")) {
+      console.log(`[${corpus.id}] warming g-mesh index for the shared gmesh-arm checkout...`);
+      await warmGmeshIndex(cwd);
+    }
     // Same reasoning as token-economy.ts's #57 fix: kungfu writes a .kungfu/
     // index into its cwd, so its chain must run against a throwaway clone,
     // never the shared `cwd` above (the live, registry-registered checkout).

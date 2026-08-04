@@ -5,3 +5,4 @@ dist/
 .DS_Store
 results/html/cumulative.html
 results/html/session-cumulative.html
+.claude/worktrees/

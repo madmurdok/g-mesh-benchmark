@@ -464,5 +464,94 @@
       "mode": "judge",
       "rubric": "The question is whether getRectangleBoxAbsoluteCoords (exported from packages/element/src/bounds.ts) has any real caller anywhere in the Excalidraw repository, including tests. Ground truth, independently verified with the TypeScript language service (project-wide reference search, tests included): it has ZERO references anywhere outside its own declaration — it is genuinely unused, dead code, and safe to delete. PASS only if the answer's final conclusion states it is unused/has no callers and that it is safe to delete (or clearly equivalent wording), and does not claim any real caller/file for it. FAIL if the answer claims any file (other than its own defining file, if mentioned only as the declaration site) calls it, if it concludes it is NOT safe to delete, or if it hedges to an unclear/uncertain conclusion instead of stating it is unused and safe to delete. Wording, ordering, and extra correct commentary do not matter."
     }
+  },
+  {
+    "id": "ex-implement-library-dedup",
+    "kind": "implement",
+    "category": "implementation",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "isUniqueItem", "file": "packages/excalidraw/data/library.ts" },
+    "prompt": "Users report that adding the same shape library twice — clicking \"Add to Excalidraw\" on a library they already have, or opening the same .excalidrawlib file again — ends up with every item in it duplicated in their library, instead of the editor recognising that those items are already there. The same thing happens to items that reached the user by some other route (another document, another session, a library someone else re-exported): they are indistinguishable on canvas from shapes already in the library, and they still get added again. There is de-duplication logic already, and it catches none of this. Find the root cause and fix it in the actual code, so that an item indistinguishable from one already in the library is recognised as a duplicate no matter where it came from, while genuinely different items are still added and items that differ only in how many shapes they contain, or in what order those shapes are stacked, are still treated as different.",
+    "oracle": {
+      "mode": "test",
+      "holdoutFiles": {
+        "packages/excalidraw/tests/__bench_holdout__/library-dedup.test.tsx": "corpora/excalidraw/fixtures/ex-implement-library-dedup/library-dedup.test.tsx"
+      },
+      "testCommand": "yarn install --silent && npx vitest run packages/excalidraw/tests/library.test.tsx packages/excalidraw/tests/__bench_holdout__/library-dedup.test.tsx"
+    }
+  },
+  {
+    "id": "ex-implement-mutateelement-elbow-zero-position",
+    "kind": "implement",
+    "category": "implementation",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+    "prompt": "Moving an elbow arrow so that it lands exactly on x = 0 (or exactly on y = 0) silently leaves it at its old position instead — the identical move to any non-zero coordinate works fine, nothing throws, and no error is logged. Find the root cause and fix it in the actual code, without changing how elbow arrows behave for any non-zero destination.",
+    "oracle": {
+      "mode": "test",
+      "holdoutFiles": {
+        "packages/element/tests/__bench_holdout__/elbow-zero-position.test.tsx": "corpora/excalidraw/fixtures/ex-implement-mutateelement-elbow-zero-position/elbow-zero-position.test.tsx"
+      },
+      "testCommand": "yarn install --silent && npx vitest run packages/element/tests/elbowArrow.test.tsx packages/element/tests/__bench_holdout__/elbow-zero-position.test.tsx"
+    }
+  },
+  {
+    "id": "ex-implement-linear-editor-order-crash",
+    "kind": "implement",
+    "category": "implementation",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "actionToggleLinearEditor", "file": "packages/excalidraw/actions/actionLinearEditor.tsx" },
+    "prompt": "A user with a labelled arrow — an arrow that has bound text on it — reports that entering line-editing mode on it (the \"Edit arrow\" / \"Edit line\" action) sometimes crashes the editor with an internal assertion instead of opening the editor. The same action on the same kind of arrow works fine in other documents, so it depends on the document rather than on the arrow. Find the root cause and fix it in the actual code, without changing when the action is offered or how line editing behaves for the arrows it already works on.",
+    "oracle": {
+      "mode": "test",
+      "holdoutFiles": {
+        "packages/element/tests/__bench_holdout__/linear-editor-order.test.tsx": "corpora/excalidraw/fixtures/ex-implement-linear-editor-order-crash/linear-editor-order.test.tsx"
+      },
+      "testCommand": "yarn install --silent && npx vitest run packages/element/tests/linearElementEditor.test.tsx packages/excalidraw/tests/contextmenu.test.tsx packages/element/tests/__bench_holdout__/linear-editor-order.test.tsx"
+    }
+  },
+  {
+    "id": "ex-default-export-dropdownmenu-group",
+    "kind": "find_definition",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "DropdownMenuGroup", "file": "packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx" },
+    "prompt": "In this repository, there's a component used throughout the dropdown-menu UI that consumers import as DropdownMenuGroup. Find where it's actually declared — including what it's really named inside its own source file, since the value it wraps is default-exported under a different local name than the one it's imported under — and report the file it lives in plus that real internal name.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": ["packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx"],
+      "mustMentionSymbols": ["MenuGroup"]
+    }
+  },
+  {
+    "id": "ex-namespace-import-laserpointer-plerp",
+    "kind": "find_callers",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "plerp", "file": "packages/laser-pointer/src/math.ts" },
+    "prompt": "In this repository's laser-pointer package, find the plerp function (a point-interpolation helper) and determine whether any file calls it through a namespace-style import (e.g. `import * as x from \"...\"` followed by `x.plerp(...)`) rather than a plain named import of plerp itself. If such a call exists, name the calling file.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": ["packages/laser-pointer/src/state.ts"],
+      "mustMentionSymbols": ["plerp"]
+    }
+  },
+  {
+    "id": "ex-control-i18n-dynamic-locale-import",
+    "kind": "read",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "setLanguage", "file": "packages/excalidraw/i18n.ts" },
+    "prompt": "In this repository, find the setLanguage function in the i18n module. It dynamically imports a locale data file using a computed path. Can the exact locale file it will load be determined statically just by reading the code, or does it depend on a runtime value? Explain which, and if it depends on a runtime value, say what that value is.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is about setLanguage in packages/excalidraw/i18n.ts, which does `await import(`./locales/${currentLang.code}.json`)` after assigning `currentLang = lang` from its own `lang` parameter. Ground truth: the exact locale file cannot be determined statically just by reading the code - it depends on the runtime value of the `lang` argument passed to setLanguage (equivalently, `currentLang.code` / the language code in effect when it's called), not on any compile-time constant. PASS if the answer correctly states that the exact target file cannot be statically determined and depends on a runtime value (e.g., the language code argument, `currentLang.code`, or an equivalent description of a runtime-supplied language selection), and does not claim a single fixed locale file (e.g. en.json) as the only possible target. FAIL if the answer claims the import always resolves to one specific fixed locale file, or omits that the target depends on a runtime-determined language code."
+    }
   }
 ]

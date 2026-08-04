@@ -13,14 +13,16 @@ import {
   armPrompt,
   armTools,
 } from "./lib/armConfig.js";
-import { resolveConfigured, resolveFresh, resolveWarm } from "./lib/corpusResolver.js";
+import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
+import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
-import { runClaude } from "./lib/runClaude.js";
+import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
+import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
@@ -69,6 +71,20 @@ export interface TokenEconomyRun {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   numTurns: number;
+  /**
+   * Tool calls this run made, split by purpose (see runClaude.ts's
+   * classifyToolCall): `search` is Read/Grep/Glob plus every `mcp__*` tool,
+   * `edit` is Edit/Write, `other` is anything else. Flat rather than nested to
+   * match the rest of this interface.
+   *
+   * Optional because runs recorded before the harness could see per-turn tool
+   * names (it read only the CLI's final aggregate) genuinely don't have them —
+   * same reason `category`/`expectedWinner` are optional. Consumers must treat
+   * `undefined` as "unknown", not as 0.
+   */
+  searchToolCalls?: number;
+  editToolCalls?: number;
+  otherToolCalls?: number;
   durationMs: number;
   /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
@@ -118,10 +134,92 @@ type RepetitionMode = keyof typeof REPETITION_PRESETS;
  * for a quick sanity check, not for trusting the resulting numbers.
  */
 function repetitionCount(): number {
-  const raw = process.env.G_MESH_BENCH_REPS ?? "normal";
+  const raw = process.env.G_MESH_BENCH_REPS ?? loadBenchConfig().tokenEconomy.repetitions;
   const normalized = raw.trim().toLowerCase();
   if (normalized in REPETITION_PRESETS) return REPETITION_PRESETS[normalized as RepetitionMode];
   throw new Error(`Invalid G_MESH_BENCH_REPS value "${raw}"; expected "low", "normal", or "max".`);
+}
+
+/**
+ * Which of excalidraw's `implementation` tasks a full, unfiltered run
+ * includes, ordered by measured API spend per arm call (the test commands cost
+ * about the same as each other — they're all dominated by the same `yarn
+ * install`, so what actually varies is the agent):
+ *
+ *   elbow-zero-position   ~$0.23-0.25
+ *   linear-editor-order   ~$0.20-0.27
+ *   library-dedup         ~$0.80-1.05
+ *
+ * library-dedup is last on purpose. It is the only one of the three that
+ * regularly runs into MAX_BUDGET_USD — both arms have been observed producing
+ * a correct fix and still being recorded `budget_exceeded` before grading, so
+ * a run that includes it can spend real money and learn nothing. Keeping it
+ * behind an explicit `high` makes that an opt-in rather than the default.
+ */
+const EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS = {
+  low: ["ex-implement-mutateelement-elbow-zero-position"],
+  normal: ["ex-implement-mutateelement-elbow-zero-position", "ex-implement-linear-editor-order-crash"],
+  high: [
+    "ex-implement-mutateelement-elbow-zero-position",
+    "ex-implement-linear-editor-order-crash",
+    "ex-implement-library-dedup",
+  ],
+} as const;
+type ExcalidrawScopeMode = keyof typeof EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS;
+
+/**
+ * G_MESH_BENCH_EXCALIDRAW_SCOPE picks how many of excalidraw's
+ * `implementation` tasks a full registry run covers. Unlike every other
+ * `implementation` task, these each pay excalidraw's ~90s `yarn install` into
+ * a throwaway clone *per (task, arm, repetition)* before their test command
+ * can run at all, so running all three by default would add roughly half an
+ * hour of pure install time to an otherwise unchanged benchmark.
+ *
+ * Defaults to "low" — the same "expensive extras are opt-in" stance as
+ * G_MESH_BENCH_INCLUDE_TRUSTED and friends, except this one can't default to
+ * nothing: these are real corpus tasks, so the floor is the cheapest single
+ * one rather than zero.
+ */
+export function excalidrawImplementationScope(): readonly string[] {
+  const raw = process.env.G_MESH_BENCH_EXCALIDRAW_SCOPE ?? loadBenchConfig().tokenEconomy.excalidrawScope;
+  const normalized = raw.trim().toLowerCase();
+  if (normalized in EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS) {
+    return EXCALIDRAW_IMPLEMENTATION_SCOPE_PRESETS[normalized as ExcalidrawScopeMode];
+  }
+  throw new Error(
+    `Invalid G_MESH_BENCH_EXCALIDRAW_SCOPE value "${raw}"; expected "low", "normal", or "high".`,
+  );
+}
+
+/**
+ * Which of a corpus's tasks this run actually executes.
+ *
+ * Two independent filters, in precedence order: an explicit CLI selection
+ * means "run exactly these" and short-circuits everything else, the way it
+ * already overrides every other default in this harness. Otherwise the
+ * excalidraw scope preset applies — and only to excalidraw's `implementation`
+ * tasks, since it exists to cap that corpus's per-run `yarn install` bill;
+ * task-tracker-mcp's own `implementation` task installs in ~11s and is never
+ * gated by it.
+ *
+ * Pulled out of main()'s loop so the precedence is testable without running a
+ * benchmark (see token-economy.test.ts).
+ */
+export function selectTasksForCorpus(
+  corpusId: string,
+  corpusTasks: readonly BenchTask[],
+  selectedTaskIds: readonly string[],
+  excalidrawScope: readonly string[],
+): BenchTask[] {
+  if (selectedTaskIds.length > 0) {
+    return corpusTasks.filter((t) => selectedTaskIds.includes(t.id));
+  }
+  return corpusTasks.filter(
+    (t) =>
+      corpusId !== "excalidraw" ||
+      t.category !== "implementation" ||
+      excalidrawScope.includes(t.id),
+  );
 }
 
 /**
@@ -133,6 +231,41 @@ function repetitionCount(): number {
  */
 function requestedTaskIds(): string[] {
   return process.argv.slice(2);
+}
+
+/**
+ * Whether a task's agent needs write access to its cwd — true only for
+ * `oracle.mode === "test"` tasks, which are graded on the edits they make
+ * rather than on what they say. Also the trigger for giving such a task its
+ * own throwaway clone in main(): the two must stay in lockstep, so both read
+ * this one predicate.
+ */
+function taskEditsCode(task: BenchTask): boolean {
+  return task.oracle.mode === "test";
+}
+
+/** The pass/fail verdict for one run, normalized across the two grading paths (see gradeRun). */
+interface GradingOutcome {
+  passed: boolean;
+  reason?: string;
+  /** Real API spend for grading: judge mode only; test mode runs a local process and spends nothing. */
+  judgeCostUsd: number;
+}
+
+/**
+ * Routes a finished run to the grader its oracle mode calls for: test-mode
+ * oracles are graded by running the corpus's test suite against the (edited)
+ * cwd, every other mode by text-checking the answer. The two produce
+ * deliberately different shapes — see lib/testRunner.ts for why they aren't one
+ * function — so they're normalized here, at the single point runArm consumes.
+ */
+async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promise<GradingOutcome> {
+  if (taskEditsCode(task)) {
+    const verdict = await runAcceptanceTest(cwd, task.oracle);
+    return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
+  }
+  const verdict = await checkOracle(resultText, task.oracle);
+  return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: verdict.judgeCostUsd ?? 0 };
 }
 
 async function runArm(
@@ -147,18 +280,22 @@ async function runArm(
     cwd,
     prompt: armPrompt(task.prompt, arm),
     mcpConfig: armMcpConfig(arm),
-    tools: armTools(arm),
+    tools: armTools(arm, { allowEdit: taskEditsCode(task) }),
     disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
+    transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, repetition),
   });
   // Grading a failed arm run is pointless and, in judge mode, not free:
   // runClaude returns an empty resultText for both "error" and
   // "budget_exceeded", so every oracle mode scores it as a miss anyway — but a
   // judge would first pay for a real API call to say so. Skipping it is the
   // prospective half of the combined budget bound; combinedBudgetStatus below
-  // is the retrospective half.
-  const oracle = result.status === "ok" ? await checkOracle(result.resultText, task.oracle) : undefined;
+  // is the retrospective half. A test-mode oracle is skipped for the same
+  // reason minus the money: an agent that errored out or ran out of budget
+  // mid-edit may well have left the corpus half-edited, and grading that says
+  // nothing about the arm.
+  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task) : undefined;
   const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
   const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
   if (status === "budget_exceeded" && result.status === "ok") {
@@ -183,6 +320,9 @@ async function runArm(
     cacheReadTokens: result.usage.cacheReadTokens,
     cacheCreationTokens: result.usage.cacheCreationTokens,
     numTurns: result.numTurns,
+    searchToolCalls: result.toolCalls.search,
+    editToolCalls: result.toolCalls.edit,
+    otherToolCalls: result.toolCalls.other,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
     judgeCostUsd,
@@ -203,7 +343,7 @@ async function runArm(
  */
 function shouldGenerateNarrative(): boolean {
   const envOverride = process.env.G_MESH_BENCH_HTML_NARRATIVE;
-  if (envOverride === undefined) return true;
+  if (envOverride === undefined) return loadBenchConfig().tokenEconomy.htmlNarrative;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
@@ -246,18 +386,28 @@ function shouldIncludeKungfuArm(): boolean {
 }
 
 /**
- * G_MESH_BENCH_INCLUDE_CONFIGURED=yes|no gates the `gmesh-configured` arm —
- * same opt-in-only pattern as shouldIncludeTrustedArm()/shouldIncludeKungfuArm(),
- * for the same reason: a default run's output must stay exactly what it was
- * before this arm existed.
+ * G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no gates the bare `gmesh` arm, which is
+ * no longer part of a default run.
+ *
+ * The swap: `gmesh-configured` — g-mesh plus the CLAUDE.md guidance an actual
+ * project would have — is what real usage looks like, so it is what the
+ * default two-arm comparison now measures. Bare `gmesh` (the tools with no
+ * guidance at all) measures a configuration nobody ships, so it drops to the
+ * same opt-in tier as gmesh-trusted/kungfu rather than being paid for on every
+ * run. Turn it on to reproduce the old bare-vs-baseline comparison, or to
+ * measure what the CLAUDE.md itself is worth (bare vs configured, side by side).
+ *
+ * This replaces the former G_MESH_BENCH_INCLUDE_CONFIGURED flag, which gated
+ * the arm that is now unconditional — keeping it would have meant a flag whose
+ * only effect was to add a second, duplicate copy of an arm already running.
  */
-function shouldIncludeConfiguredArm(): boolean {
-  const envOverride = process.env.G_MESH_BENCH_INCLUDE_CONFIGURED;
+function shouldIncludeBareGmeshArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_BARE_GMESH;
   if (envOverride === undefined) return false;
   const normalized = envOverride.trim().toLowerCase();
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
-  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_CONFIGURED value "${envOverride}"; expected "yes" or "no".`);
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_BARE_GMESH value "${envOverride}"; expected "yes" or "no".`);
 }
 
 /**
@@ -296,6 +446,12 @@ async function shouldWarmCache(): Promise<boolean> {
     throw new Error(`Invalid G_MESH_BENCH_WARM_CACHE value "${envOverride}"; expected "yes" or "no".`);
   }
 
+  // Config's warmCache short-circuits exactly like the env var would when set
+  // to a real boolean; "prompt" (the default) falls through to today's
+  // existing TTY-check-then-readline behavior unchanged.
+  const configured = loadBenchConfig().tokenEconomy.warmCache;
+  if (typeof configured === "boolean") return configured;
+
   if (!process.stdin.isTTY) {
     console.log(
       "stdin is not a TTY and G_MESH_BENCH_WARM_CACHE is unset; skipping interactive prompt and defaulting to no warm-up.",
@@ -332,20 +488,28 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
 }
 
 /**
- * Two calls, not three, even when gmesh-trusted is enabled: what gets warmed
- * is the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
- * gmesh's (same MCP config, same tool list) — the arms differ only after that
- * prefix, in the user prompt. A third warm-up would spend money to warm a
- * cache entry that is already warm.
+ * One call per *distinct cache prefix*, not one per arm: what gets warmed is
+ * the system-prompt/tool-schema prefix, and gmesh-trusted's is identical to
+ * gmesh's (same MCP config, same tool list) — those two arms differ only after
+ * that prefix, in the user prompt. An extra warm-up would spend money to warm
+ * a cache entry that is already warm.
+ *
+ * The gmesh warm-up is therefore skipped entirely unless an arm that shares
+ * that prefix (bare `gmesh` or `gmesh-trusted`, both opt-in now) is actually
+ * running — gmesh-configured's CLAUDE.md is system-level context, so its
+ * prefix is a different one, warmed from its own cwd below.
  */
 async function warmCache(
+  arms: readonly Arm[],
   cwd: string,
   kungfuCwd: string | undefined,
   configuredCwd: string | undefined,
   kungfuConfiguredCwd: string | undefined,
 ): Promise<void> {
-  console.log("Warming prompt cache: gmesh arm...");
-  await warmArm(cwd, "gmesh");
+  if (arms.includes("gmesh") || arms.includes("gmesh-trusted")) {
+    console.log("Warming prompt cache: gmesh arm...");
+    await warmArm(cwd, "gmesh");
+  }
   console.log("Warming prompt cache: baseline arm...");
   await warmArm(cwd, "baseline");
   if (kungfuCwd !== undefined) {
@@ -388,6 +552,25 @@ function kungfuBinaryIsAvailable(): boolean {
   return (process.env.PATH ?? "").split(path.delimiter).some((dir) => dir.length > 0 && existsSync(path.join(dir, bin)));
 }
 
+/**
+ * Arms that must run against a throwaway clone of their own rather than the
+ * shared warm checkout, because the tool behind them writes state into
+ * whatever project directory it is pointed at.
+ *
+ * `kungfu` is the built-in case: it indexes into a `.kungfu/` dir inside its
+ * cwd, unlike g-mesh, which indexes into `~/.g-mesh` and never touches the
+ * project. A config-registered arm declares the same need with
+ * `writesToProjectDir: true` (see benchConfig.ts's CustomArmDefinition), so
+ * adding another index-into-the-project tool is a config entry, not an edit
+ * to the literal check this replaced.
+ */
+function armsNeedingOwnClone(): ReadonlySet<Arm> {
+  const custom = Object.entries(loadBenchConfig().customArms)
+    .filter(([, def]) => def.writesToProjectDir === true)
+    .map(([name]) => name);
+  return new Set<Arm>(["kungfu", ...custom]);
+}
+
 async function main() {
   if (!existsSync(gmeshBinaryPath())) {
     console.error(
@@ -399,7 +582,7 @@ async function main() {
   }
 
   const includeKungfu = shouldIncludeKungfuArm();
-  const includeConfigured = shouldIncludeConfiguredArm();
+  const includeBareGmesh = shouldIncludeBareGmeshArm();
   const includeKungfuConfigured = shouldIncludeKungfuConfiguredArm();
   if ((includeKungfu || includeKungfuConfigured) && !kungfuBinaryIsAvailable()) {
     console.error(
@@ -426,34 +609,25 @@ async function main() {
     console.log(`Running ${selectedTaskIds.length} of ${total} tasks: ${selectedTaskIds.join(", ")}`);
   }
 
+  // Resolved (and therefore validated) before anything spends money, so a
+  // typo'd preset name fails immediately instead of after the cache warm-up
+  // and the first few runs.
+  const excalidrawScope = excalidrawImplementationScope();
+
   const runs: TokenEconomyRun[] = [];
 
-  if (await shouldWarmCache()) {
-    const firstCorpus = registry[0];
-    if (!firstCorpus) {
-      throw new Error("Cannot warm cache: corpus registry is empty.");
-    }
-    const warmupCwd = await resolveWarm(firstCorpus);
-    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
-    const warmupConfiguredCwd = includeConfigured
-      ? await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD)
-      : undefined;
-    const warmupKungfuConfiguredCwd = includeKungfuConfigured
-      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
-      : undefined;
-    await warmCache(warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
-  }
-
-  const reps = repetitionCount();
-  console.log(`Repetitions per (task, arm): ${reps}`);
-
-  // Only ever logged when a flag is on, so a default run's output is
-  // unchanged from before these extra arms existed.
-  const arms: Arm[] = ["gmesh", "baseline"];
-  if (shouldIncludeTrustedArm()) arms.push("gmesh-trusted");
-  if (includeKungfu) arms.push("kungfu");
-  if (includeConfigured) arms.push("gmesh-configured");
-  if (includeKungfuConfigured) arms.push("kungfu-configured");
+  // gmesh-configured, not bare gmesh, is the default primary arm: the
+  // benchmark's claim is about g-mesh as it is actually used, and nobody
+  // actually runs it without the CLAUDE.md guidance. Bare gmesh is opt-in (see
+  // shouldIncludeBareGmeshArm). Every other arm stays opt-in as before, so the
+  // extra-arm warning below is still only ever logged when a flag is on.
+  const baseArms = loadBenchConfig().tokenEconomy.arms;
+  const toInclude: Arm[] = [];
+  if (includeBareGmesh) toInclude.push("gmesh");
+  if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
+  if (includeKungfu) toInclude.push("kungfu");
+  if (includeKungfuConfigured) toInclude.push("kungfu-configured");
+  const arms = applyArmIncludeOverrides(baseArms, toInclude);
   if (arms.length > 2) {
     console.log(
       `Arms per (task, rep): ${arms.join(", ")}. Extra arms are full extra runs of every task: ` +
@@ -461,31 +635,86 @@ async function main() {
     );
   }
 
+  // After the arm list, not before it: which cache prefixes are worth warming
+  // is entirely a function of which arms are running.
+  if (await shouldWarmCache()) {
+    const firstCorpus = registry[0];
+    if (!firstCorpus) {
+      throw new Error("Cannot warm cache: corpus registry is empty.");
+    }
+    const warmupCwd = await resolveWarm(firstCorpus);
+    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
+    const warmupConfiguredCwd = await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD);
+    const warmupKungfuConfiguredCwd = includeKungfuConfigured
+      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+      : undefined;
+    await warmCache(arms, warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
+  }
+
+  const reps = repetitionCount();
+  console.log(`Repetitions per (task, arm): ${reps}`);
+
+  // Resolved once, outside the corpus loop: it reads the config, not the run.
+  const ownCloneArms = armsNeedingOwnClone();
+
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
-    const tasks =
-      selectedTaskIds.length > 0 ? corpusTasks.filter((t) => selectedTaskIds.includes(t.id)) : corpusTasks;
+    const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
     if (tasks.length === 0) continue;
     const cwd = await resolveWarm(corpus);
+    // resolveWarm() reuses the same absolute path across runs, so g-mesh's
+    // index there is only cold on the very first-ever invocation against
+    // this cache path - warm it explicitly anyway so that first run isn't
+    // unluckier than every one after it. Gated on the bare `gmesh` arm
+    // actually running: `baseline` never calls g-mesh, and gmesh-configured
+    // uses `configuredCwd` below instead of this shared `cwd`.
+    if (arms.includes("gmesh")) {
+      console.log(`[${corpus.id}] warming g-mesh index for the bare gmesh arm's shared checkout...`);
+      await warmGmeshIndex(cwd);
+    }
+    // The three shared per-corpus clones below exist only for read-only tasks:
+    // an edit task resolves its own clone per (task, arm, rep) instead. Skip
+    // them entirely when this corpus is running edit tasks only, or a run
+    // naming just `ex-implement-...` would pay for a full extra excalidraw
+    // clone (now once per default run, since gmesh-configured is no longer
+    // opt-in) and never read it.
+    const hasReadOnlyTask = tasks.some((t) => !taskEditsCode(t));
     // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,
     // which indexes into ~/.g-mesh, never the project dir. Running it against
     // the shared `cwd` above would plant that directory inside the live,
     // registry-registered checkout, which this experiment must not touch (see
     // task #57's explicit constraint). One throwaway clone per corpus, reused
-    // across every kungfu-arm call for that corpus, same resolveFresh()
-    // precedent used elsewhere in this harness for exactly this reason.
-    const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
+    // across every call for that (corpus, arm), same resolveFresh() precedent
+    // used elsewhere in this harness for exactly this reason.
+    //
+    // One clone *per arm*, not one shared by all of them: two such tools
+    // pointed at the same directory would each plant their index into the
+    // other's measured checkout.
+    const ownCloneCwds = new Map<Arm, string>();
+    if (hasReadOnlyTask) {
+      for (const arm of arms) {
+        if (ownCloneArms.has(arm)) ownCloneCwds.set(arm, await resolveFresh(corpus));
+      }
+    }
     // gmesh-configured needs a real CLAUDE.md written into its cwd — for the
     // same reason kungfu gets a throwaway clone above, this must never touch
     // the live, registry-registered checkout, so it gets its own fresh clone
     // with the trust snippet appended to (or creating) a CLAUDE.md there.
-    const configuredCwd = arms.includes("gmesh-configured")
+    const configuredCwd = hasReadOnlyTask && arms.includes("gmesh-configured")
       ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
       : undefined;
+    // This clone is brand-new every corpus (resolveConfigured() always
+    // mkdtemp()s), so g-mesh's own index for it is cold every time - warm it
+    // once here, before any task in the loop below reuses this same cwd for
+    // its first measured g-mesh call.
+    if (configuredCwd !== undefined) {
+      console.log(`[${corpus.id}] warming g-mesh index for the shared gmesh-configured checkout...`);
+      await warmGmeshIndex(configuredCwd);
+    }
     // kungfu-configured needs its own throwaway clone for the same reason
     // gmesh-configured does above: a real CLAUDE.md must be written into its
     // cwd, and that must never be the live, registry-registered checkout.
-    const kungfuConfiguredCwd = arms.includes("kungfu-configured")
+    const kungfuConfiguredCwd = hasReadOnlyTask && arms.includes("kungfu-configured")
       ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
       : undefined;
 
@@ -493,14 +722,52 @@ async function main() {
       for (let rep = 1; rep <= reps; rep++) {
         for (const arm of arms) {
           console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
-          const armCwd =
-            arm === "kungfu" && kungfuCwd !== undefined
-              ? kungfuCwd
-              : arm === "gmesh-configured" && configuredCwd !== undefined
+          // A task graded by `mode: "test"` hands the agent Edit/Write, so its
+          // cwd is about to be modified. The shared `cwd` above is either the
+          // live registered checkout (kind=local) or a cache reused by every
+          // other task in this run — writing into either would corrupt the rest
+          // of the benchmark, and for kind=local, the user's actual working
+          // tree. Same reason kungfu/gmesh-configured take a throwaway clone,
+          // except this one can't be shared: each (task, arm, rep) needs the
+          // corpus back in its unfixed state, so the clone is per run.
+          //
+          // A *-configured arm needs its CLAUDE.md in that per-run clone too,
+          // which is why this branches on the arm rather than handing every
+          // edit task a bare resolveFresh(). It used to short-circuit on
+          // taskEditsCode() alone, so gmesh-configured silently ran with no
+          // CLAUDE.md at all on exactly the category where the guidance
+          // matters most — i.e. it was bare gmesh under another name. Note
+          // these deliberately do NOT reuse the shared per-corpus
+          // configuredCwd/kungfuConfiguredCwd below: those are for read-only
+          // tasks, and an edit task must start from the unfixed corpus every
+          // repetition.
+          const armCwd = taskEditsCode(task)
+            ? arm === "gmesh-configured"
+              ? await (async () => {
+                  // Unlike the shared configuredCwd above, this clone is
+                  // fresh every single (task, rep) - never free after the
+                  // first run, since every rep needs the corpus back in its
+                  // unfixed state. Warming here pays a real g-mesh init walk
+                  // every rep, front-loaded into setup instead of leaking
+                  // into the measured call's turn count.
+                  const dest = await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD);
+                  console.log(`  [${task.id}] warming g-mesh index for this rep's edit sandbox...`);
+                  await warmGmeshIndex(dest);
+                  return dest;
+                })()
+              : arm === "kungfu-configured"
+                ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+                : await resolveFresh(corpus)
+            : (ownCloneCwds.get(arm) ??
+              (arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
                 : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
                   ? kungfuConfiguredCwd
-                  : cwd;
+                  : cwd));
+          // Logged (and left on disk) so a surprising verdict can be examined
+          // afterwards — the agent's actual diff is the only real evidence of
+          // what it did, and it lives nowhere else.
+          if (taskEditsCode(task)) console.log(`  edit sandbox: ${armCwd}`);
           runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
         }
       }

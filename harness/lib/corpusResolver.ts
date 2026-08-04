@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { gmeshBinaryPath } from "./mcpConfig.js";
 import type { CorpusEntry } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -79,4 +80,41 @@ export async function resolveConfigured(entry: CorpusEntry, claudeMd: string): P
     await writeFile(claudeMdPath, claudeMd);
   }
   return dest;
+}
+
+/**
+ * Runs `g-mesh init` in `cwd` so its g-mesh index is fully built before any
+ * measured `claude -p` call touches this cwd. Idempotent (a project already
+ * fully walked skips the bulk walk), so this is cheap on an already-warm cwd
+ * and pays a real walk up front on a brand-new one - instead of that walk
+ * leaking into the measured call's turn count, which is exactly what a real
+ * repro of `ex-namespace-import-laserpointer-plerp` under `gmesh-configured`
+ * showed: the one g-mesh tool call the model made hit the daemon's own
+ * "index is still being built, retry" placeholder mid cold-start walk, and
+ * the model fell back to Grep instead of retrying.
+ *
+ * Deliberately not folded into resolveConfigured()/resolveFresh()/
+ * resolveWarm() themselves: resolveConfigured() is shared verbatim by the
+ * kungfu-configured arm, which never touches g-mesh at all, and
+ * resolveFresh() is used directly by non-gmesh arms too - baking warming in
+ * there would burn a walk on cwds nothing will ever query via g-mesh. Callers
+ * warm explicitly, only for cwds a gmesh-backed arm will actually use.
+ *
+ * Best-effort: caught and logged rather than thrown, so a failure here
+ * degrades to today's (already-shipped) possibly-cold behavior for this one
+ * cwd rather than aborting an entire multi-corpus benchmark run over one
+ * warm-up call. No timeout - the whole point is to actually wait for the
+ * walk to finish, same reasoning as mcpClient.ts's 5-minute
+ * CONNECT_TIMEOUT_MS.
+ */
+export async function warmGmeshIndex(cwd: string): Promise<void> {
+  const start = performance.now();
+  try {
+    await execFileAsync(gmeshBinaryPath(), ["init"], { cwd });
+    console.log(`  g-mesh index warm (${(performance.now() - start).toFixed(0)}ms): ${cwd}`);
+  } catch (err) {
+    console.warn(
+      `  g-mesh init failed for ${cwd}; continuing with a possibly cold index: ${(err as Error).message}`,
+    );
+  }
 }
