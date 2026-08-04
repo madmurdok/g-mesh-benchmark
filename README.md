@@ -72,6 +72,60 @@ than replacing it. `G_MESH_BENCH_BINARY`/`G_MESH_BENCH_KUNGFU_BINARY` are
 deliberately **not** part of this file — both are absolute, machine-local
 filesystem paths, so they stay env-only (see `harness/lib/mcpConfig.ts`).
 
+### Custom arms
+
+Any other MCP-based code-search tool can be added as a comparison arm from this
+file alone — no source change, same shape as the built-in `kungfu` arm (a real
+MCP server plus a curated tool allowlist and a deny list):
+
+```json
+{
+  "customArms": {
+    "mytool": {
+      "command": "mytool",
+      "args": ["mcp"],
+      "tools": ["mcp__mytool__find_symbol", "mcp__mytool__callers"],
+      "deniedTools": ["mcp__mytool__semantic_search", "mcp__mytool__reindex"],
+      "writesToProjectDir": true
+    }
+  },
+  "tokenEconomy": { "arms": ["gmesh-configured", "mytool", "baseline"] }
+}
+```
+
+- The key (`mytool`) is the arm's name everywhere: in `tokenEconomy.arms` /
+  `sessionEconomy.arms`, in every result record and report table, and as the
+  MCP server name its tools are namespaced under (`mcp__mytool__…`). It may not
+  reuse a built-in arm name.
+- `command`/`args` are spawned as a stdio MCP server, exactly like g-mesh's and
+  kungfu's (`args` is required — write `[]` for a server that takes none).
+- `tools` is the arm's `--tools` allowlist. `Read,Grep,Glob` are added
+  automatically (every arm gets them), so list only `mcp__`-namespaced tools.
+- `deniedTools` is usually **required in practice**, not optional: `--tools`
+  restricts only the *built-in* tools and has no effect on `mcp__` ones, so a
+  server exposing 40 tools still shows the model all 40 unless the ones outside
+  your allowlist are denied explicitly. See `KUNGFU_DENIED_TOOLS` in
+  `harness/lib/armConfig.ts` for the full explanation and how that list was
+  produced (a live `tools/list` probe, diffed against the allowlist).
+- `writesToProjectDir: true` (default `false`) declares that the tool writes
+  state into whatever project directory it is pointed at — kungfu's `.kungfu/`
+  index is the built-in example, as opposed to g-mesh, which indexes into
+  `~/.g-mesh`. Such an arm gets its own throwaway clone per corpus instead of
+  sharing the warm checkout, which must never be modified.
+- Reporting needs nothing: `armsPresent()` renders any arm it finds in the run
+  records, sorting names it doesn't rank in `ARM_ORDER` alphabetically last.
+
+Known gaps, deliberately not covered in this pass:
+
+- **No `-configured` variant.** Only `gmesh` and `kungfu` have a CLAUDE.md-loaded
+  counterpart (`gmesh-configured`/`kungfu-configured`); those are wired to
+  literal arm names in `harness/token-economy.ts`. A custom arm always runs
+  bare, with no CLAUDE.md guidance written into its checkout.
+- **Not part of the prompt-cache warm-up.** `warmCache()` warms the built-in
+  arms' cache prefixes only, so a custom arm's first measured call pays its own
+  tool-schema cost. Compare custom arms against each other with that in mind, or
+  run with the warm-up off.
+
 ## Running an experiment
 
 ```bash

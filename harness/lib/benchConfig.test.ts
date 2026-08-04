@@ -117,6 +117,18 @@ test("a partial config deep-merges: untouched fields keep DEFAULT_CONFIG's value
 
 test("a fully valid config round-trips unchanged", () => {
   const custom = {
+    // Every optional field spelled out explicitly, including customArms'
+    // writesToProjectDir: this asserts the loaded config is deep-equal to the
+    // file, so anything the loader normalizes has to be written out here.
+    customArms: {
+      "mock-mcp": {
+        command: "/usr/bin/mock-mcp",
+        args: ["serve", "--stdio"],
+        tools: ["mcp__mock-mcp__find_symbol"],
+        deniedTools: ["mcp__mock-mcp__reindex"],
+        writesToProjectDir: true,
+      },
+    },
     tokenEconomy: {
       arms: ["gmesh", "baseline"],
       repetitions: "low",
@@ -142,6 +154,165 @@ test("loadBenchConfig caches: a second call ignores a changed configPath argumen
     // not DEFAULT_CONFIG, proving the module-level cache is in effect.
     const second = loadBenchConfig(path.join(path.dirname(configPath), "does-not-exist.json"));
     assert.equal(second.searchLatency.samples, 7);
+  });
+});
+
+/**
+ * customArms — a comparison arm registered entirely from the config file (see
+ * benchConfig.ts's CustomArmDefinition). The ordering property these lock in:
+ * customArms is validated *before* either arm list, which is the only reason
+ * `tokenEconomy.arms` can name one.
+ */
+
+const MOCK_ARM = {
+  command: "node",
+  args: ["/tmp/mock-mcp-server.mjs"],
+  tools: ["mcp__mock__find_symbol", "mcp__mock__callers"],
+};
+
+test("an arm name registered under customArms is accepted in tokenEconomy.arms", () => {
+  // Rejected before this feature existed: "mock" is in no built-in arm list.
+  withFixture(
+    JSON.stringify({ customArms: { mock: MOCK_ARM }, tokenEconomy: { arms: ["mock", "baseline"] } }),
+    (configPath) => {
+      const config = loadBenchConfig(configPath);
+      assert.deepEqual(config.tokenEconomy.arms, ["mock", "baseline"]);
+      assert.deepEqual(config.customArms.mock?.tools, MOCK_ARM.tools);
+    },
+  );
+});
+
+test("a custom arm is equally accepted in sessionEconomy.arms", () => {
+  withFixture(
+    JSON.stringify({ customArms: { mock: MOCK_ARM }, sessionEconomy: { arms: ["mock", "baseline"] } }),
+    (configPath) => {
+      assert.deepEqual(loadBenchConfig(configPath).sessionEconomy.arms, ["mock", "baseline"]);
+    },
+  );
+});
+
+test("an arm matching neither a built-in nor a customArms key still throws, naming both", () => {
+  withFixture(
+    JSON.stringify({ customArms: { mock: MOCK_ARM }, tokenEconomy: { arms: ["mock", "typo-arm"] } }),
+    (configPath) => {
+      assert.throws(
+        () => loadBenchConfig(configPath),
+        /tokenEconomy\.arms\[1\] must be one of "gmesh".*, or a name registered under "customArms" in this file \(got "typo-arm"\)\./,
+      );
+    },
+  );
+});
+
+test("customArms defaults writesToProjectDir to false and leaves deniedTools absent", () => {
+  withFixture(JSON.stringify({ customArms: { mock: MOCK_ARM } }), (configPath) => {
+    const arm = loadBenchConfig(configPath).customArms.mock;
+    assert.equal(arm?.writesToProjectDir, false);
+    assert.equal(arm?.deniedTools, undefined);
+  });
+});
+
+test("a config with no customArms section gets an empty map, not undefined", () => {
+  withFixture(JSON.stringify({ searchLatency: { samples: 3 } }), (configPath) => {
+    assert.deepEqual(loadBenchConfig(configPath).customArms, {});
+  });
+});
+
+test("a customArms entry missing command throws a path-qualified message", () => {
+  withFixture(JSON.stringify({ customArms: { mock: { args: [], tools: ["mcp__mock__x"] } } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.mock\.command must be a non-empty string \(got undefined\)\./,
+    );
+  });
+});
+
+test("a customArms entry missing tools throws a path-qualified message", () => {
+  withFixture(JSON.stringify({ customArms: { mock: { command: "node", args: [] } } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.mock\.tools is required/,
+    );
+  });
+});
+
+test("a customArms entry missing args throws rather than silently defaulting", () => {
+  withFixture(JSON.stringify({ customArms: { mock: { command: "node", tools: ["mcp__mock__x"] } } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.mock\.args is required/,
+    );
+  });
+});
+
+test("a wrong-typed customArms field throws a path-qualified message", () => {
+  withFixture(
+    JSON.stringify({ customArms: { mock: { ...MOCK_ARM, args: "serve", tools: ["mcp__mock__x"] } } }),
+    (configPath) => {
+      assert.throws(
+        () => loadBenchConfig(configPath),
+        /Invalid g-mesh-bench\.config\.json: customArms\.mock\.args must be an array of strings \(got "serve"\)\./,
+      );
+    },
+  );
+});
+
+test("an empty string inside a customArms tool list throws, indexed", () => {
+  withFixture(
+    JSON.stringify({ customArms: { mock: { ...MOCK_ARM, tools: ["mcp__mock__x", ""] } } }),
+    (configPath) => {
+      assert.throws(
+        () => loadBenchConfig(configPath),
+        /Invalid g-mesh-bench\.config\.json: customArms\.mock\.tools\[1\] must be a non-empty string \(got ""\)\./,
+      );
+    },
+  );
+});
+
+test("an empty customArms tool list throws — an arm with no tools is a typo, not a config", () => {
+  withFixture(JSON.stringify({ customArms: { mock: { ...MOCK_ARM, tools: [] } } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.mock\.tools must not be empty\./,
+    );
+  });
+});
+
+test("an unknown field inside a customArms entry throws", () => {
+  withFixture(JSON.stringify({ customArms: { mock: { ...MOCK_ARM, promptSuffix: "hi" } } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.mock\.promptSuffix is not a recognized field\./,
+    );
+  });
+});
+
+test("a wrong-typed writesToProjectDir throws", () => {
+  withFixture(
+    JSON.stringify({ customArms: { mock: { ...MOCK_ARM, writesToProjectDir: "yes" } } }),
+    (configPath) => {
+      assert.throws(
+        () => loadBenchConfig(configPath),
+        /Invalid g-mesh-bench\.config\.json: customArms\.mock\.writesToProjectDir must be a boolean \(got "yes"\)\./,
+      );
+    },
+  );
+});
+
+test("a custom arm may not reuse a built-in arm name — it would be shadowed and never run", () => {
+  withFixture(JSON.stringify({ customArms: { kungfu: MOCK_ARM } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.kungfu reuses a built-in arm name; pick a different one\./,
+    );
+  });
+});
+
+test("a custom arm name that would mangle the --tools list throws", () => {
+  withFixture(JSON.stringify({ customArms: { "my arm": MOCK_ARM } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.my arm is not a usable arm name/,
+    );
   });
 });
 
