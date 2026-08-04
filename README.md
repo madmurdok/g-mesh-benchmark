@@ -30,6 +30,12 @@ Follow these in order the first time; after that, jumping straight to
    - `kungfu` on `PATH` only if you plan to run the optional `kungfu`
      comparison arm (`G_MESH_BENCH_INCLUDE_KUNGFU=yes` — see below); skip it
      otherwise.
+   - [`uv`](https://docs.astral.sh/uv/) only if you plan to run the `serena`
+     comparison arm (see [Custom arms](#custom-arms)) — `uvx` needs to
+     resolve on `PATH`. macOS/Linux: `brew install uv` or the shell installer
+     on that page. Windows: see [Running on Windows](#running-on-windows).
+   - On Windows, read [Running on Windows](#running-on-windows) before step 3
+     — a couple of defaults below assume a Unix-style toolchain.
 
 2. **Clone this repo as a sibling of `g-mesh`, not nested inside it.**
    `harness/lib/mcpConfig.ts`'s default binary path
@@ -100,6 +106,59 @@ Follow these in order the first time; after that, jumping straight to
    other experiments and every `G_MESH_BENCH_*` knob, and
    [Configuration](#configuration) covers moving those same defaults into
    `g-mesh-bench.config.json` instead of passing them as env vars every time.
+
+### Running on Windows
+
+This harness (Node/TypeScript + a Rust binary + shelled-out `git`/`claude`/
+`uvx` calls) has nothing in it that's inherently Unix-only, but it was
+developed and has only actually been run on macOS/Linux — nobody has run it
+end to end on a real Windows machine yet. The notes below are what reading
+the code implies you'll hit, not a verified report. If you'd rather skip all
+of it, **WSL2** sidesteps every point here (it's just Linux at that point) and
+is the lower-friction option.
+
+If you do want it running natively, three concrete things the code assumes
+that Windows won't give you for free:
+
+- **The g-mesh binary needs an explicit `.exe` path.**
+  `harness/lib/mcpConfig.ts`'s `gmeshBinaryPath()` defaults to
+  `../../../g-mesh/core/target/release/g-mesh`, with no extension. On
+  Windows, `cargo build --release` produces `g-mesh.exe`, so that default
+  path won't resolve — set `G_MESH_BENCH_BINARY` explicitly:
+  ```powershell
+  $env:G_MESH_BENCH_BINARY = "C:\path\to\g-mesh\core\target\release\g-mesh.exe"
+  ```
+- **`claude` is spawned directly, without a shell.**
+  `harness/lib/runClaude.ts` launches it as
+  `child_process.spawn("claude", args, { cwd })` — no `shell: true`. If your
+  install put a `.cmd`/`.ps1` shim on `PATH` (typical for an npm global
+  install) rather than a real `.exe`, a bare `spawn` call is a well-known
+  Node/Windows failure mode: it can't launch a `.cmd`/`.ps1` file directly.
+  An immediate spawn/`ENOENT` error on the very first run is the symptom —
+  check what `where claude` actually resolves to first. The same applies to
+  `kungfu` if you opt into that arm.
+- **`oracle.testCommand` runs under `cmd.exe`, not bash.**
+  `harness/lib/testRunner.ts` runs it with `shell: true`, which means
+  Windows' default shell, `cmd.exe` — this only affects `implementation`-
+  category tasks (the ones with a `testCommand`). A command written with
+  bash syntax beyond simple `&&` chaining (env-var expansion, `$(...)`,
+  single-quoted strings) won't behave the same under `cmd.exe`.
+
+`uv`/`uvx` itself (needed only for the `serena` arm) installs the same way as
+anywhere else on Windows:
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+(or `winget install astral-sh.uv` / `scoop install uv`) — needs `git` on
+`PATH` too, since `uvx --from git+https://...` clones through it. Multi-line
+PowerShell commands need a backtick line continuation, not `\`:
+```powershell
+uvx --from git+https://github.com/oraios/serena serena start-mcp-server `
+  --transport stdio `
+  --project-from-cwd `
+  --enable-web-dashboard false `
+  --open-web-dashboard false
+```
 
 ## Layout
 
@@ -252,6 +311,22 @@ the arm degrades to baseline for that question. The `ex-find-callees-updateelbow
 `corpora/excalidraw/tasks.json` specifically probe the outgoing-call-graph
 half of this gap (the incoming/references half is already covered by
 `find_referencing_symbols`).
+
+**Running a comparison that includes `serena`:**
+1. Install `uv` (see [Prerequisites](#getting-started) /
+   [Running on Windows](#running-on-windows)) — `uvx` must resolve on `PATH`.
+2. There's no `G_MESH_BENCH_INCLUDE_SERENA`-style env toggle — that pattern
+   only exists for the built-in arms (`kungfu`, `gmesh-trusted`, …). A custom
+   arm is included by adding its name directly to `tokenEconomy.arms`/
+   `sessionEconomy.arms` in `g-mesh-bench.config.json`:
+   ```json
+   { "tokenEconomy": { "arms": ["gmesh-configured", "serena", "baseline"] } }
+   ```
+3. Run as normal: `npm run token-economy -- <taskId>`. The very first call
+   spawns `uvx --from git+https://github.com/oraios/serena ...`, which does a
+   fresh `git` clone the first time (`uv` caches it after that) — expect that
+   first run to take noticeably longer before the model's first tool call
+   returns.
 
 Known gaps, deliberately not covered in this pass:
 
