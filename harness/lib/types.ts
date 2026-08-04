@@ -31,7 +31,35 @@
  * Lives here rather than in token-economy.ts so reportData.ts/htmlReport.ts
  * share one definition instead of each re-declaring the union.
  */
-export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu" | "gmesh-configured" | "kungfu-configured";
+export type BuiltinArm =
+  | "gmesh"
+  | "baseline"
+  | "gmesh-trusted"
+  | "kungfu"
+  | "gmesh-configured"
+  | "kungfu-configured";
+
+/**
+ * An arm name as the harness accepts it anywhere at runtime: one of the six
+ * built-ins above, or the name of a custom arm registered in
+ * `g-mesh-bench.config.json`'s `customArms` (see lib/benchConfig.ts's
+ * CustomArmDefinition and lib/armConfig.ts's fallback resolution) — a real MCP
+ * server with a curated tool allowlist, registered without touching this file.
+ *
+ * `(string & {})` rather than a bare `string` is the standard open-union
+ * idiom: it keeps every `BuiltinArm` literal in editor autocomplete and keeps
+ * literal-typed values like `"gmesh"` inferring as themselves, while still
+ * accepting an arbitrary custom name. Every existing value of the old closed
+ * union still satisfies this type, so nothing that produced or consumed an
+ * `Arm` before had to change.
+ *
+ * Deliberately *not* a validation boundary: a typo'd arm name is caught where
+ * it enters the harness (benchConfig.ts's validateArms(), which accepts a
+ * built-in or a registered `customArms` key and nothing else) and where it is
+ * resolved (armConfig.ts, which throws naming both places an arm can be
+ * defined), not by the type system.
+ */
+export type Arm = BuiltinArm | (string & {});
 
 /**
  * Fixed presentation order for arms in every table, chart and legend.
@@ -46,6 +74,14 @@ export type Arm = "gmesh" | "baseline" | "gmesh-trusted" | "kungfu" | "gmesh-con
  * Both `*-configured` arms were missing from this list entirely until the
  * swap; they rendered via armsPresent()'s unknown-arms-last fallback, i.e.
  * always last regardless of what they were. Listing them fixes that.
+ *
+ * Built-in arms only, on purpose: a custom arm (see `Arm` above) has no
+ * declared rank here and is appended alphabetically by armsPresent(), exactly
+ * the fallback the two `*-configured` arms used before they were listed. The
+ * `satisfies readonly BuiltinArm[]` keeps that a checked property — a typo or
+ * a stray custom name in this list is a compile error — while the declared
+ * `readonly Arm[]` is what lets reportData.ts/sessionReport.ts keep asking
+ * `ARM_ORDER.includes(arm)`/`.indexOf(arm)` about an arbitrary recorded arm.
  */
 export const ARM_ORDER: readonly Arm[] = [
   "gmesh-configured",
@@ -54,7 +90,7 @@ export const ARM_ORDER: readonly Arm[] = [
   "gmesh-trusted",
   "kungfu",
   "kungfu-configured",
-];
+] satisfies readonly BuiltinArm[];
 
 export interface CorpusEntry {
   id: string;

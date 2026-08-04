@@ -552,6 +552,25 @@ function kungfuBinaryIsAvailable(): boolean {
   return (process.env.PATH ?? "").split(path.delimiter).some((dir) => dir.length > 0 && existsSync(path.join(dir, bin)));
 }
 
+/**
+ * Arms that must run against a throwaway clone of their own rather than the
+ * shared warm checkout, because the tool behind them writes state into
+ * whatever project directory it is pointed at.
+ *
+ * `kungfu` is the built-in case: it indexes into a `.kungfu/` dir inside its
+ * cwd, unlike g-mesh, which indexes into `~/.g-mesh` and never touches the
+ * project. A config-registered arm declares the same need with
+ * `writesToProjectDir: true` (see benchConfig.ts's CustomArmDefinition), so
+ * adding another index-into-the-project tool is a config entry, not an edit
+ * to the literal check this replaced.
+ */
+function armsNeedingOwnClone(): ReadonlySet<Arm> {
+  const custom = Object.entries(loadBenchConfig().customArms)
+    .filter(([, def]) => def.writesToProjectDir === true)
+    .map(([name]) => name);
+  return new Set<Arm>(["kungfu", ...custom]);
+}
+
 async function main() {
   if (!existsSync(gmeshBinaryPath())) {
     console.error(
@@ -635,6 +654,9 @@ async function main() {
   const reps = repetitionCount();
   console.log(`Repetitions per (task, arm): ${reps}`);
 
+  // Resolved once, outside the corpus loop: it reads the config, not the run.
+  const ownCloneArms = armsNeedingOwnClone();
+
   for (const corpus of registry) {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
     const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
@@ -662,9 +684,18 @@ async function main() {
     // the shared `cwd` above would plant that directory inside the live,
     // registry-registered checkout, which this experiment must not touch (see
     // task #57's explicit constraint). One throwaway clone per corpus, reused
-    // across every kungfu-arm call for that corpus, same resolveFresh()
-    // precedent used elsewhere in this harness for exactly this reason.
-    const kungfuCwd = hasReadOnlyTask && arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
+    // across every call for that (corpus, arm), same resolveFresh() precedent
+    // used elsewhere in this harness for exactly this reason.
+    //
+    // One clone *per arm*, not one shared by all of them: two such tools
+    // pointed at the same directory would each plant their index into the
+    // other's measured checkout.
+    const ownCloneCwds = new Map<Arm, string>();
+    if (hasReadOnlyTask) {
+      for (const arm of arms) {
+        if (ownCloneArms.has(arm)) ownCloneCwds.set(arm, await resolveFresh(corpus));
+      }
+    }
     // gmesh-configured needs a real CLAUDE.md written into its cwd — for the
     // same reason kungfu gets a throwaway clone above, this must never touch
     // the live, registry-registered checkout, so it gets its own fresh clone
@@ -727,13 +758,12 @@ async function main() {
               : arm === "kungfu-configured"
                 ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
                 : await resolveFresh(corpus)
-            : arm === "kungfu" && kungfuCwd !== undefined
-              ? kungfuCwd
-              : arm === "gmesh-configured" && configuredCwd !== undefined
+            : (ownCloneCwds.get(arm) ??
+              (arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
                 : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
                   ? kungfuConfiguredCwd
-                  : cwd;
+                  : cwd));
           // Logged (and left on disk) so a surprising verdict can be examined
           // afterwards — the agent's actual diff is the only real evidence of
           // what it did, and it lives nowhere else.

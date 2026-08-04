@@ -1,6 +1,8 @@
+import type { CustomArmDefinition } from "./benchConfig.js";
+import { loadBenchConfig } from "./benchConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
-import type { Arm } from "./types.js";
+import type { Arm, BuiltinArm } from "./types.js";
 
 /**
  * The `claude -p` configuration that defines an arm — model, per-call budget
@@ -242,12 +244,19 @@ const KUNGFU_ARM: ArmDefinition = {
 };
 
 /**
- * The single table every per-arm accessor below reads from. Adding an arm is
- * one entry here plus the `Arm` union and ARM_ORDER in lib/types.ts — the
- * `Record<Arm, ...>` makes a missing entry a type error rather than a silent
- * fall-through to whatever the old chains' default branch happened to be.
+ * The single table every per-arm accessor below reads from. Adding a *built-in*
+ * arm is one entry here plus the `BuiltinArm` union and ARM_ORDER in
+ * lib/types.ts — the `Record<BuiltinArm, ...>` makes a missing entry a type
+ * error rather than a silent fall-through to whatever the old chains' default
+ * branch happened to be.
+ *
+ * Keyed by `BuiltinArm`, not `Arm`: an arm registered in
+ * g-mesh-bench.config.json's `customArms` is by definition not known here and
+ * is resolved by the accessors' fallback below (customArmDefinition()). The
+ * exhaustiveness guarantee is therefore still exactly as strong as it was —
+ * it just no longer claims to cover names that only exist at runtime.
  */
-export const ARM_DEFINITIONS: Record<Arm, ArmDefinition> = {
+export const ARM_DEFINITIONS: Record<BuiltinArm, ArmDefinition> = {
   gmesh: GMESH_ARM,
   baseline: {
     mcpConfig: buildBaselineArmConfig,
@@ -279,20 +288,86 @@ export interface ArmToolsOptions {
   allowEdit?: boolean;
 }
 
+/**
+ * The built-in definition for `arm`, or undefined if the name isn't one of
+ * ARM_DEFINITIONS' own keys — the single membership test every accessor below
+ * branches on, so "built-in first, config-registered second" is decided in one
+ * place rather than four.
+ *
+ * `hasOwnProperty` rather than `arm in ARM_DEFINITIONS`: `in` also answers yes
+ * for inherited Object.prototype members, so a custom arm unluckily named
+ * "constructor" or "toString" would otherwise resolve to a prototype value
+ * instead of falling through to the config.
+ */
+function builtinArmDefinition(arm: Arm): ArmDefinition | undefined {
+  return Object.prototype.hasOwnProperty.call(ARM_DEFINITIONS, arm)
+    ? ARM_DEFINITIONS[arm as BuiltinArm]
+    : undefined;
+}
+
+/**
+ * Resolves an arm that isn't built in against g-mesh-bench.config.json's
+ * `customArms` (see benchConfig.ts's CustomArmDefinition), so a new MCP-based
+ * comparison arm needs a config entry and no source change at all.
+ *
+ * Throws naming *both* places an arm can be defined: by the time an arm name
+ * reaches here it has already passed benchConfig.ts's validateArms(), so
+ * getting this error means the caller invented an arm name in code, or the
+ * config file it was validated against isn't the one loaded here.
+ */
+function customArmDefinition(arm: Arm): CustomArmDefinition {
+  const def = loadBenchConfig().customArms[arm];
+  if (def === undefined) {
+    throw new Error(
+      `Unknown arm "${arm}": it is neither a built-in arm (${Object.keys(ARM_DEFINITIONS).join(", ")}) ` +
+        `nor registered under "customArms" in g-mesh-bench.config.json.`,
+    );
+  }
+  return def;
+}
+
 export function armMcpConfig(arm: Arm): McpServerConfig {
-  return ARM_DEFINITIONS[arm].mcpConfig();
+  const builtin = builtinArmDefinition(arm);
+  if (builtin !== undefined) return builtin.mcpConfig();
+  const def = customArmDefinition(arm);
+  // The arm name *is* the MCP server name, which is what makes the arm's
+  // tools `mcp__<arm>__…` — the same names its `tools`/`deniedTools` lists
+  // spell out. Freshly built (args copied, not aliased) for the same reason
+  // the built-in factories are: callers have always been free to mutate it.
+  return { mcpServers: { [arm]: { command: def.command, args: [...def.args] } } };
 }
 
 export function armTools(arm: Arm, opts: ArmToolsOptions = {}): string {
-  const base = ARM_DEFINITIONS[arm].tools;
+  const builtin = builtinArmDefinition(arm);
+  // Read/Grep/Glob (BASELINE_TOOLS) are prepended rather than expected in the
+  // config: every arm in this benchmark has them, including baseline, so a
+  // custom arm listing them again would only duplicate entries.
+  const base =
+    builtin !== undefined ? builtin.tools : `${BASELINE_TOOLS},${customArmDefinition(arm).tools.join(",")}`;
   return opts.allowEdit ? `${base},${EDIT_TOOLS}` : base;
 }
 
 export function armPrompt(prompt: string, arm: Arm): string {
-  const suffix = ARM_DEFINITIONS[arm].promptSuffix;
+  // Custom arms get no suffix: the trusted-variant idea (TRUSTED_ARM_PROMPT_SUFFIX)
+  // is written about g-mesh specifically, and there is no per-arm prompt
+  // shaping in the config surface for a custom arm to opt into.
+  const builtin = builtinArmDefinition(arm);
+  if (builtin === undefined) {
+    // Still resolved, not skipped: an unregistered arm must fail here too,
+    // rather than quietly running with an unmodified prompt.
+    customArmDefinition(arm);
+    return prompt;
+  }
+  const suffix = builtin.promptSuffix;
   return suffix === undefined ? prompt : prompt + suffix;
 }
 
 export function armDisallowedTools(arm: Arm): string | undefined {
-  return ARM_DEFINITIONS[arm].disallowedTools;
+  const builtin = builtinArmDefinition(arm);
+  if (builtin !== undefined) return builtin.disallowedTools;
+  const denied = customArmDefinition(arm).deniedTools;
+  // undefined, not "", when there is nothing to deny — an empty --disallowedTools
+  // value is a flag the CLI never needed to see (see runClaude.ts's
+  // disallowedTools doc comment on how it is spliced into argv).
+  return denied === undefined || denied.length === 0 ? undefined : denied.join(",");
 }

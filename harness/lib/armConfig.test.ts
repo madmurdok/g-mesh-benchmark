@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
+import { loadBenchConfig, resetBenchConfigCache } from "./benchConfig.js";
 import {
   ARM_DEFINITIONS,
   BASELINE_TOOLS,
@@ -142,5 +146,120 @@ test("allowEdit appends EDIT_TOOLS identically for every arm", () => {
   for (const arm of ALL_ARMS) {
     assert.equal(armTools(arm, { allowEdit: true }), `${armTools(arm)},${EDIT_TOOLS}`);
     assert.equal(armTools(arm, { allowEdit: false }), armTools(arm));
+  }
+});
+
+/**
+ * Custom arms — the config-registered fallback each accessor above falls
+ * through to when the arm is not one of ARM_DEFINITIONS' own keys.
+ *
+ * The fixture is loaded through benchConfig.ts's own `configPath` test hook
+ * (same pattern as benchConfig.test.ts's withFixture): loadBenchConfig()
+ * caches module-wide, so priming that cache from a temp file is what makes the
+ * accessors — which call loadBenchConfig() with no argument — see the fixture
+ * instead of the repo's real g-mesh-bench.config.json. The cache is reset on
+ * both sides so no other test in this file can observe it.
+ */
+const FIXTURE_ARM_NAME = "mock-search";
+const FIXTURE_CONFIG = {
+  customArms: {
+    [FIXTURE_ARM_NAME]: {
+      command: "/usr/local/bin/mock-search",
+      args: ["mcp", "--stdio"],
+      tools: [`mcp__${FIXTURE_ARM_NAME}__find_symbol`, `mcp__${FIXTURE_ARM_NAME}__callers`],
+      deniedTools: [`mcp__${FIXTURE_ARM_NAME}__reindex`],
+      writesToProjectDir: true,
+    },
+    // Same server shape minus the optional fields — the "no deny list" case,
+    // which must behave like a built-in arm that declares none.
+    "mock-plain": {
+      command: "mock-plain",
+      args: [],
+      tools: ["mcp__mock-plain__search"],
+    },
+  },
+};
+
+function withCustomArms(fn: () => void): void {
+  const dir = mkdtempSync(path.join(tmpdir(), "gmesh-bench-armconfig-"));
+  const configPath = path.join(dir, "g-mesh-bench.config.json");
+  try {
+    writeFileSync(configPath, JSON.stringify(FIXTURE_CONFIG));
+    resetBenchConfigCache();
+    loadBenchConfig(configPath);
+    fn();
+  } finally {
+    resetBenchConfigCache();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("a config-registered custom arm resolves to an MCP server named after the arm", () => {
+  withCustomArms(() => {
+    assert.deepEqual(armMcpConfig(FIXTURE_ARM_NAME), {
+      mcpServers: { [FIXTURE_ARM_NAME]: { command: "/usr/local/bin/mock-search", args: ["mcp", "--stdio"] } },
+    });
+    // Fresh object per call, same invariant the built-in factories hold.
+    const first = armMcpConfig(FIXTURE_ARM_NAME);
+    const second = armMcpConfig(FIXTURE_ARM_NAME);
+    assert.notEqual(first, second);
+    assert.notEqual(first.mcpServers[FIXTURE_ARM_NAME]?.args, second.mcpServers[FIXTURE_ARM_NAME]?.args);
+    assert.deepEqual(first, second);
+  });
+});
+
+test("a custom arm's tools are Read/Grep/Glob plus its configured list, and honor allowEdit", () => {
+  withCustomArms(() => {
+    const expected = `${BASELINE_TOOLS},mcp__mock-search__find_symbol,mcp__mock-search__callers`;
+    assert.equal(armTools(FIXTURE_ARM_NAME), expected);
+    assert.equal(armTools(FIXTURE_ARM_NAME, { allowEdit: true }), `${expected},${EDIT_TOOLS}`);
+    assert.equal(armTools(FIXTURE_ARM_NAME, { allowEdit: false }), expected);
+  });
+});
+
+test("a custom arm's deniedTools become the --disallowedTools list; absent means undefined", () => {
+  withCustomArms(() => {
+    assert.equal(armDisallowedTools(FIXTURE_ARM_NAME), "mcp__mock-search__reindex");
+    assert.equal(armDisallowedTools("mock-plain"), undefined);
+  });
+});
+
+test("a custom arm runs the prompt verbatim — no trusted-variant suffix", () => {
+  withCustomArms(() => {
+    assert.equal(armPrompt(PROMPT, FIXTURE_ARM_NAME), PROMPT);
+    assert.equal(armPrompt(PROMPT, "mock-plain"), PROMPT);
+  });
+});
+
+test("an arm in neither the table nor customArms throws, naming both places", () => {
+  withCustomArms(() => {
+    for (const accessor of [
+      () => armMcpConfig("nope"),
+      () => armTools("nope"),
+      () => armDisallowedTools("nope"),
+      () => armPrompt(PROMPT, "nope"),
+    ]) {
+      assert.throws(accessor, /Unknown arm "nope".*built-in arm.*customArms.*g-mesh-bench\.config\.json/s);
+    }
+  });
+});
+
+test("built-in arms never consult the config: they resolve with no customArms registered at all", () => {
+  // The built-in table is checked first, so an empty/absent config file can't
+  // change what `gmesh`/`kungfu` mean — the property that keeps every
+  // historical run comparable regardless of what a local config adds.
+  const dir = mkdtempSync(path.join(tmpdir(), "gmesh-bench-armconfig-empty-"));
+  try {
+    resetBenchConfigCache();
+    loadBenchConfig(path.join(dir, "g-mesh-bench.config.json"));
+    for (const arm of ALL_ARMS) {
+      assert.deepEqual(armMcpConfig(arm), legacyMcpConfig(arm));
+      assert.equal(armTools(arm), legacyTools(arm));
+      assert.equal(armDisallowedTools(arm), legacyDisallowedTools(arm));
+      assert.equal(armPrompt(PROMPT, arm), legacyPrompt(PROMPT, arm));
+    }
+  } finally {
+    resetBenchConfigCache();
+    rmSync(dir, { recursive: true, force: true });
   }
 });
