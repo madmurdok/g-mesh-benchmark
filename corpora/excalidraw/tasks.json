@@ -553,5 +553,53 @@
       "mode": "judge",
       "rubric": "The question is about setLanguage in packages/excalidraw/i18n.ts, which does `await import(`./locales/${currentLang.code}.json`)` after assigning `currentLang = lang` from its own `lang` parameter. Ground truth: the exact locale file cannot be determined statically just by reading the code - it depends on the runtime value of the `lang` argument passed to setLanguage (equivalently, `currentLang.code` / the language code in effect when it's called), not on any compile-time constant. PASS if the answer correctly states that the exact target file cannot be statically determined and depends on a runtime value (e.g., the language code argument, `currentLang.code`, or an equivalent description of a runtime-supplied language selection), and does not claim a single fixed locale file (e.g. en.json) as the only possible target. FAIL if the answer claims the import always resolves to one specific fixed locale file, or omits that the target depends on a runtime-determined language code."
     }
+  },
+  {
+    "id": "ex-find-callees-updateelbowarrowpoints",
+    "kind": "find_callees",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "updateElbowArrowPoints", "file": "packages/element/src/elbowArrow.ts" },
+    "prompt": "In this repository, find the updateElbowArrowPoints function — the helper that recomputes an elbow arrow's points whenever the arrow is updated — and list the functions it calls directly from its own body. Name at least 9 of them. Array and object built-ins (.map, .slice, .every, .find, Object.keys and the like) do not count.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "invariant",
+        "pointsEqual",
+        "pointFrom",
+        "getBindableElementForId",
+        "validateElbowPoints",
+        "normalizeArrowElementUpdate",
+        "getElbowArrowData",
+        "handleSegmentRenormalization",
+        "getElbowArrowCornerPoints",
+        "removeElbowArrowShortSegments",
+        "routeElbowArrow",
+        "handleSegmentRelease",
+        "handleSegmentMove",
+        "handleEndpointDrag"
+      ],
+      "minMatches": 9
+    }
+  },
+  {
+    "id": "ex-multihop-elbowarrow-routing-callees",
+    "kind": "compound",
+    "category": "multi-hop",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "steps": [
+        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+        { "symbol": "updateElbowArrowPoints", "file": "packages/element/src/elbowArrow.ts" },
+        { "symbol": "routeElbowArrow", "file": "packages/element/src/elbowArrow.ts" }
+      ]
+    },
+    "prompt": "In this repository, the standalone mutateElement helper — the one that applies an in-place update to a single element and bumps its version — delegates elbow-arrow updates to one helper exported by another module of the element package. That helper, in the case where the arrow has no fixed segments at all, delegates the actual path routing to a further, non-exported helper defined in the same module as itself. Name that routing helper, then list every function it calls directly in its own body, and for each of those say whether it is defined in that same file or imported from a different module — giving the full repo-relative defining file for any that are imported. Array and object built-ins (.map, .push, .unshift and the like) do not count as calls.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The chain is: mutateElement (packages/element/src/mutateElement.ts) calls updateElbowArrowPoints (packages/element/src/elbowArrow.ts), which — when `fixedSegments.length === 0` — calls the module-local routing helper. Ground truth: the routing helper is routeElbowArrow, defined in packages/element/src/elbowArrow.ts, and it calls exactly four functions directly: calculateGrid, pointToGridNode and astar (all three defined in that same file, packages/element/src/elbowArrow.ts) and pointInsideBounds (imported, defined in packages/element/src/bounds.ts). PASS only if the answer (a) names routeElbowArrow as the routing helper, (b) lists all four of calculateGrid, pointToGridNode, astar and pointInsideBounds as the functions it calls, and (c) identifies pointInsideBounds as the imported one, defined in another file (packages/element/src/bounds.ts or './bounds'), while not claiming that calculateGrid, pointToGridNode or astar come from another file. FAIL if any of the four is missing from the final list, if a different function is given as the routing helper (e.g. handleSegmentMove, handleEndpointDrag, handleSegmentRelease, handleSegmentRenormalization, getElbowArrowData, normalizeArrowElementUpdate, getElbowArrowCornerPoints or removeElbowArrowShortSegments — these are all called by updateElbowArrowPoints but none of them is the no-fixed-segments routing step), or if the answer presents further functions as direct callees of routeElbowArrow that it does not actually call (mentions of built-in array/object methods such as .map/.push/.unshift do not count against it, and neither does correct extra commentary about the surrounding chain). Formatting and ordering do not matter."
+    }
   }
 ]
