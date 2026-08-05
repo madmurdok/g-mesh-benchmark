@@ -601,5 +601,47 @@
       "mode": "judge",
       "rubric": "The chain is: mutateElement (packages/element/src/mutateElement.ts) calls updateElbowArrowPoints (packages/element/src/elbowArrow.ts), which — when `fixedSegments.length === 0` — calls the module-local routing helper. Ground truth: the routing helper is routeElbowArrow, defined in packages/element/src/elbowArrow.ts, and it calls exactly four functions directly: calculateGrid, pointToGridNode and astar (all three defined in that same file, packages/element/src/elbowArrow.ts) and pointInsideBounds (imported, defined in packages/element/src/bounds.ts). PASS only if the answer (a) names routeElbowArrow as the routing helper, (b) lists all four of calculateGrid, pointToGridNode, astar and pointInsideBounds as the functions it calls, and (c) identifies pointInsideBounds as the imported one, defined in another file (packages/element/src/bounds.ts or './bounds'), while not claiming that calculateGrid, pointToGridNode or astar come from another file. FAIL if any of the four is missing from the final list, if a different function is given as the routing helper (e.g. handleSegmentMove, handleEndpointDrag, handleSegmentRelease, handleSegmentRenormalization, getElbowArrowData, normalizeArrowElementUpdate, getElbowArrowCornerPoints or removeElbowArrowShortSegments — these are all called by updateElbowArrowPoints but none of them is the no-fixed-segments routing step), or if the answer presents further functions as direct callees of routeElbowArrow that it does not actually call (mentions of built-in array/object methods such as .map/.push/.unshift do not count against it, and neither does correct extra commentary about the surrounding chain). Formatting and ordering do not matter."
     }
+  },
+  {
+    "id": "ex-semantic-scroll-lock-clamp",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "constrainScrollState", "file": "packages/excalidraw/viewport.ts" },
+    "prompt": "In this repository, find the function that takes a proposed scroll or zoom change and, if the view is currently locked to a restricted area, adjusts that change so the result stays within the lock - but allows a little bit of give past the boundary (in screen pixels) before snapping back, and leaves the input untouched entirely when nothing is locked. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["constrainScrollState"],
+      "mustMentionFiles": ["packages/excalidraw/viewport.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-library-diff-update",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "createLibraryUpdate", "file": "packages/excalidraw/data/library.ts" },
+    "prompt": "In this repository, find the function that compares the current state of the shape library against what it was the last time the app notified anyone of a change, and reports which items were newly added and which were removed since then - intended for the embedding application to diff against its own last-known copy. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["createLibraryUpdate"],
+      "mustMentionFiles": ["packages/excalidraw/data/library.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-drag-text-anchor",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "dragNewTextElement", "file": "packages/element/src/dragElements.ts" },
+    "prompt": "In this repository, find the function that determines the size of a text box while it's being dragged out on the canvas. It figures out which point on the box stays fixed and which direction the box grows from there - free-floating text pins wherever the drag began and grows based on which way the pointer moved, while text attached to the end of an arrow instead pins against whatever the arrow's binding placed it at, so dragging the 'wrong' way just makes no progress instead of flipping the box around. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["dragNewTextElement"],
+      "mustMentionFiles": ["packages/element/src/dragElements.ts"]
+    }
   }
 ]
