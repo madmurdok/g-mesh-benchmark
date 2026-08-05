@@ -690,7 +690,7 @@
     "id": "ex-semantic-collab-conflict-keep-local",
     "kind": "search_code",
     "category": "semantic-search",
-    "expectedWinner": "gmesh",
+    "expectedWinner": "parity",
     "revealsLocation": false,
     "target": { "symbol": "shouldDiscardRemoteElement", "file": "packages/excalidraw/data/reconcile.ts" },
     "prompt": "In this repository, when an update for a shared shape comes in from another collaborator, find the function that decides whether to keep what's already here instead of accepting the incoming update - it says yes if the shape is currently being actively worked on locally, if the local copy is already a newer revision, or, when both sides claim the same revision, by comparing a tiebreak value deterministically. Report the function name and the file it's defined in.",
