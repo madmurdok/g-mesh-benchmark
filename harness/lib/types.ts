@@ -142,6 +142,16 @@ export type GradingMode = "substring" | "pool" | "judge" | "test";
  * warm cwd), and is graded by `mode: "test"` — the corpus's real test suite
  * plus a held-out acceptance test — instead of by anything it says in prose.
  */
+/**
+ * "semantic-search" (added with g-mesh 1.1.0's `search_code` tool) covers
+ * tasks that describe a symbol's *behavior* rather than name it — the prompt
+ * deliberately shares no obvious unique grep keyword with the target, so
+ * baseline has to guess and sift through matches while g-mesh can answer
+ * directly via `search_code`'s ranked similarity search. Distinct from
+ * "lookup" (which also omits the target's location but still names or
+ * strongly implies the symbol/interface being asked about) precisely because
+ * the prompt is a paraphrase, not a name.
+ */
 export type TaskCategory =
   | "lookup"
   | "multi-hop"
@@ -149,7 +159,8 @@ export type TaskCategory =
   | "control"
   | "scenario"
   | "feature-request"
-  | "implementation";
+  | "implementation"
+  | "semantic-search";
 
 /** Task author's hypothesis about which arm should win, surfaced in report.ts for interpretation only — never gates pass/fail. */
 export type ExpectedWinner = "gmesh" | "baseline" | "parity";

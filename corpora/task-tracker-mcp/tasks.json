@@ -166,5 +166,47 @@
       },
       "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/lifecycle.test.ts tests/status.test.ts tests/ownership.test.ts tests/__bench_holdout__/release-cancelled.test.ts"
     }
+  },
+  {
+    "id": "tt-semantic-dedupe-prefix-collision",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "dedupePrefix", "file": "src/domain/projects.ts" },
+    "prompt": "In this repository, find the function that resolves a naming collision when two different project names would derive to the same short project-code prefix - it makes the result unique by appending 2, 3, and so on until it finds one that isn't already taken. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["dedupePrefix"],
+      "mustMentionFiles": ["src/domain/projects.ts"]
+    }
+  },
+  {
+    "id": "tt-semantic-board-stale-task-flag",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "isStale", "file": "src/domain/board.ts" },
+    "prompt": "In this repository, find the function used by the dashboard board view that flags a task whose work lock has outlived its lease because the session that claimed it never came back to complete, split, or release it. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["isStale"],
+      "mustMentionFiles": ["src/domain/board.ts"]
+    }
+  },
+  {
+    "id": "tt-semantic-doc-drift-check",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "isDocDrifted", "file": "src/domain/projects.ts" },
+    "prompt": "In this repository, find the function that cheaply checks whether a project's tracked design document has drifted since the task graph was last generated from it - reused on every routine status check so drift is caught automatically rather than only when explicitly asked about. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["isDocDrifted"],
+      "mustMentionFiles": ["src/domain/projects.ts"]
+    }
   }
 ]
