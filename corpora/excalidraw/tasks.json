@@ -693,7 +693,7 @@
     "expectedWinner": "parity",
     "revealsLocation": false,
     "target": { "symbol": "shouldDiscardRemoteElement", "file": "packages/excalidraw/data/reconcile.ts" },
-    "prompt": "In this repository, when an update for a shared shape comes in from another collaborator, find the function that decides whether to keep what's already here instead of accepting the incoming update - it says yes if the shape is currently being actively worked on locally, if the local copy is already a newer revision, or, when both sides claim the same revision, by comparing a tiebreak value deterministically. Report the function name and the file it's defined in.",
+    "prompt": "In this repository, find the function that, given two versions of the same shape - one already present locally and one just received from elsewhere - decides whether to keep the local one instead of switching to the received one. It keeps the local one when that shape is currently being interacted with (mid-edit, mid-resize, or freshly created) or when the local one is already the newer of the two. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
       "mustMentionSymbols": ["shouldDiscardRemoteElement"],
