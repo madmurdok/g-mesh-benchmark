@@ -239,8 +239,13 @@ function requestedTaskIds(): string[] {
  * rather than on what they say. Also the trigger for giving such a task its
  * own throwaway clone in main(): the two must stay in lockstep, so both read
  * this one predicate.
+ *
+ * Exported for session-economy.ts: a chained session shares one warm cwd
+ * across the whole chain, so it can't host a test-mode task's edits at all
+ * (see runSessionChain's pre-emptive skip) — but it needs the same predicate
+ * to recognize one, rather than drifting a second copy of it.
  */
-function taskEditsCode(task: BenchTask): boolean {
+export function taskEditsCode(task: BenchTask): boolean {
   return task.oracle.mode === "test";
 }
 

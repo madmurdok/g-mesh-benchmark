@@ -15,6 +15,7 @@ import type { Arm, BenchTask } from "./lib/types.js";
 import {
   MAX_COMBINED_BUDGET_USD,
   combinedBudgetStatus,
+  taskEditsCode,
   type RunStatus,
   type TokenEconomyRun,
 } from "./token-economy.js";
@@ -232,6 +233,23 @@ async function runSessionChain(
 
   for (const [index, task] of tasks.entries()) {
     const sequenceIndex = index + 1;
+
+    // oracle.mode:"test" tasks are graded on edits made to the run cwd (see
+    // token-economy.ts's taskEditsCode()/gradeRun()), but a chain's cwd is one
+    // warm checkout shared and reused across the whole chain (and across future
+    // runs via resolveWarm()) — letting such a task edit it would corrupt every
+    // task after it, in this chain and later ones. Skipped rather than aborting
+    // the chain: unlike a budget overrun or a broken session invariant, this
+    // isn't a sign anything is wrong, just a task shape this experiment can't
+    // measure, so the rest of the corpus's tasks still run normally.
+    if (taskEditsCode(task)) {
+      console.log(
+        `  [${corpusId}] ${arm} rep ${sessionRepetition}: ${sequenceIndex}/${sessionLength} ${task.id} — ` +
+          `skipping (oracle.mode "test" task; can't run inside a shared chained session).`,
+      );
+      runs.push(skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength));
+      continue;
+    }
 
     if (abortReason !== null) {
       runs.push(skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength));
