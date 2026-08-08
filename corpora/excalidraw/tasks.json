@@ -33,7 +33,7 @@
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": { "symbol": "pointFrom", "file": "packages/math/src/point.ts" },
-    "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 8 distinct files that call it. Give each file's full repo-relative path.",
+    "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 10 distinct files that call it, not counting the file where it's defined or any test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -188,7 +188,7 @@
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": { "symbol": "", "file": "packages/math/src/index.ts" },
-    "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 8 of them across different packages, giving each file's full repo-relative path.",
+    "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 10 of them across different packages, not counting test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
