@@ -114,6 +114,39 @@ test("pool mode: 'excluding X, the callers are: Y' affirms Y even though 'exclud
   assert.deepEqual(result.missed, []);
 });
 
+test("pool mode: 'excluding' in the *next sentence* on the same line doesn't negate a candidate from an earlier sentence (real gmesh-configured false positive, ex-multihop-mutateelement-sizehelper-transitive)", async () => {
+  const oracle = poolOracle({
+    candidatePool: [
+      "getSizeFromPoints",
+      "packages/element/src/elbowArrow.ts",
+      "packages/element/src/transform.ts",
+      "packages/excalidraw/data/restore.ts",
+    ],
+    minMatches: 4,
+  });
+  // Real resultText (rep3, gmesh-configured arm, results/token-economy/2026-08-10T11-41-48-420Z.json):
+  // "Excluding" is on the *same line* as `getSizeFromPoints` (no blank line between them, unlike
+  // the already-covered case above), which used to be enough to trip the old line-only negation
+  // window even though "Excluding" modifies "that file [and mutateElement.ts]", not the helper name.
+  const resultText =
+    "The helper is `getSizeFromPoints`, defined in `packages/common/src/points.ts`. " +
+    "Excluding that file and `packages/element/src/mutateElement.ts`, the other callers are:\n\n" +
+    "- `packages/element/src/transform.ts` — `convertToExcalidrawElements`\n" +
+    "- `packages/element/src/elbowArrow.ts` — `normalizeArrowElementUpdate`\n" +
+    "- `packages/excalidraw/data/restore.ts` — `restoreElement`";
+  const result = await checkOracle(resultText, oracle);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.missed, []);
+});
+
+test("pool mode: a negation cue in the same sentence as the candidate still negates it, even mid-line (sentence clamp doesn't defeat the calibration case)", async () => {
+  const resultText =
+    "The candidate is `src/domain/status.ts`, but excluding that file entirely, none of the real callers live there.";
+  const result = await checkOracle(resultText, poolOracle());
+  assert.equal(result.passed, false);
+  assert.deepEqual(result.missed, ["src/domain/status.ts", "tests/tasks.test.ts"]);
+});
+
 test("substring mode is untouched by the pool negation guard (v1 behavior preserved)", async () => {
   const oracle: Oracle = { mustMentionFiles: ["src/foo.ts"] };
   const result = await checkOracle("Not src/foo.ts, that's unrelated.", oracle);
