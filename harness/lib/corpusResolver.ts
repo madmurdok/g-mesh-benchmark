@@ -3,15 +3,23 @@ import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { gmeshBinaryPath } from "./mcpConfig.js";
 import type { CorpusEntry } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const CACHE_ROOT = path.resolve(HERE, "../../.cache/corpora");
+/**
+ * Outside the repo (and outside the whole `~/Projects/ClaudeProjects` tree)
+ * on purpose, not `<repo>/.cache/corpora` — confirmed empirically that Claude
+ * Code's CLAUDE.md/trust resolution treats anything nested under that tree
+ * as part of the already-trusted workspace regardless of whether the
+ * specific subdirectory is brand new, so a cache dir living inside the repo
+ * still leaked `~/.claude/CLAUDE.md` into `claude -p` calls (see resolveWarm's
+ * doc comment). `os.tmpdir()` is stable per machine/user, so this still
+ * behaves as a real cache across runs, not a fresh dir every time.
+ */
+const CACHE_ROOT = path.join(tmpdir(), "gmesh-bench-corpora");
 
 async function cloneAt(entry: CorpusEntry, dest: string): Promise<void> {
   if (!entry.repoUrl || !entry.ref) {
@@ -26,18 +34,30 @@ async function cloneLocal(sourcePath: string, dest: string): Promise<void> {
   await execFileAsync("git", ["clone", sourcePath, dest]);
 }
 
-/** Reused checkout for warm experiments (search-latency, token-economy). */
+/**
+ * Reused checkout for warm experiments (search-latency, token-economy).
+ *
+ * Always a `CACHE_ROOT` clone, never `entry.path` itself for `kind: "local"`
+ * — `--setting-sources project` does not gate CLAUDE.md loading, and handing
+ * an arm the live, registry-registered checkout (nested under the operator's
+ * trusted workspace tree, see CACHE_ROOT's doc comment) as its cwd was
+ * silently leaking `~/.claude/CLAUDE.md` into every run. That's exactly why
+ * 80% of `baseline`-arm results replied in Russian (this machine's global
+ * CLAUDE.md says to) while `gmesh-configured`/`serena` — which always ran
+ * from a `CACHE_ROOT`/mkdtemp clone — never did once.
+ */
 export async function resolveWarm(entry: CorpusEntry): Promise<string> {
-  if (entry.kind === "local") {
-    if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
-    return entry.path;
-  }
   const dest = path.join(CACHE_ROOT, entry.id);
   await mkdir(CACHE_ROOT, { recursive: true });
   try {
     await execFileAsync("git", ["-C", dest, "rev-parse", "HEAD"]);
   } catch {
-    await cloneAt(entry, dest);
+    if (entry.kind === "local") {
+      if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
+      await cloneLocal(entry.path, dest);
+    } else {
+      await cloneAt(entry, dest);
+    }
   }
   return dest;
 }
