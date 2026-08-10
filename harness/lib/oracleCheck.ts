@@ -77,12 +77,61 @@ function findAllIndices(text: string, needle: string): number[] {
 }
 
 /**
+ * A sentence-ending punctuation mark is a '.', '!' or '?' immediately
+ * followed by whitespace (or end of string) — deliberately *not* every '.',
+ * so this can't mistake a file extension's period for a sentence break: in
+ * "status.ts", the period is followed by "t" (a letter), never whitespace,
+ * so it's invisible to this check regardless of whether the path is
+ * backtick-quoted. Only a period that actually ends a clause (whitespace
+ * right after it) counts.
+ */
+function isSentenceBoundaryChar(text: string, i: number): boolean {
+  const ch = text[i];
+  if (ch !== "." && ch !== "!" && ch !== "?") return false;
+  const next = text[i + 1];
+  return next === undefined || /\s/.test(next);
+}
+
+/** Nearest sentence-boundary position at or before `idx`, no earlier than `from`; `from` itself if none found. */
+function findSentenceStart(text: string, from: number, idx: number): number {
+  for (let i = idx - 1; i >= from; i--) {
+    if (isSentenceBoundaryChar(text, i)) return i + 1;
+  }
+  return from;
+}
+
+/** Nearest sentence-boundary position at or after `idx`, no later than `to`; `to` itself if none found. */
+function findSentenceEnd(text: string, idx: number, to: number): number {
+  for (let i = idx; i < to; i++) {
+    if (isSentenceBoundaryChar(text, i)) return i + 1;
+  }
+  return to;
+}
+
+/**
  * A candidate substring match is only real evidence if the model is
  * asserting it, not naming it to deny it — see the module-level comment on
  * NEGATION_CONTEXT_CHARS for the failure this catches. Windowed (not
- * sentence-split) deliberately: candidates are file paths containing '.',
- * so splitting resultText into sentences on punctuation would break mid
- * filename (e.g. "status.ts" -> "status" / "ts").
+ * sentence-split up front) deliberately: candidates are file paths
+ * containing '.', so blindly splitting resultText into sentences before
+ * searching would risk breaking mid filename. Instead the window is
+ * *clamped* to the nearest real sentence boundary (see
+ * isSentenceBoundaryChar) found by scanning outward from the candidate
+ * mention itself, which is safe the other way around: a stray extension
+ * period is simply never recognized as a boundary.
+ *
+ * That sentence clamp exists on top of the line clamp below to catch a
+ * real gmesh-configured false positive (task
+ * ex-multihop-mutateelement-sizehelper-transitive): "The helper is
+ * `getSizeFromPoints`, defined in `packages/common/src/points.ts`.
+ * Excluding that file and `packages/element/src/mutateElement.ts`, the
+ * other callers are: ...". "Excluding" sits on the *same line* as
+ * `getSizeFromPoints` (well within NEGATION_CONTEXT_CHARS), so the old
+ * line-only window saw it and wrongly negated the candidate — but
+ * "Excluding" is in the *next sentence*, modifying "that file [and
+ * mutateElement.ts]", not `getSizeFromPoints`. Clamping to the sentence
+ * containing the mention keeps that separate clause out of the window
+ * without needing to understand what "Excluding" actually modifies.
  *
  * The window never crosses a newline on either side, in addition to the
  * NEGATION_CONTEXT_CHARS cap — found necessary from two real kungfu
@@ -95,15 +144,21 @@ function findAllIndices(text: string, needle: string): number[] {
  * the two ranges overlap). Scoping to the current line leaves both existing
  * calibration tests unaffected, since real captured negations so far are
  * single-paragraph prose with no newlines at all — same behavior there,
- * narrower only where line structure exists.
+ * narrower only where line structure exists. The sentence clamp is the same
+ * kind of narrowing: real captured negations so far sit in the same
+ * sentence as the candidate they negate, so this is narrower only where a
+ * sentence break actually exists between the mention and a nearby cue.
  */
 function isEveryMentionNegated(resultText: string, candidate: string, indices: number[]): boolean {
   return indices.every((idx) => {
+    const mentionEnd = idx + candidate.length;
     const lineStart = resultText.lastIndexOf("\n", idx) + 1; // -1 (no newline before) + 1 = 0
-    const lineEndSearch = resultText.indexOf("\n", idx + candidate.length);
+    const lineEndSearch = resultText.indexOf("\n", mentionEnd);
     const lineEnd = lineEndSearch === -1 ? resultText.length : lineEndSearch;
-    const start = Math.max(lineStart, idx - NEGATION_CONTEXT_CHARS);
-    const end = Math.min(lineEnd, idx + candidate.length + NEGATION_CONTEXT_CHARS);
+    const sentenceStart = findSentenceStart(resultText, lineStart, idx);
+    const sentenceEnd = findSentenceEnd(resultText, mentionEnd, lineEnd);
+    const start = Math.max(sentenceStart, idx - NEGATION_CONTEXT_CHARS);
+    const end = Math.min(sentenceEnd, mentionEnd + NEGATION_CONTEXT_CHARS);
     return hasNegationCue(resultText.slice(start, end));
   });
 }
