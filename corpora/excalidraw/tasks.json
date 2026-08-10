@@ -33,7 +33,7 @@
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": { "symbol": "pointFrom", "file": "packages/math/src/point.ts" },
-    "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 8 distinct files that call it. Give each file's full repo-relative path.",
+    "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 10 distinct files that call it, not counting the file where it's defined or any test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -188,7 +188,7 @@
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": { "symbol": "", "file": "packages/math/src/index.ts" },
-    "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 8 of them across different packages, giving each file's full repo-relative path.",
+    "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 10 of them across different packages, not counting test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -642,6 +642,76 @@
       "mode": "substring",
       "mustMentionSymbols": ["dragNewTextElement"],
       "mustMentionFiles": ["packages/element/src/dragElements.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-cjk-charclass-check",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "containsCJK", "file": "packages/element/src/textWrapping.ts" },
+    "prompt": "In this repository, find the function that checks whether a piece of text contains any characters from East Asian scripts that don't rely on spaces to mark word boundaries - used so word wrapping can fall back to breaking between individual characters instead of only at whitespace. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["containsCJK"],
+      "mustMentionFiles": ["packages/element/src/textWrapping.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-fractional-index-mutate-repair",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "syncInvalidIndices", "file": "packages/element/src/fractionalIndex.ts" },
+    "prompt": "In this repository, elements carry a fractional ordering marker that can occasionally end up invalid or out of sequence. Find the function that repairs every such marker across a set of elements by changing the existing element objects directly, as opposed to the sibling function that fixes the same problem but returns new element instances instead of touching the ones it was given. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["syncInvalidIndices"],
+      "mustMentionFiles": ["packages/element/src/fractionalIndex.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-arrow-endpoint-grid-align",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "snapBoundPointToGrid", "file": "packages/element/src/binding.ts" },
+    "prompt": "In this repository, find the function that adjusts where a connected line's endpoint lands on the shape it's attached to, so that it lines up with the layout grid along one direction while holding the gap between the line and the shape steady along the other direction - it decides which direction to align by comparing against the perpendicular of whichever side of the shape the point sits nearest to. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["snapBoundPointToGrid"],
+      "mustMentionFiles": ["packages/element/src/binding.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-collab-conflict-keep-local",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": { "symbol": "shouldDiscardRemoteElement", "file": "packages/excalidraw/data/reconcile.ts" },
+    "prompt": "In this repository, find the function that, given two versions of the same shape - one already present locally and one just received from elsewhere - decides whether to keep the local one instead of switching to the received one. It keeps the local one when that shape is currently being interacted with (mid-edit, mid-resize, or freshly created) or when the local one is already the newer of the two. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["shouldDiscardRemoteElement"],
+      "mustMentionFiles": ["packages/excalidraw/data/reconcile.ts"]
+    }
+  },
+  {
+    "id": "ex-semantic-arrow-zorder-above-bound",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": { "symbol": "moveArrowAboveBindable", "file": "packages/element/src/zindex.ts" },
+    "prompt": "In this repository, find the function that reorders a connector so that it's drawn above every shape it's currently touching or that the pointer is currently over. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": ["moveArrowAboveBindable"],
+      "mustMentionFiles": ["packages/element/src/zindex.ts"]
     }
   }
 ]

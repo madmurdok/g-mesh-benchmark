@@ -75,14 +75,14 @@
     }
   },
   "tokenEconomy": {
-    "arms": ["gmesh-configured", "baseline"],
+    "arms": ["gmesh-configured", "serena", "baseline"],
     "repetitions": "normal",
     "excalidrawScope": "low",
     "htmlNarrative": true,
     "warmCache": "prompt"
   },
   "sessionEconomy": {
-    "arms": ["gmesh", "baseline"],
+    "arms": ["gmesh", "serena", "baseline"],
     "repetitions": "normal"
   },
   "searchLatency": { "samples": 20 },
