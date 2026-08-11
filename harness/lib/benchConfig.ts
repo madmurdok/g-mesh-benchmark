@@ -16,11 +16,12 @@ export type WarmCacheMode = "prompt" | boolean;
  * plus a curated tool allowlist and a deny list), registered without touching
  * any source file.
  *
- * Deliberately limited to *bare* arms: there is no CLAUDE.md-loaded
- * (`-configured`) variant of a custom arm, because that path is wired to the
- * literal `gmesh-configured`/`kungfu-configured` arm names in
- * token-economy.ts. Documented as a known gap in README's "Custom arms"
- * section rather than half-supported here.
+ * Deliberately limited to *bare* arms: there is no `-configured` variant of a
+ * custom arm, because that path is wired to the literal `gmesh-configured`/
+ * `kungfu-configured`/`serena-configured` arm names in token-economy.ts.
+ * Documented as a known gap in README's "Custom arms" section rather than
+ * half-supported here. `serena` was itself a custom arm until it needed one,
+ * which is what promoted it to a built-in.
  */
 export interface CustomArmDefinition {
   /** Executable to spawn for this arm's MCP server (`mcpServers.<arm>.command`). Resolved by the OS at spawn time, so a bare name uses PATH. */
@@ -87,18 +88,33 @@ export interface BenchConfig {
  * field mirrors the literal default each script's own should*()/*Count()
  * helper already fell back to before this file existed — see this task's
  * design notes for how each was verified against the real code.
+ *
+ * `tokenEconomy.arms` is a three-arm comparison — each tool as its own docs
+ * say to run it, plus the no-tool control — and both `-configured` arms are
+ * deliberately the default rather than their bare counterparts: comparing
+ * g-mesh-with-its-CLAUDE.md against Serena-with-nothing measured the
+ * benchmark's own setup asymmetry, not the tools. Note this makes `uvx`
+ * (see mcpConfig.ts's SERENA_LAUNCHER_COMMAND) a prerequisite of a default
+ * token-economy run; token-economy.ts preflights it and says so.
+ *
+ * `sessionEconomy.arms` mirrors that same swap now that session-economy.ts
+ * also resolves `-configured` clones (via resolveConfigured()): the default
+ * chained-session comparison is gmesh-configured vs serena-configured vs
+ * baseline, not the bare tools. Bare `gmesh`/`serena` are opt-in via
+ * G_MESH_BENCH_INCLUDE_BARE_GMESH/G_MESH_BENCH_INCLUDE_BARE_SERENA, same as
+ * token-economy.ts's own bare-arm gates.
  */
 export const DEFAULT_CONFIG: BenchConfig = {
   customArms: {},
   tokenEconomy: {
-    arms: ["gmesh-configured", "baseline"],
+    arms: ["gmesh-configured", "serena-configured", "baseline"],
     repetitions: "normal",
     excalidrawScope: "low",
     htmlNarrative: true,
     warmCache: "prompt",
   },
   sessionEconomy: {
-    arms: ["gmesh", "baseline"],
+    arms: ["gmesh-configured", "serena-configured", "baseline"],
     repetitions: "normal",
   },
   searchLatency: {
@@ -120,6 +136,8 @@ const ARM_VALUES: readonly BuiltinArm[] = [
   "kungfu",
   "gmesh-configured",
   "kungfu-configured",
+  "serena",
+  "serena-configured",
 ];
 
 const REPETITION_PRESET_VALUES: readonly RepetitionPreset[] = ["low", "normal", "max"];

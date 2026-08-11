@@ -27,6 +27,22 @@
  *   at all. Exists so a `gmesh-configured` vs `kungfu` comparison isn't
  *   unfair — g-mesh's own best-practice setup against kungfu's default. See
  *   armConfig.ts's KUNGFU_CONFIGURED_CLAUDE_MD.
+ * - `serena` — [Serena](https://github.com/oraios/serena), an LSP-wrapper MCP
+ *   server, restricted to the 5 tools with a genuine g-mesh analog plus the
+ *   two it configures itself with (see armConfig.ts's SERENA_TOOLS/
+ *   SERENA_DENIED_TOOLS). Was a `customArms` entry in
+ *   g-mesh-bench.config.json until it needed a `-configured` variant, which
+ *   only built-in arms can have. "Bare" in the same sense as bare `gmesh`: the
+ *   tools with none of the setup its own docs prescribe, now opt-in via
+ *   G_MESH_BENCH_INCLUDE_BARE_SERENA.
+ * - `serena-configured` — the same real-delivery-path idea as the two
+ *   `-configured` arms above, applied to Serena: byte-for-byte the same tools
+ *   and MCP config as `serena`, run against a throwaway clone carrying
+ *   Serena's own shipped Claude Code hooks (`serena-hooks activate/remind/
+ *   cleanup`, see armConfig.ts's SERENA_CONFIGURED_SETTINGS_JSON) in
+ *   `.claude/settings.json`. Serena delivers its setup through hooks rather
+ *   than a project doc, which is why this one is a settings file where
+ *   gmesh-configured/kungfu-configured are CLAUDE.md text.
  *
  * Lives here rather than in token-economy.ts so reportData.ts/htmlReport.ts
  * share one definition instead of each re-declaring the union.
@@ -37,10 +53,12 @@ export type BuiltinArm =
   | "gmesh-trusted"
   | "kungfu"
   | "gmesh-configured"
-  | "kungfu-configured";
+  | "kungfu-configured"
+  | "serena"
+  | "serena-configured";
 
 /**
- * An arm name as the harness accepts it anywhere at runtime: one of the six
+ * An arm name as the harness accepts it anywhere at runtime: one of the
  * built-ins above, or the name of a custom arm registered in
  * `g-mesh-bench.config.json`'s `customArms` (see lib/benchConfig.ts's
  * CustomArmDefinition and lib/armConfig.ts's fallback resolution) — a real MCP
@@ -64,16 +82,19 @@ export type Arm = BuiltinArm | (string & {});
 /**
  * Fixed presentation order for arms in every table, chart and legend.
  *
- * `gmesh-configured` leads because it is the default primary arm — g-mesh as
- * anyone actually runs it, with the CLAUDE.md guidance in place — and
- * `baseline` follows it as the thing it is being compared against. Bare
- * `gmesh` (now opt-in via G_MESH_BENCH_INCLUDE_BARE_GMESH) keeps third place
- * so a report built purely from pre-swap history still renders gmesh/baseline
- * in their old relative order, then the remaining opt-in arms.
+ * The three default arms lead, in the order the comparison is stated:
+ * `gmesh-configured` (g-mesh as anyone actually runs it, with the CLAUDE.md
+ * guidance in place), `serena-configured` (Serena as its own docs prescribe
+ * running it, hooks and all), then `baseline` as the thing both are compared
+ * against. The opt-in arms follow, each next to the default arm it is the
+ * bare counterpart of — bare `gmesh` and bare `serena` — then the remaining
+ * extras.
  *
- * Both `*-configured` arms were missing from this list entirely until the
- * swap; they rendered via armsPresent()'s unknown-arms-last fallback, i.e.
- * always last regardless of what they were. Listing them fixes that.
+ * Both `*-configured` arms were missing from this list entirely until
+ * gmesh-configured became the default; they rendered via armsPresent()'s
+ * unknown-arms-last fallback, i.e. always last regardless of what they were.
+ * `serena` was in the same position for a different reason (it was a custom
+ * arm, which this list never ranks). Listing them fixes both.
  *
  * Built-in arms only, on purpose: a custom arm (see `Arm` above) has no
  * declared rank here and is appended alphabetically by armsPresent(), exactly
@@ -85,8 +106,10 @@ export type Arm = BuiltinArm | (string & {});
  */
 export const ARM_ORDER: readonly Arm[] = [
   "gmesh-configured",
+  "serena-configured",
   "baseline",
   "gmesh",
+  "serena",
   "gmesh-trusted",
   "kungfu",
   "kungfu-configured",

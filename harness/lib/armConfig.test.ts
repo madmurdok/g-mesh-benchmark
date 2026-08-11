@@ -11,6 +11,9 @@ import {
   GMESH_TOOLS,
   KUNGFU_DENIED_TOOLS,
   KUNGFU_TOOLS,
+  SERENA_CONFIGURED_SETTINGS_JSON,
+  SERENA_DENIED_TOOLS,
+  SERENA_TOOLS,
   TRUSTED_ARM_PROMPT_SUFFIX,
   armDisallowedTools,
   armMcpConfig,
@@ -18,7 +21,7 @@ import {
   armTools,
 } from "./armConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
-import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
+import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig, buildSerenaArmConfig } from "./mcpConfig.js";
 import { ARM_ORDER, type Arm } from "./types.js";
 
 /**
@@ -36,9 +39,14 @@ import { ARM_ORDER, type Arm } from "./types.js";
  * reportData.test.ts/sessionReport.test.ts for the same convention.)
  */
 
+function isSerenaArm(arm: Arm): boolean {
+  return arm === "serena" || arm === "serena-configured";
+}
+
 function legacyMcpConfig(arm: Arm): McpServerConfig {
   if (arm === "baseline") return buildBaselineArmConfig();
   if (arm === "kungfu" || arm === "kungfu-configured") return buildKungfuArmConfig();
+  if (isSerenaArm(arm)) return buildSerenaArmConfig();
   return buildGmeshArmConfig();
 }
 
@@ -48,7 +56,9 @@ function legacyTools(arm: Arm, opts: { allowEdit?: boolean } = {}): string {
       ? BASELINE_TOOLS
       : arm === "kungfu" || arm === "kungfu-configured"
         ? KUNGFU_TOOLS
-        : GMESH_TOOLS;
+        : isSerenaArm(arm)
+          ? SERENA_TOOLS
+          : GMESH_TOOLS;
   return opts.allowEdit ? `${base},${EDIT_TOOLS}` : base;
 }
 
@@ -57,15 +67,24 @@ function legacyPrompt(prompt: string, arm: Arm): string {
 }
 
 function legacyDisallowedTools(arm: Arm): string | undefined {
-  return arm === "kungfu" || arm === "kungfu-configured" ? KUNGFU_DENIED_TOOLS : undefined;
+  if (arm === "kungfu" || arm === "kungfu-configured") return KUNGFU_DENIED_TOOLS;
+  if (isSerenaArm(arm)) return SERENA_DENIED_TOOLS;
+  return undefined;
 }
 
 /**
  * Every arm the union knows about, not just the ones the table happens to
- * list. Deliberately hand-written instead of derived from ARM_ORDER: it is a
+ * list. Deliberately hand-written instead of derived from ARM_ORDER: it was a
  * frozen snapshot of the six arms the `legacy*` chains above were written for,
- * so a seventh arm has to be added here consciously (with its own expectations)
+ * so a new arm has to be added here consciously (with its own expectations)
  * rather than silently graded against a default branch that never meant it.
+ *
+ * `serena`/`serena-configured` post-date those chains — they were a
+ * `customArms` config entry, resolved through the fallback path below, until
+ * `serena-configured` (which only a built-in arm can have) promoted them. So
+ * their `legacy*` branches above are not a copy of anything: they are the
+ * expectations written for them here, in the same shape, and the config values
+ * they replaced are asserted separately by the enforcement-boundary test.
  */
 const ALL_ARMS: readonly Arm[] = [
   "gmesh",
@@ -74,6 +93,8 @@ const ALL_ARMS: readonly Arm[] = [
   "kungfu",
   "gmesh-configured",
   "kungfu-configured",
+  "serena",
+  "serena-configured",
 ];
 
 const PROMPT = "Where is exportToSvg defined?";
@@ -115,6 +136,75 @@ test("kungfu-configured is byte-for-byte the kungfu arm's tools, deny list and M
   assert.equal(armTools("kungfu-configured"), armTools("kungfu"));
   assert.equal(armDisallowedTools("kungfu-configured"), armDisallowedTools("kungfu"));
   assert.deepEqual(armMcpConfig("kungfu-configured"), armMcpConfig("kungfu"));
+});
+
+test("serena-configured is byte-for-byte the serena arm's tools, deny list and MCP config", () => {
+  assert.equal(armTools("serena-configured"), armTools("serena"));
+  assert.equal(armDisallowedTools("serena-configured"), armDisallowedTools("serena"));
+  assert.deepEqual(armMcpConfig("serena-configured"), armMcpConfig("serena"));
+});
+
+/**
+ * The exact enforcement boundary the serena/serena-configured promotion moved,
+ * asserted by name rather than by list length — this *is* the fix, and a
+ * future edit that re-denies either tool would otherwise silently restore the
+ * bug (Serena's own MCP `instructions` field tells the agent to call
+ * `initial_instructions` first, and its SessionStart hook tells it to call
+ * `activate_project`; denying those makes both instructions unfollowable).
+ *
+ * The second half is equally load-bearing in the other direction: unblocking
+ * Serena's self-configuration is *not* a general relaxation of the deny list.
+ * Memory/onboarding tools stay denied, so an arm can't start writing
+ * `.serena/memories/*.md` into its clone as a side effect of this change.
+ */
+test("serena arms allow Serena's own setup tools and still deny its memory/onboarding tools", () => {
+  const denied = SERENA_DENIED_TOOLS.split(",");
+  const allowed = SERENA_TOOLS.split(",");
+
+  for (const tool of ["mcp__serena__initial_instructions", "mcp__serena__activate_project"]) {
+    assert.ok(!denied.includes(tool), `${tool} must not be denied: Serena's own setup path depends on it`);
+    assert.ok(allowed.includes(tool), `${tool} must be in the arm's tool list`);
+  }
+  for (const tool of [
+    "mcp__serena__onboarding",
+    "mcp__serena__write_memory",
+    "mcp__serena__read_memory",
+    "mcp__serena__list_memories",
+  ]) {
+    assert.ok(denied.includes(tool), `${tool} must stay denied`);
+    assert.ok(!allowed.includes(tool), `${tool} must not be in the arm's tool list`);
+  }
+
+  // No tool may appear in both lists — a deny rule wins in the CLI, so an
+  // overlap would be a tool the arm claims to offer and can never call.
+  assert.deepEqual(allowed.filter((t) => denied.includes(t)), []);
+  // Every arm's tool list starts with the built-ins armTools() expects (see
+  // BASELINE_TOOLS); the rest of the surface is Serena's, curated.
+  assert.ok(SERENA_TOOLS.startsWith(`${BASELINE_TOOLS},`));
+});
+
+test("the serena-configured settings.json wires Serena's own shipped hooks and nothing else", () => {
+  // Shape-checked rather than snapshotted: what matters is that each hook
+  // event maps to the matching `serena-hooks` subcommand, that Read/Grep is
+  // what PreToolUse matches (the two tool names Serena's remind hook
+  // classifies for the claude-code client), and that `auto-approve` — a no-op
+  // under the --permission-mode bypassPermissions this harness always passes —
+  // is not wired up at all.
+  const { hooks } = SERENA_CONFIGURED_SETTINGS_JSON;
+  const commands = Object.values(hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks)
+    .map((h) => h.command);
+  assert.equal(commands.length, 3);
+  for (const command of commands) {
+    assert.ok(command.startsWith("uvx --from git+https://github.com/oraios/serena serena-hooks "));
+    assert.ok(command.endsWith(" --client claude-code"));
+  }
+  assert.ok(hooks.SessionStart[0]?.hooks[0]?.command.includes(" activate "));
+  assert.ok(hooks.PreToolUse[0]?.hooks[0]?.command.includes(" remind "));
+  assert.ok(hooks.SessionEnd[0]?.hooks[0]?.command.includes(" cleanup "));
+  assert.equal(hooks.PreToolUse[0]?.matcher, "Read|Grep");
+  assert.ok(!commands.some((c) => c.includes("auto-approve")));
 });
 
 test("only gmesh-trusted gets the trust suffix; every other arm runs the prompt verbatim", () => {

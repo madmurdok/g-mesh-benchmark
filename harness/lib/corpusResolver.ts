@@ -79,25 +79,57 @@ export async function resolveFresh(entry: CorpusEntry): Promise<string> {
 /**
  * Throwaway clone (same resolveFresh() mechanism kungfu's cwd already uses,
  * for the identical reason — must never write into the live,
- * registry-registered checkout) with a real project CLAUDE.md written into
- * it, so the gmesh-configured arm exercises Claude Code's actual
+ * registry-registered checkout) with a `-configured` arm's real project setup
+ * written into it, so that arm exercises Claude Code's actual
  * `--setting-sources project` auto-discovery instead of a harness-injected
  * prompt suffix.
  *
- * Appends to an existing CLAUDE.md rather than overwriting it — the
- * excalidraw corpus has its own real project CLAUDE.md about monorepo/build
- * conventions, and appending mirrors how a real user would actually add this
- * recommendation to an existing project rather than clobbering their own
- * instructions.
+ * Both inputs are optional and independent, because the three `-configured`
+ * arms deliver their setup differently: gmesh-configured and kungfu-configured
+ * ship guidance as a project `CLAUDE.md`, serena-configured ships Serena's own
+ * `serena-hooks` wiring as `.claude/settings.json` (armConfig.ts's
+ * SERENA_CONFIGURED_SETTINGS_JSON) and no doc at all. Passing neither is a
+ * plain resolveFresh() and is not rejected here — an arm may legitimately want
+ * the throwaway-clone half on its own.
+ *
+ * CLAUDE.md is *appended* to when one already exists — the excalidraw corpus
+ * has its own real project CLAUDE.md about monorepo/build conventions, and
+ * appending mirrors how a real user would add a recommendation to an existing
+ * project rather than clobbering their own instructions.
+ *
+ * `.claude/settings.json` deliberately does the opposite and *throws* on a
+ * pre-existing file. There is no append for JSON, and the two plausible merges
+ * (deep-merging hook arrays, or letting one side win) would each silently
+ * produce a settings file neither the corpus author nor this harness wrote —
+ * i.e. an arm running under a configuration nobody can read off either source.
+ * Neither shipped corpus has one today, so hitting this is a genuine
+ * "a human has to decide" signal rather than an expected case.
  */
-export async function resolveConfigured(entry: CorpusEntry, claudeMd: string): Promise<string> {
+export async function resolveConfigured(
+  entry: CorpusEntry,
+  claudeMd?: string,
+  settingsJson?: object,
+): Promise<string> {
   const dest = await resolveFresh(entry);
-  const claudeMdPath = path.join(dest, "CLAUDE.md");
-  if (existsSync(claudeMdPath)) {
-    const existing = await readFile(claudeMdPath, "utf-8");
-    await writeFile(claudeMdPath, `${existing}\n\n${claudeMd}`);
-  } else {
-    await writeFile(claudeMdPath, claudeMd);
+  if (claudeMd !== undefined) {
+    const claudeMdPath = path.join(dest, "CLAUDE.md");
+    if (existsSync(claudeMdPath)) {
+      const existing = await readFile(claudeMdPath, "utf-8");
+      await writeFile(claudeMdPath, `${existing}\n\n${claudeMd}`);
+    } else {
+      await writeFile(claudeMdPath, claudeMd);
+    }
+  }
+  if (settingsJson !== undefined) {
+    const settingsPath = path.join(dest, ".claude", "settings.json");
+    if (existsSync(settingsPath)) {
+      throw new Error(
+        `Corpus ${entry.id} already ships a .claude/settings.json; refusing to overwrite or merge it ` +
+          `(${settingsPath}). Decide by hand what the configured arm's settings should be.`,
+      );
+    }
+    await mkdir(path.dirname(settingsPath), { recursive: true });
+    await writeFile(settingsPath, `${JSON.stringify(settingsJson, null, 2)}\n`);
   }
   return dest;
 }
@@ -115,7 +147,8 @@ export async function resolveConfigured(entry: CorpusEntry, claudeMd: string): P
  *
  * Deliberately not folded into resolveConfigured()/resolveFresh()/
  * resolveWarm() themselves: resolveConfigured() is shared verbatim by the
- * kungfu-configured arm, which never touches g-mesh at all, and
+ * kungfu-configured and serena-configured arms, neither of which touches
+ * g-mesh at all, and
  * resolveFresh() is used directly by non-gmesh arms too - baking warming in
  * there would burn a walk on cwds nothing will ever query via g-mesh. Callers
  * warm explicitly, only for cwds a gmesh-backed arm will actually use.
