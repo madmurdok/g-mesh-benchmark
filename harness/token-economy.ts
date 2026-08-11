@@ -8,6 +8,7 @@ import {
   KUNGFU_CONFIGURED_CLAUDE_MD,
   MAX_BUDGET_USD,
   MODEL,
+  SERENA_CONFIGURED_SETTINGS_JSON,
   armDisallowedTools,
   armMcpConfig,
   armPrompt,
@@ -18,7 +19,7 @@ import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
-import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
@@ -416,6 +417,28 @@ function shouldIncludeBareGmeshArm(): boolean {
 }
 
 /**
+ * G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no gates the bare `serena` arm, which is
+ * no longer part of a default run.
+ *
+ * Mirrors shouldIncludeBareGmeshArm(), not shouldIncludeKungfuConfiguredArm():
+ * for serena it is the *bare* arm that is the opt-in extra and the configured
+ * one that runs by default — the reverse of kungfu's arrangement, and for the
+ * same reason as gmesh's. Bare `serena` is Serena with its own documented
+ * setup (the `initial_instructions` self-serve manual, and the `serena-hooks`
+ * Claude Code hooks) stripped out, which is a configuration nobody ships. Turn
+ * it on to measure what that setup is itself worth, by running bare and
+ * configured side by side.
+ */
+function shouldIncludeBareSerenaArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_BARE_SERENA;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_BARE_SERENA value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
  * G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED=yes|no gates the `kungfu-configured`
  * arm — same opt-in-only pattern as the other should*Arm functions above, for
  * the same reason: a default run's output must stay exactly what it was
@@ -504,13 +527,25 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
  * running — gmesh-configured's CLAUDE.md is system-level context, so its
  * prefix is a different one, warmed from its own cwd below.
  */
-async function warmCache(
-  arms: readonly Arm[],
-  cwd: string,
-  kungfuCwd: string | undefined,
-  configuredCwd: string | undefined,
-  kungfuConfiguredCwd: string | undefined,
-): Promise<void> {
+/**
+ * Cwds to warm from, keyed by the arm whose cache prefix each one produces —
+ * every arm here needs a cwd of its own rather than the shared warm checkout,
+ * either because it writes into its project dir (kungfu, serena) or because
+ * its setup has to be written into the clone first (the three `-configured`
+ * arms). `undefined` means "this arm isn't running, don't warm it".
+ *
+ * A record rather than what this used to be — one positional `…Cwd` parameter
+ * per arm — because adding serena/serena-configured would have made that six
+ * interchangeable `string | undefined` positionals in a row, a shape where a
+ * mis-ordered call site is both easy to write and silent at runtime (it would
+ * warm the right number of prefixes from the wrong directories).
+ */
+type WarmCacheCwds = Partial<Record<Arm, string>>;
+async function warmCache(arms: readonly Arm[], cwd: string, armCwds: WarmCacheCwds): Promise<void> {
+  const { kungfu: kungfuCwd, serena: serenaCwd } = armCwds;
+  const configuredCwd = armCwds["gmesh-configured"];
+  const kungfuConfiguredCwd = armCwds["kungfu-configured"];
+  const serenaConfiguredCwd = armCwds["serena-configured"];
   if (arms.includes("gmesh") || arms.includes("gmesh-trusted")) {
     console.log("Warming prompt cache: gmesh arm...");
     await warmArm(cwd, "gmesh");
@@ -542,6 +577,22 @@ async function warmCache(
     console.log("Warming prompt cache: kungfu-configured arm...");
     await warmArm(kungfuConfiguredCwd, "kungfu-configured");
   }
+  if (serenaCwd !== undefined) {
+    // Same as kungfu: serena's tool schemas are its own prefix, and its cwd
+    // must be a throwaway clone because it indexes into a .serena/ directory
+    // inside whatever project it is pointed at.
+    console.log("Warming prompt cache: serena arm...");
+    await warmArm(serenaCwd, "serena");
+  }
+  if (serenaConfiguredCwd !== undefined) {
+    // Warmed separately from bare serena even though the two share a tool
+    // list: serena-configured's `.claude/settings.json` registers a
+    // SessionStart hook whose output is injected as system-level context, so
+    // its prefix genuinely differs — the same reason gmesh-configured doesn't
+    // share bare gmesh's.
+    console.log("Warming prompt cache: serena-configured arm...");
+    await warmArm(serenaConfiguredCwd, "serena-configured");
+  }
 }
 
 /**
@@ -558,22 +609,44 @@ function kungfuBinaryIsAvailable(): boolean {
 }
 
 /**
+ * Same PATH lookup as kungfuBinaryIsAvailable(), for the command that launches
+ * Serena. `uvx` is checked rather than a serena binary because there is no
+ * serena binary to check: both the MCP server and the `serena-hooks` commands
+ * in SERENA_CONFIGURED_SETTINGS_JSON are spawned as `uvx --from git+…` (see
+ * mcpConfig.ts's SERENA_LAUNCHER_COMMAND), so `uvx` on PATH is the whole
+ * prerequisite. Always a bare name, hence no path-override branch.
+ */
+function serenaLauncherIsAvailable(): boolean {
+  return (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .some((dir) => dir.length > 0 && existsSync(path.join(dir, SERENA_LAUNCHER_COMMAND)));
+}
+
+/**
  * Arms that must run against a throwaway clone of their own rather than the
  * shared warm checkout, because the tool behind them writes state into
  * whatever project directory it is pointed at.
  *
- * `kungfu` is the built-in case: it indexes into a `.kungfu/` dir inside its
- * cwd, unlike g-mesh, which indexes into `~/.g-mesh` and never touches the
- * project. A config-registered arm declares the same need with
- * `writesToProjectDir: true` (see benchConfig.ts's CustomArmDefinition), so
- * adding another index-into-the-project tool is a config entry, not an edit
- * to the literal check this replaced.
+ * `kungfu` and `serena` are the built-in cases: they index into a `.kungfu/`
+ * and a `.serena/` dir inside their cwd respectively, unlike g-mesh, which
+ * indexes into `~/.g-mesh` and never touches the project. A config-registered
+ * arm declares the same need with `writesToProjectDir: true` (see
+ * benchConfig.ts's CustomArmDefinition), so adding another
+ * index-into-the-project tool is a config entry, not an edit to the literal
+ * check this replaced. `serena` used to arrive through exactly that route,
+ * until it was promoted to a built-in and had to be named here instead.
+ *
+ * The `-configured` arms are deliberately absent even though they write to
+ * their project dir too: each already resolves a throwaway clone of its own
+ * (via resolveConfigured(), which has to write its setup in there anyway), and
+ * listing one here would hand it a *bare* clone from this set instead —
+ * silently running it without the CLAUDE.md/settings.json that defines it.
  */
 function armsNeedingOwnClone(): ReadonlySet<Arm> {
   const custom = Object.entries(loadBenchConfig().customArms)
     .filter(([, def]) => def.writesToProjectDir === true)
     .map(([name]) => name);
-  return new Set<Arm>(["kungfu", ...custom]);
+  return new Set<Arm>(["kungfu", "serena", ...custom]);
 }
 
 async function main() {
@@ -632,7 +705,21 @@ async function main() {
   if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
   if (includeKungfu) toInclude.push("kungfu");
   if (includeKungfuConfigured) toInclude.push("kungfu-configured");
+  if (shouldIncludeBareSerenaArm()) toInclude.push("serena");
   const arms = applyArmIncludeOverrides(baseArms, toInclude);
+  // Unlike kungfu's preflight above, this one can't be decided from the env
+  // gates alone: `serena-configured` is a *default* arm, so whether serena
+  // runs at all is a property of the resolved arm list. Checked here, right
+  // after that list exists and still before the cache warm-up spends anything.
+  const serenaArms = arms.filter((a) => a === "serena" || a === "serena-configured");
+  if (serenaArms.length > 0 && !serenaLauncherIsAvailable()) {
+    console.error(
+      `The ${serenaArms.join("/")} arm needs "${SERENA_LAUNCHER_COMMAND}" on PATH (it launches both Serena's ` +
+        `MCP server and, for serena-configured, its serena-hooks commands) but it was not found. Install uv ` +
+        `(https://docs.astral.sh/uv/), or drop the serena arms from g-mesh-bench.config.json's tokenEconomy.arms.`,
+    );
+    process.exit(1);
+  }
   if (arms.length > 2) {
     console.log(
       `Arms per (task, rep): ${arms.join(", ")}. Extra arms are full extra runs of every task: ` +
@@ -648,12 +735,20 @@ async function main() {
       throw new Error("Cannot warm cache: corpus registry is empty.");
     }
     const warmupCwd = await resolveWarm(firstCorpus);
-    const warmupKungfuCwd = includeKungfu ? await resolveFresh(firstCorpus) : undefined;
-    const warmupConfiguredCwd = await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD);
-    const warmupKungfuConfiguredCwd = includeKungfuConfigured
-      ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
-      : undefined;
-    await warmCache(arms, warmupCwd, warmupKungfuCwd, warmupConfiguredCwd, warmupKungfuConfiguredCwd);
+    await warmCache(arms, warmupCwd, {
+      kungfu: includeKungfu ? await resolveFresh(firstCorpus) : undefined,
+      "gmesh-configured": await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD),
+      "kungfu-configured": includeKungfuConfigured
+        ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
+        : undefined,
+      // Gated on the resolved arm list rather than on an env flag, for the
+      // same reason the preflight above is: `serena-configured` gets there
+      // from the config file, not from a G_MESH_BENCH_INCLUDE_* gate.
+      serena: arms.includes("serena") ? await resolveFresh(firstCorpus) : undefined,
+      "serena-configured": arms.includes("serena-configured")
+        ? await resolveConfigured(firstCorpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON)
+        : undefined,
+    });
   }
 
   const reps = repetitionCount();
@@ -677,7 +772,7 @@ async function main() {
       console.log(`[${corpus.id}] warming g-mesh index for the bare gmesh arm's shared checkout...`);
       await warmGmeshIndex(cwd);
     }
-    // The three shared per-corpus clones below exist only for read-only tasks:
+    // The shared per-corpus clones below exist only for read-only tasks:
     // an edit task resolves its own clone per (task, arm, rep) instead. Skip
     // them entirely when this corpus is running edit tasks only, or a run
     // naming just `ex-implement-...` would pay for a full extra excalidraw
@@ -722,6 +817,13 @@ async function main() {
     const kungfuConfiguredCwd = hasReadOnlyTask && arms.includes("kungfu-configured")
       ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
       : undefined;
+    // serena-configured, same shape again — except what gets written into the
+    // clone is `.claude/settings.json` (Serena's own serena-hooks wiring),
+    // not a CLAUDE.md: Serena delivers its setup through hooks rather than a
+    // project doc, hence the `undefined` in the claudeMd slot.
+    const serenaConfiguredCwd = hasReadOnlyTask && arms.includes("serena-configured")
+      ? await resolveConfigured(corpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON)
+      : undefined;
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
@@ -762,13 +864,17 @@ async function main() {
                 })()
               : arm === "kungfu-configured"
                 ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
-                : await resolveFresh(corpus)
+                : arm === "serena-configured"
+                  ? await resolveConfigured(corpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON)
+                  : await resolveFresh(corpus)
             : (ownCloneCwds.get(arm) ??
               (arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
                 : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
                   ? kungfuConfiguredCwd
-                  : cwd));
+                  : arm === "serena-configured" && serenaConfiguredCwd !== undefined
+                    ? serenaConfiguredCwd
+                    : cwd));
           // Logged (and left on disk) so a surprising verdict can be examined
           // afterwards — the agent's actual diff is the only real evidence of
           // what it did, and it lives nowhere else.

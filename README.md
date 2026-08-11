@@ -30,10 +30,14 @@ Follow these in order the first time; after that, jumping straight to
    - `kungfu` on `PATH` only if you plan to run the optional `kungfu`
      comparison arm (`G_MESH_BENCH_INCLUDE_KUNGFU=yes` — see below); skip it
      otherwise.
-   - [`uv`](https://docs.astral.sh/uv/) only if you plan to run the `serena`
-     comparison arm (see [Custom arms](#custom-arms)) — `uvx` needs to
-     resolve on `PATH`. macOS/Linux: `brew install uv` or the shell installer
-     on that page. Windows: see [Running on Windows](#running-on-windows).
+   - [`uv`](https://docs.astral.sh/uv/) — `uvx` needs to resolve on `PATH`,
+     because `serena-configured` is part of a **default** `token-economy` run
+     (it launches both Serena's MCP server and its `serena-hooks` hooks
+     straight from git; there is nothing else to install). `token-economy`
+     preflights this and refuses to start without it. macOS/Linux:
+     `brew install uv` or the shell installer on that page. Windows: see
+     [Running on Windows](#running-on-windows). Only skippable if you drop the
+     serena arms from `g-mesh-bench.config.json`'s `tokenEconomy.arms`.
    - On Windows, read [Running on Windows](#running-on-windows) before step 3
      — a couple of defaults below assume a Unix-style toolchain.
 
@@ -144,8 +148,8 @@ that Windows won't give you for free:
   bash syntax beyond simple `&&` chaining (env-var expansion, `$(...)`,
   single-quoted strings) won't behave the same under `cmd.exe`.
 
-`uv`/`uvx` itself (needed only for the `serena` arm) installs the same way as
-anywhere else on Windows:
+`uv`/`uvx` itself (needed for the `serena`/`serena-configured` arms, one of
+which runs by default) installs the same way as anywhere else on Windows:
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
@@ -194,7 +198,7 @@ verbatim.
 ```json
 {
   "tokenEconomy": {
-    "arms": ["gmesh-configured", "baseline"],
+    "arms": ["gmesh-configured", "serena-configured", "baseline"],
     "repetitions": "normal",
     "excalidrawScope": "low",
     "htmlNarrative": true,
@@ -260,46 +264,91 @@ MCP server plus a curated tool allowlist and a deny list):
 - Reporting needs nothing: `armsPresent()` renders any arm it finds in the run
   records, sorting names it doesn't rank in `ARM_ORDER` alphabetically last.
 
-**A real worked example**, not a hypothetical one: [Serena](https://github.com/oraios/serena)
-is registered as the `serena` custom arm in this repo's own
-`g-mesh-bench.config.json` (not in any default arm list — add it to
-`tokenEconomy.arms`/`sessionEconomy.arms` locally to include it in a run):
+**The shape to copy** is the built-in `kungfu` arm — the only remaining
+example of exactly this pattern in the repo (a third-party MCP server, a
+curated allowlist, an explicit deny list for everything else, and an index
+written into the project dir). It lives in `harness/lib/armConfig.ts`
+(`KUNGFU_TOOLS`/`KUNGFU_DENIED_TOOLS`, both with doc comments explaining how
+each list was produced) and `harness/lib/mcpConfig.ts`
+(`buildKungfuArmConfig()`); a `customArms` entry is the same four things,
+expressed as config instead of source.
 
-```json
-{
-  "customArms": {
-    "serena": {
-      "command": "uvx",
-      "args": [
-        "--from", "git+https://github.com/oraios/serena",
-        "serena", "start-mcp-server",
-        "--transport", "stdio",
-        "--project-from-cwd",
-        "--enable-web-dashboard", "false",
-        "--open-web-dashboard", "false"
-      ],
-      "tools": [
-        "mcp__serena__find_symbol",
-        "mcp__serena__find_declaration",
-        "mcp__serena__find_referencing_symbols",
-        "mcp__serena__find_implementations",
-        "mcp__serena__get_symbols_overview"
-      ],
-      "deniedTools": ["... the other 47 of Serena's 52 tools — see the config file"],
-      "writesToProjectDir": true
-    }
-  }
-}
-```
+**Running a comparison that includes a custom arm:**
+1. Install whatever the server itself needs, and confirm its `command`
+   resolves (it is spawned directly, without a shell — see
+   [Running on Windows](#running-on-windows)).
+2. There's no `G_MESH_BENCH_INCLUDE_<NAME>`-style env toggle — that pattern
+   only exists for the built-in arms (`kungfu`, `gmesh-trusted`, …). A custom
+   arm is included by adding its name directly to `tokenEconomy.arms`/
+   `sessionEconomy.arms` in `g-mesh-bench.config.json`:
+   ```json
+   { "tokenEconomy": { "arms": ["gmesh-configured", "mytool", "baseline"] } }
+   ```
+3. Run as normal: `npm run token-economy -- <taskId>`. If the server is
+   fetched on demand rather than installed (e.g. `uvx --from git+…`), expect
+   the very first call to take noticeably longer before the model's first tool
+   call returns.
 
-Serena is an LSP-wrapper MCP server (`uvx` pulls it fresh from git, no
-persistent install), curated down from its full 52-tool surface to the 5
-with a genuine g-mesh analog: `find_symbol`/`find_declaration` →
-`find_definition`, `find_referencing_symbols` → `find_references`,
-`find_implementations` → `find_implementations`, `get_symbols_overview` →
-`get_file_outline`. `writesToProjectDir: true` because it indexes into a
-`.serena/` directory inside the project it's pointed at, same as kungfu's
-`.kungfu/`.
+Known gaps, deliberately not covered in this pass:
+
+- **No `-configured` variant.** Only the built-in `gmesh`, `kungfu` and
+  `serena` arms have a counterpart that runs against a throwaway clone with
+  real project setup written into it (`gmesh-configured`/`kungfu-configured`
+  load a `CLAUDE.md`; `serena-configured` gets a `.claude/settings.json`);
+  those are wired to literal arm names in `harness/token-economy.ts`. A custom
+  arm always runs bare, with no guidance written into its checkout. Serena was
+  a custom arm until it needed exactly this, which is what promoted it to a
+  built-in — take that as the escalation path if a custom arm's own docs
+  prescribe real setup: promote it, don't approximate it.
+- **Not part of the prompt-cache warm-up.** `warmCache()` warms the built-in
+  arms' cache prefixes only, so a custom arm's first measured call pays its own
+  tool-schema cost. Compare custom arms against each other with that in mind, or
+  run with the warm-up off.
+
+### The `serena` and `serena-configured` built-in arms
+
+[Serena](https://github.com/oraios/serena) is an LSP-wrapper MCP server (`uvx`
+pulls it fresh from git, no persistent install), curated down from its full
+52-tool surface to the 5 with a genuine g-mesh analog:
+`find_symbol`/`find_declaration` → `find_definition`,
+`find_referencing_symbols` → `find_references`, `find_implementations` →
+`find_implementations`, `get_symbols_overview` → `get_file_outline`. Both arms
+share one definition in `harness/lib/armConfig.ts`, so they cannot drift apart:
+
+- `SERENA_TOOLS` — those 5, plus `initial_instructions` and `activate_project`.
+  Those last two are not search tools: they are how Serena configures *itself*.
+  Serena's MCP `instructions` field (sent on connection) tells the agent to
+  call `initial_instructions` first, and the SessionStart hook below tells it
+  to call `activate_project` — so denying them, as this benchmark used to,
+  turned both instructions into dead ends while the arm they were compared
+  against (`gmesh-configured`) got a real injected `CLAUDE.md`.
+- `SERENA_DENIED_TOOLS` — every other Serena tool, denied explicitly for the
+  reason `KUNGFU_DENIED_TOOLS` spells out (`--tools` doesn't restrict `mcp__`
+  tools; only a deny rule removes them from the model's context). Memory and
+  `onboarding` tools stay denied on purpose: persistent `.serena/memories/*.md`
+  writes are a separate arm's question, not this one's.
+- `SERENA_CONFIGURED_SETTINGS_JSON` — what makes `serena-configured` different
+  from bare `serena`, and the only `-configured` arm that is not a `CLAUDE.md`:
+  Serena ships real Claude Code hooks (the `serena-hooks` CLI, in the same
+  package as the server), so this is written into the throwaway clone as
+  `.claude/settings.json` and picked up by the `--setting-sources project` the
+  harness already passes. `activate` on SessionStart (injects the
+  "activate the project and read the manual first" context), `remind` on
+  PreToolUse for `Read|Grep` (counts consecutive non-symbolic calls and, past a
+  threshold, returns `permissionDecision: "deny"` plus a nudge back to Serena's
+  tools), `cleanup` on SessionEnd (removes that session's counter state from
+  `~/.serena/hook_data/`). `serena-hooks auto-approve` is deliberately not
+  wired up — its own docstring says it stays silent under
+  `--permission-mode bypassPermissions`, which every harness call uses.
+
+Two measured facts worth knowing before reading a `serena-configured` result:
+the `remind` hook's `deny` **does** take effect under `bypassPermissions`
+(verified directly: the blocked call comes back as a tool error carrying the
+reminder, and the agent then decides what to do about it — it is a nudge, not a
+hard block, since nothing stops it retrying the same Grep), and each hook
+invocation spawns a fresh `uvx` process costing roughly **3s per matching
+Read/Grep call** — real wall-clock latency the bare `serena` arm doesn't pay,
+though it is not billed tokens.
 
 **Known gap, confirmed by actually running it**: Serena has no analog at
 all for `find_callers`, `find_callees`, or `get_dependencies` — it's a pure
@@ -311,33 +360,6 @@ the arm degrades to baseline for that question. The `ex-find-callees-updateelbow
 `corpora/excalidraw/tasks.json` specifically probe the outgoing-call-graph
 half of this gap (the incoming/references half is already covered by
 `find_referencing_symbols`).
-
-**Running a comparison that includes `serena`:**
-1. Install `uv` (see [Prerequisites](#getting-started) /
-   [Running on Windows](#running-on-windows)) — `uvx` must resolve on `PATH`.
-2. There's no `G_MESH_BENCH_INCLUDE_SERENA`-style env toggle — that pattern
-   only exists for the built-in arms (`kungfu`, `gmesh-trusted`, …). A custom
-   arm is included by adding its name directly to `tokenEconomy.arms`/
-   `sessionEconomy.arms` in `g-mesh-bench.config.json`:
-   ```json
-   { "tokenEconomy": { "arms": ["gmesh-configured", "serena", "baseline"] } }
-   ```
-3. Run as normal: `npm run token-economy -- <taskId>`. The very first call
-   spawns `uvx --from git+https://github.com/oraios/serena ...`, which does a
-   fresh `git` clone the first time (`uv` caches it after that) — expect that
-   first run to take noticeably longer before the model's first tool call
-   returns.
-
-Known gaps, deliberately not covered in this pass:
-
-- **No `-configured` variant.** Only `gmesh` and `kungfu` have a CLAUDE.md-loaded
-  counterpart (`gmesh-configured`/`kungfu-configured`); those are wired to
-  literal arm names in `harness/token-economy.ts`. A custom arm always runs
-  bare, with no CLAUDE.md guidance written into its checkout.
-- **Not part of the prompt-cache warm-up.** `warmCache()` warms the built-in
-  arms' cache prefixes only, so a custom arm's first measured call pays its own
-  tool-schema cost. Compare custom arms against each other with that in mind, or
-  run with the warm-up off.
 
 ## Running an experiment
 
@@ -353,13 +375,25 @@ npm run report          # aggregate whichever results/<experiment>/ you point it
 [Getting started](#getting-started) steps 2-3) and spends real API tokens per
 run — see the design doc's failure-modes section for budget caps.
 
-A default `token-economy` run compares two arms: **`gmesh-configured`** — g-mesh's
-MCP tools plus the CLAUDE.md guidance an actual project would have, written into a
-throwaway clone and auto-loaded by Claude Code — against **`baseline`**
-(Read/Grep/Glob only). The configured arm is the default on purpose: the benchmark's
-claim is about g-mesh as it is really used, and nobody ships it with no guidance at
-all. Bare `gmesh` (the tools, no CLAUDE.md) is still available, now as an opt-in
-extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
+A default `token-economy` run compares three arms:
+
+- **`gmesh-configured`** — g-mesh's MCP tools plus the CLAUDE.md guidance an
+  actual project would have, written into a throwaway clone and auto-loaded by
+  Claude Code.
+- **`serena-configured`** — Serena's MCP tools plus the Claude Code hooks
+  Serena itself ships, written into its own throwaway clone as
+  `.claude/settings.json` (see
+  [the serena arms](#the-serena-and-serena-configured-built-in-arms)).
+- **`baseline`** — Read/Grep/Glob only.
+
+The `-configured` arms are the default on purpose, and it is the same standard
+applied to both: the benchmark's claim is about these tools as they are really
+used, and neither ships with no setup at all. Comparing g-mesh *with* its
+CLAUDE.md against Serena *without* its documented setup — which is what this
+benchmark did until `serena-configured` existed — measures the benchmark's own
+asymmetry, not the tools. Each bare arm (the tools, no setup) is still
+available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
+`G_MESH_BENCH_INCLUDE_BARE_SERENA` below.
 
 `token-economy` also supports:
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
@@ -405,6 +439,13 @@ extra — see `G_MESH_BENCH_INCLUDE_BARE_GMESH` below.
   default.) The gate itself is unchanged; it now appends onto whichever arm
   list `g-mesh-bench.config.json`'s `tokenEconomy.arms` resolves to, rather
   than onto a hardcoded literal.
+- `G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no` — also run the bare `serena` arm
+  (default `no`): Serena's tools with none of the setup its own docs prescribe,
+  i.e. no `initial_instructions` manual and no `serena-hooks` wiring. Exactly
+  the same demotion, for the same reason, that `G_MESH_BENCH_INCLUDE_BARE_GMESH`
+  describes above — turn it on to measure what Serena's own setup is worth, by
+  running bare and configured side by side. Adds a full extra run per (task,
+  repetition); needs `uvx` on PATH like any serena arm.
 - `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — also run a third `gmesh-trusted` arm
   (default `no`): the same MCP config and tool list as `gmesh`, plus a
   harness-injected instruction not to re-verify g-mesh's results by hand. It
@@ -450,8 +491,16 @@ Its results live in `results/session-economy/` and get their own HTML report
 measurement, and the same "never merge separate metrics" rule applies here as
 between the three metrics above.
 
+Like `token-economy`, a default `session-economy` run compares the three
+`-configured` arms: `gmesh-configured`, `serena-configured`, and `baseline` —
+each chain runs against its own throwaway clone carrying that tool's real
+documented setup (CLAUDE.md for gmesh, the `serena-hooks` `.claude/settings.json`
+for Serena), the same setup `token-economy` resolves via `resolveConfigured()`.
+Each bare arm is still available as an opt-in extra via
+`G_MESH_BENCH_INCLUDE_BARE_GMESH`/`G_MESH_BENCH_INCLUDE_BARE_SERENA` below.
+
 ```bash
-npm run session-economy                        # every corpus, both arms
+npm run session-economy                        # every corpus, three arms
 npm run session-economy -- task-tracker-mcp    # one corpus only (the cheap smoke test)
 npm run report -- session-economy              # cumulative report across past runs
 ```
@@ -466,6 +515,15 @@ npm run report -- session-economy              # cumulative report across past r
   Corpus-level only, never a task subset: a chain's premise is one realistic
   session over that codebase's whole question list, so an arbitrary subset would
   change what a sequence position means.
+- `G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no` — also run the bare `gmesh` arm
+  (default `no`), same demotion/reasoning as `token-economy`'s toggle of the same
+  name; here it adds a whole extra chain per (corpus, repetition).
+- `G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no` — also run the bare `serena` arm
+  (default `no`), same demotion/reasoning as `token-economy`'s toggle of the same
+  name; here it adds a whole extra chain per (corpus, repetition) and, like every
+  serena arm, needs `uvx` on PATH. Bare `serena` runs against its own throwaway
+  clone (not the shared checkout other bare arms share) since it writes a
+  `.serena/` index into its cwd, the same reason `kungfu` gets its own clone.
 - `G_MESH_BENCH_INCLUDE_TRUSTED=yes|no` — same third `gmesh-trusted` arm as above
   (default `no`); here it adds a whole extra chain per (corpus, repetition).
   Appends onto whichever arm list `g-mesh-bench.config.json`'s

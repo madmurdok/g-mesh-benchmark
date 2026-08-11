@@ -1,7 +1,7 @@
 import type { CustomArmDefinition } from "./benchConfig.js";
 import { loadBenchConfig } from "./benchConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
-import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
+import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig, buildSerenaArmConfig } from "./mcpConfig.js";
 import type { Arm, BuiltinArm } from "./types.js";
 
 /**
@@ -91,6 +91,93 @@ export const KUNGFU_DENIED_TOOLS =
   "mcp__kungfu__project_status,mcp__kungfu__reindex,mcp__kungfu__repo_outline,mcp__kungfu__review," +
   "mcp__kungfu__semantic_search,mcp__kungfu__smart_test,mcp__kungfu__symbol_history," +
   "mcp__kungfu__test_subjects,mcp__kungfu__usage_stats,mcp__kungfu__verify_change";
+
+/**
+ * Serena (github.com/oraios/serena) curated down from its full 52-tool surface
+ * to the 5 with a genuine g-mesh analog — `find_symbol`/`find_declaration` ->
+ * `find_definition`, `find_referencing_symbols` -> `find_references`,
+ * `find_implementations` -> `find_implementations`, `get_symbols_overview` ->
+ * `get_file_outline` — for the same schema-tax reason KUNGFU_TOOLS is curated
+ * (see its doc comment). Serena has no analog at all for `find_callers`,
+ * `find_callees` or `get_dependencies`: it is a pure LSP wrapper with no call
+ * graph or import graph, so those three are gaps, not omissions.
+ *
+ * The two entries beyond that curated 5 are not search tools and are not here
+ * to answer questions — they are how Serena *configures itself*, and denying
+ * them is what this arm's `-configured` variant exists to stop doing:
+ *
+ * - `initial_instructions` returns Serena's "Instructions Manual", which its
+ *   own MCP `instructions` field (sent on connection, unconditionally) tells
+ *   the agent to call first. Denying it turned a followable instruction into a
+ *   dead end — the agent was told to fetch the manual by a tool it could not
+ *   call.
+ * - `activate_project` is what the SessionStart hook
+ *   (SERENA_CONFIGURED_SETTINGS_JSON below) asks the agent to call before
+ *   anything else.
+ *
+ * Both are Serena's real, documented self-serve setup path, so a `serena` arm
+ * without them measures Serena with its onboarding deliberately amputated —
+ * while `gmesh-configured`, the arm it is compared against, gets a real
+ * harness-injected CLAUDE.md. Everything memory-related stays denied
+ * regardless (see SERENA_DENIED_TOOLS).
+ */
+export const SERENA_TOOLS =
+  "Read,Grep,Glob,mcp__serena__find_symbol,mcp__serena__find_declaration," +
+  "mcp__serena__find_referencing_symbols,mcp__serena__find_implementations," +
+  "mcp__serena__get_symbols_overview,mcp__serena__initial_instructions," +
+  "mcp__serena__activate_project";
+
+/**
+ * Every Serena tool *not* in SERENA_TOOLS, denied explicitly for the reason
+ * KUNGFU_DENIED_TOOLS spells out in full: `--tools` restricts only the
+ * built-in tools and has zero effect on `mcp__`-namespaced ones, so a deny
+ * rule is the only thing that actually removes a tool from the model's
+ * context.
+ *
+ * Relocated verbatim from `g-mesh-bench.config.json`'s former
+ * `customArms.serena.deniedTools`, minus exactly two entries —
+ * `initial_instructions` and `activate_project` — which moved to SERENA_TOOLS
+ * above. That two-entry difference is the whole behavioral change of the
+ * `serena`/`serena-configured` promotion, so it is asserted directly in
+ * armConfig.test.ts rather than left implicit in this list's length.
+ *
+ * Deliberately still denied, and not an oversight:
+ * - every memory tool (`write_memory`, `read_memory`, `list_memories`,
+ *   `edit_memory`, `delete_memory`, `rename_memory`) and `onboarding`, which
+ *   internally requires `write_memory`. Persistent `.serena/memories/*.md`
+ *   writes are a separable follow-up arm (`serena-onboarded`) with a much
+ *   narrower payoff here — memories would persist only within one corpus's
+ *   shared read-only clone inside a single run.
+ * - every write/edit tool, matching how no arm gets Edit/Write outside an
+ *   `implementation` task (and even there, through the harness's own
+ *   EDIT_TOOLS, not a server-specific editor).
+ * - `search_for_pattern`/`read_file`/`list_dir`/`find_file`, whose job the
+ *   built-in Grep/Read/Glob every arm already has does identically.
+ * - the whole `jet_brains_*` family, which needs a running IDE.
+ *
+ * Same unvendored-third-party caveat as KUNGFU_DENIED_TOOLS: if Serena's own
+ * tool set changes, regenerate this by re-probing `tools/list` and diffing
+ * against SERENA_TOOLS rather than assuming it is still exhaustive.
+ */
+export const SERENA_DENIED_TOOLS =
+  "mcp__serena__create_text_file,mcp__serena__delete_lines,mcp__serena__delete_memory," +
+  "mcp__serena__edit_memory,mcp__serena__execute_shell_command,mcp__serena__find_file," +
+  "mcp__serena__get_current_config,mcp__serena__get_diagnostics_for_file," +
+  "mcp__serena__get_diagnostics_for_symbol,mcp__serena__insert_after_symbol," +
+  "mcp__serena__insert_at_line,mcp__serena__insert_before_symbol,mcp__serena__jet_brains_debug," +
+  "mcp__serena__jet_brains_find_declaration,mcp__serena__jet_brains_find_implementations," +
+  "mcp__serena__jet_brains_find_referencing_symbols,mcp__serena__jet_brains_find_symbol," +
+  "mcp__serena__jet_brains_get_symbols_overview,mcp__serena__jet_brains_inline_symbol," +
+  "mcp__serena__jet_brains_list_inspections,mcp__serena__jet_brains_move," +
+  "mcp__serena__jet_brains_rename,mcp__serena__jet_brains_run_inspections," +
+  "mcp__serena__jet_brains_safe_delete,mcp__serena__jet_brains_type_hierarchy," +
+  "mcp__serena__list_dir,mcp__serena__list_memories,mcp__serena__list_queryable_projects," +
+  "mcp__serena__onboarding,mcp__serena__open_dashboard,mcp__serena__query_project," +
+  "mcp__serena__read_file,mcp__serena__read_memory,mcp__serena__remove_project," +
+  "mcp__serena__rename_memory,mcp__serena__rename_symbol,mcp__serena__replace_content," +
+  "mcp__serena__replace_in_files,mcp__serena__replace_lines,mcp__serena__replace_symbol_body," +
+  "mcp__serena__restart_language_server,mcp__serena__safe_delete_symbol," +
+  "mcp__serena__search_for_pattern,mcp__serena__serena_info,mcp__serena__write_memory";
 
 /**
  * The one and only difference between the `gmesh` and `gmesh-trusted` arms.
@@ -202,6 +289,75 @@ exact path. Otherwise, if you reach for Read / grep / find — stop and route ab
 `;
 
 /**
+ * The serena-side counterpart to GMESH_CONFIGURED_CLAUDE_MD/
+ * KUNGFU_CONFIGURED_CLAUDE_MD — except Serena's real delivery path is not a
+ * project doc at all, so this is a `.claude/settings.json` object rather than
+ * a markdown string (written into the throwaway clone by corpusResolver.ts's
+ * resolveConfigured(), and loaded because every runClaude() call already
+ * passes `--setting-sources project`).
+ *
+ * Serena ships these hooks itself, as the `serena-hooks` CLI in the very same
+ * package the MCP server comes from — this is its documented Claude Code
+ * setup, not a benchmark invention:
+ * - `activate` (SessionStart) injects additional context telling the agent to
+ *   call `activate_project` and read the Instructions Manual first.
+ * - `remind` (PreToolUse on Read/Grep) counts consecutive non-symbolic calls
+ *   and, past a threshold, returns `permissionDecision: "deny"` plus a nudge
+ *   back to Serena's symbolic tools. Matched on `Read|Grep` because those are
+ *   the only two tool names it classifies for the claude-code client.
+ * - `cleanup` (SessionEnd) removes that session's counter state from
+ *   `~/.serena/hook_data/<session-id>/`.
+ *
+ * `serena-hooks auto-approve` is deliberately *not* wired up: its own
+ * docstring says it emits a decision only for `acceptEdits`/`auto` and stays
+ * silent under `bypassPermissions`, which is the mode every runClaude() call
+ * passes. It would be a subprocess spawn per tool call that can never do
+ * anything here.
+ *
+ * Commands use the full `uvx --from git+…` form rather than a bare
+ * `serena-hooks`, for the same portability reason buildSerenaArmConfig() does:
+ * no dependency on a local install having put anything on PATH beyond `uvx`
+ * itself. The cost is real and worth stating — unlike the MCP server, which is
+ * spawned once per session, a PreToolUse hook spawns a fresh `uvx` process on
+ * every matching Read/Grep call.
+ */
+export const SERENA_CONFIGURED_SETTINGS_JSON = {
+  hooks: {
+    SessionStart: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks activate --client claude-code",
+          },
+        ],
+      },
+    ],
+    PreToolUse: [
+      {
+        matcher: "Read|Grep",
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks remind --client claude-code",
+          },
+        ],
+      },
+    ],
+    SessionEnd: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks cleanup --client claude-code",
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/**
  * Everything `claude -p` needs to know about one arm, in one place.
  *
  * Split out of what used to be three separate if/else chains (armMcpConfig,
@@ -248,6 +404,24 @@ const KUNGFU_ARM: ArmDefinition = {
 };
 
 /**
+ * And the same again for serena-configured vs serena: one shared definition,
+ * so the two arms cannot drift apart in tools or MCP config. What differs is
+ * only the cwd they run in — serena-configured's throwaway clone carries
+ * SERENA_CONFIGURED_SETTINGS_JSON's hooks, bare serena's does not.
+ *
+ * Note that both arms allow `initial_instructions`/`activate_project` (see
+ * SERENA_TOOLS): unblocking a tool the model may call is not the same as
+ * telling it to, and keeping the tool surface identical is what makes the pair
+ * measure the hooks rather than a second, confounded difference in what was
+ * callable at all.
+ */
+const SERENA_ARM: ArmDefinition = {
+  mcpConfig: buildSerenaArmConfig,
+  tools: SERENA_TOOLS,
+  disallowedTools: SERENA_DENIED_TOOLS,
+};
+
+/**
  * The single table every per-arm accessor below reads from. Adding a *built-in*
  * arm is one entry here plus the `BuiltinArm` union and ARM_ORDER in
  * lib/types.ts — the `Record<BuiltinArm, ...>` makes a missing entry a type
@@ -270,6 +444,8 @@ export const ARM_DEFINITIONS: Record<BuiltinArm, ArmDefinition> = {
   kungfu: KUNGFU_ARM,
   "gmesh-configured": GMESH_ARM,
   "kungfu-configured": KUNGFU_ARM,
+  serena: SERENA_ARM,
+  "serena-configured": SERENA_ARM,
 };
 
 /**

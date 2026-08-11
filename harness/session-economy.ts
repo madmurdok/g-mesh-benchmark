@@ -2,10 +2,19 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_BUDGET_USD, MODEL, armDisallowedTools, armMcpConfig, armPrompt, armTools } from "./lib/armConfig.js";
+import {
+  GMESH_CONFIGURED_CLAUDE_MD,
+  MAX_BUDGET_USD,
+  MODEL,
+  SERENA_CONFIGURED_SETTINGS_JSON,
+  armDisallowedTools,
+  armMcpConfig,
+  armPrompt,
+  armTools,
+} from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
-import { resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
-import { gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
+import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
@@ -142,6 +151,35 @@ function shouldIncludeKungfuArm(): boolean {
 }
 
 /**
+ * G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no gates the bare `gmesh` arm, which is
+ * no longer part of a default run — `gmesh-configured` is. Duplicated
+ * verbatim from token-economy.ts's identical gate for the same reason this
+ * file's other env gates are duplicated rather than shared.
+ */
+function shouldIncludeBareGmeshArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_BARE_GMESH;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_BARE_GMESH value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no gates the bare `serena` arm, which
+ * is no longer part of a default run — `serena-configured` is. Duplicated
+ * verbatim from token-economy.ts's identical gate.
+ */
+function shouldIncludeBareSerenaArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_BARE_SERENA;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_BARE_SERENA value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
  * kungfuBinaryPath() defaults to the bare command "kungfu", resolved via
  * PATH at spawn time — existsSync can't check that directly. Duplicated from
  * token-economy.ts's identical helper (kungfuBinaryIsAvailable).
@@ -150,6 +188,20 @@ function kungfuBinaryIsAvailable(): boolean {
   const bin = kungfuBinaryPath();
   if (bin.includes(path.sep)) return existsSync(bin);
   return (process.env.PATH ?? "").split(path.delimiter).some((dir) => dir.length > 0 && existsSync(path.join(dir, bin)));
+}
+
+/**
+ * Same PATH lookup as kungfuBinaryIsAvailable(), for the command that
+ * launches Serena. `uvx` is checked rather than a serena binary because there
+ * is no serena binary to check: both the MCP server and the `serena-hooks`
+ * commands in SERENA_CONFIGURED_SETTINGS_JSON are spawned as `uvx --from
+ * git+…` (see mcpConfig.ts's SERENA_LAUNCHER_COMMAND). Duplicated from
+ * token-economy.ts's identical helper (serenaLauncherIsAvailable).
+ */
+function serenaLauncherIsAvailable(): boolean {
+  return (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .some((dir) => dir.length > 0 && existsSync(path.join(dir, SERENA_LAUNCHER_COMMAND)));
 }
 
 /**
@@ -378,7 +430,22 @@ async function main() {
   const toInclude: Arm[] = [];
   if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
   if (includeKungfu) toInclude.push("kungfu");
+  if (shouldIncludeBareGmeshArm()) toInclude.push("gmesh");
+  if (shouldIncludeBareSerenaArm()) toInclude.push("serena");
   const arms = applyArmIncludeOverrides(baseArms, toInclude);
+  // Unlike kungfu's preflight above, this one can't be decided from the env
+  // gates alone: `serena-configured` is a *default* arm here too, so whether
+  // serena runs at all is a property of the resolved arm list. Checked here,
+  // right after that list exists and still before any chain spends anything.
+  const serenaArms = arms.filter((a) => a === "serena" || a === "serena-configured");
+  if (serenaArms.length > 0 && !serenaLauncherIsAvailable()) {
+    console.error(
+      `The ${serenaArms.join("/")} arm needs "${SERENA_LAUNCHER_COMMAND}" on PATH (it launches both Serena's ` +
+        `MCP server and, for serena-configured, its serena-hooks commands) but it was not found. Install uv ` +
+        `(https://docs.astral.sh/uv/), or drop the serena arms from g-mesh-bench.config.json's sessionEconomy.arms.`,
+    );
+    process.exit(1);
+  }
   console.log(
     `Chains per (corpus, arm): ${reps} | arms: ${arms.join(", ")} | corpora: ${corpora.map((c) => c.id).join(", ")}`,
   );
@@ -417,10 +484,33 @@ async function main() {
     // never the shared `cwd` above (the live, registry-registered checkout).
     // One clone per corpus, reused across every repetition's kungfu chain.
     const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
+    const gmeshConfiguredCwd = arms.includes("gmesh-configured")
+      ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
+      : undefined;
+    if (gmeshConfiguredCwd !== undefined) {
+      console.log(`[${corpus.id}] warming g-mesh index for the gmesh-configured chain...`);
+      await warmGmeshIndex(gmeshConfiguredCwd);
+    }
+    const serenaConfiguredCwd = arms.includes("serena-configured")
+      ? await resolveConfigured(corpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON)
+      : undefined;
+    // Bug fix: bare serena needs its own throwaway clone for the same reason
+    // kungfu does (it writes a .serena/ index into its cwd) — it was silently
+    // falling through to the shared resolveWarm() checkout before this change.
+    const serenaCwd = arms.includes("serena") ? await resolveFresh(corpus) : undefined;
     for (let rep = 1; rep <= reps; rep++) {
       for (const arm of arms) {
         console.log(`[${corpus.id}] ${arm} session (chain ${rep}/${reps}, ${tasks.length} tasks)...`);
-        const armCwd = arm === "kungfu" && kungfuCwd !== undefined ? kungfuCwd : cwd;
+        const armCwd =
+          arm === "kungfu" && kungfuCwd !== undefined
+            ? kungfuCwd
+            : arm === "gmesh-configured" && gmeshConfiguredCwd !== undefined
+              ? gmeshConfiguredCwd
+              : arm === "serena-configured" && serenaConfiguredCwd !== undefined
+                ? serenaConfiguredCwd
+                : arm === "serena" && serenaCwd !== undefined
+                  ? serenaCwd
+                  : cwd;
         runs.push(...(await runSessionChain(armCwd, tasks, corpus.id, arm, rep, timestamp)));
       }
     }
