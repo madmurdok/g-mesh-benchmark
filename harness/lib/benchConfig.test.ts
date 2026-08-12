@@ -328,3 +328,33 @@ test("applyArmIncludeOverrides is idempotent: including an already-present arm i
   assert.deepEqual(applyArmIncludeOverrides(base, ["gmesh-configured"]), [...base]);
   assert.deepEqual(applyArmIncludeOverrides(base, []), [...base]);
 });
+
+/**
+ * The default arm lists themselves, asserted literally rather than only
+ * through the deep-merge test above: which arms a plain `npm run
+ * token-economy` pays for is the single most consequential default in this
+ * file, and it changed (two arms -> three) when serena-configured joined it.
+ */
+test("the default token-economy arm list is the three-arm best-practice comparison", () => {
+  assert.deepEqual(DEFAULT_CONFIG.tokenEconomy.arms, ["gmesh-configured", "serena-configured", "baseline"]);
+  // session-economy.ts now resolves `-configured` clones too, so its default
+  // mirrors token-economy's: gmesh-configured vs serena-configured vs
+  // baseline. See DEFAULT_CONFIG's doc comment.
+  assert.deepEqual(DEFAULT_CONFIG.sessionEconomy.arms, ["gmesh-configured", "serena-configured", "baseline"]);
+});
+
+test("serena and serena-configured are built-in arm names now, accepted with no customArms at all", () => {
+  const arms = ["gmesh-configured", "serena", "serena-configured", "baseline"];
+  withFixture(JSON.stringify({ tokenEconomy: { arms } }), (configPath) => {
+    assert.deepEqual(loadBenchConfig(configPath).tokenEconomy.arms, arms);
+  });
+});
+
+test("serena may no longer be re-registered as a custom arm — it would be shadowed by the built-in", () => {
+  withFixture(JSON.stringify({ customArms: { serena: MOCK_ARM } }), (configPath) => {
+    assert.throws(
+      () => loadBenchConfig(configPath),
+      /Invalid g-mesh-bench\.config\.json: customArms\.serena reuses a built-in arm name; pick a different one\./,
+    );
+  });
+});

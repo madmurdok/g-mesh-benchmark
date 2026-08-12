@@ -13,19 +13,6 @@
     }
   },
   {
-    "id": "tt-find-impl-budgetestimator",
-    "kind": "find_implementations",
-    "category": "lookup",
-    "revealsLocation": false,
-    "target": { "symbol": "BudgetEstimator", "file": "src/domain/budget.ts" },
-    "prompt": "In this repository, find every class that implements the BudgetEstimator interface. Report the class name(s) and the file(s) they live in.",
-    "oracle": {
-      "mode": "substring",
-      "mustMentionFiles": ["src/domain/budget.ts"],
-      "mustMentionSymbols": ["HeuristicBudgetEstimator"]
-    }
-  },
-  {
     "id": "tt-deps-incoming-db-connection",
     "kind": "get_dependencies",
     "category": "lookup",

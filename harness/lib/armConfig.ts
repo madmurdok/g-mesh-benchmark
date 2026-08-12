@@ -1,7 +1,7 @@
 import type { CustomArmDefinition } from "./benchConfig.js";
 import { loadBenchConfig } from "./benchConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
-import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig } from "./mcpConfig.js";
+import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig, buildSerenaArmConfig } from "./mcpConfig.js";
 import type { Arm, BuiltinArm } from "./types.js";
 
 /**
@@ -93,6 +93,93 @@ export const KUNGFU_DENIED_TOOLS =
   "mcp__kungfu__test_subjects,mcp__kungfu__usage_stats,mcp__kungfu__verify_change";
 
 /**
+ * Serena (github.com/oraios/serena) curated down from its full 52-tool surface
+ * to the 5 with a genuine g-mesh analog — `find_symbol`/`find_declaration` ->
+ * `find_definition`, `find_referencing_symbols` -> `find_references`,
+ * `find_implementations` -> `find_implementations`, `get_symbols_overview` ->
+ * `get_file_outline` — for the same schema-tax reason KUNGFU_TOOLS is curated
+ * (see its doc comment). Serena has no analog at all for `find_callers`,
+ * `find_callees` or `get_dependencies`: it is a pure LSP wrapper with no call
+ * graph or import graph, so those three are gaps, not omissions.
+ *
+ * The two entries beyond that curated 5 are not search tools and are not here
+ * to answer questions — they are how Serena *configures itself*, and denying
+ * them is what this arm's `-configured` variant exists to stop doing:
+ *
+ * - `initial_instructions` returns Serena's "Instructions Manual", which its
+ *   own MCP `instructions` field (sent on connection, unconditionally) tells
+ *   the agent to call first. Denying it turned a followable instruction into a
+ *   dead end — the agent was told to fetch the manual by a tool it could not
+ *   call.
+ * - `activate_project` is what the SessionStart hook
+ *   (SERENA_CONFIGURED_SETTINGS_JSON below) asks the agent to call before
+ *   anything else.
+ *
+ * Both are Serena's real, documented self-serve setup path, so a `serena` arm
+ * without them measures Serena with its onboarding deliberately amputated —
+ * while `gmesh-configured`, the arm it is compared against, gets a real
+ * harness-injected CLAUDE.md. Everything memory-related stays denied
+ * regardless (see SERENA_DENIED_TOOLS).
+ */
+export const SERENA_TOOLS =
+  "Read,Grep,Glob,mcp__serena__find_symbol,mcp__serena__find_declaration," +
+  "mcp__serena__find_referencing_symbols,mcp__serena__find_implementations," +
+  "mcp__serena__get_symbols_overview,mcp__serena__initial_instructions," +
+  "mcp__serena__activate_project";
+
+/**
+ * Every Serena tool *not* in SERENA_TOOLS, denied explicitly for the reason
+ * KUNGFU_DENIED_TOOLS spells out in full: `--tools` restricts only the
+ * built-in tools and has zero effect on `mcp__`-namespaced ones, so a deny
+ * rule is the only thing that actually removes a tool from the model's
+ * context.
+ *
+ * Relocated verbatim from `g-mesh-bench.config.json`'s former
+ * `customArms.serena.deniedTools`, minus exactly two entries —
+ * `initial_instructions` and `activate_project` — which moved to SERENA_TOOLS
+ * above. That two-entry difference is the whole behavioral change of the
+ * `serena`/`serena-configured` promotion, so it is asserted directly in
+ * armConfig.test.ts rather than left implicit in this list's length.
+ *
+ * Deliberately still denied, and not an oversight:
+ * - every memory tool (`write_memory`, `read_memory`, `list_memories`,
+ *   `edit_memory`, `delete_memory`, `rename_memory`) and `onboarding`, which
+ *   internally requires `write_memory`. Persistent `.serena/memories/*.md`
+ *   writes are a separable follow-up arm (`serena-onboarded`) with a much
+ *   narrower payoff here — memories would persist only within one corpus's
+ *   shared read-only clone inside a single run.
+ * - every write/edit tool, matching how no arm gets Edit/Write outside an
+ *   `implementation` task (and even there, through the harness's own
+ *   EDIT_TOOLS, not a server-specific editor).
+ * - `search_for_pattern`/`read_file`/`list_dir`/`find_file`, whose job the
+ *   built-in Grep/Read/Glob every arm already has does identically.
+ * - the whole `jet_brains_*` family, which needs a running IDE.
+ *
+ * Same unvendored-third-party caveat as KUNGFU_DENIED_TOOLS: if Serena's own
+ * tool set changes, regenerate this by re-probing `tools/list` and diffing
+ * against SERENA_TOOLS rather than assuming it is still exhaustive.
+ */
+export const SERENA_DENIED_TOOLS =
+  "mcp__serena__create_text_file,mcp__serena__delete_lines,mcp__serena__delete_memory," +
+  "mcp__serena__edit_memory,mcp__serena__execute_shell_command,mcp__serena__find_file," +
+  "mcp__serena__get_current_config,mcp__serena__get_diagnostics_for_file," +
+  "mcp__serena__get_diagnostics_for_symbol,mcp__serena__insert_after_symbol," +
+  "mcp__serena__insert_at_line,mcp__serena__insert_before_symbol,mcp__serena__jet_brains_debug," +
+  "mcp__serena__jet_brains_find_declaration,mcp__serena__jet_brains_find_implementations," +
+  "mcp__serena__jet_brains_find_referencing_symbols,mcp__serena__jet_brains_find_symbol," +
+  "mcp__serena__jet_brains_get_symbols_overview,mcp__serena__jet_brains_inline_symbol," +
+  "mcp__serena__jet_brains_list_inspections,mcp__serena__jet_brains_move," +
+  "mcp__serena__jet_brains_rename,mcp__serena__jet_brains_run_inspections," +
+  "mcp__serena__jet_brains_safe_delete,mcp__serena__jet_brains_type_hierarchy," +
+  "mcp__serena__list_dir,mcp__serena__list_memories,mcp__serena__list_queryable_projects," +
+  "mcp__serena__onboarding,mcp__serena__open_dashboard,mcp__serena__query_project," +
+  "mcp__serena__read_file,mcp__serena__read_memory,mcp__serena__remove_project," +
+  "mcp__serena__rename_memory,mcp__serena__rename_symbol,mcp__serena__replace_content," +
+  "mcp__serena__replace_in_files,mcp__serena__replace_lines,mcp__serena__replace_symbol_body," +
+  "mcp__serena__restart_language_server,mcp__serena__safe_delete_symbol," +
+  "mcp__serena__search_for_pattern,mcp__serena__serena_info,mcp__serena__write_memory";
+
+/**
  * The one and only difference between the `gmesh` and `gmesh-trusted` arms.
  *
  * Appended to the task prompt at run time, never stored in a corpus's
@@ -142,11 +229,14 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
   - \`find_callers(symbol_name or symbol_id)\` / \`find_callees(...)\` — walk the call graph up or down from a function.
   - \`find_implementations(symbol_name or symbol_id)\` — concrete types implementing an interface/abstract class.
   - \`get_dependencies(file_path, direction: Outgoing|Incoming)\` — walk the import graph (what a file imports / what imports it); use for impact analysis before changing a shared module.
-  - \`search_code(query)\` — free-text semantic search over doc comments and signatures, ranked by similarity. Use it when you don't know the symbol's name or file and grep would need several keyword guesses; skip it for a symbol whose name you already know — \`find_definition\`/\`find_references\` are cheaper and exact there. Needs the project's embedding model available; if it errors saying semantic search is unavailable, fall back to grep or the structural tools instead.
+  - \`search_code(query)\` — free-text semantic search over doc comments and signatures, ranked by similarity. Default to this as your *first* move on a "find the function/bug that does X" prompt when no symbol name is given — not something to reach for only after Grep has already failed a few times. Measured: on a bug-hunt task with no named symbol, reps that called \`search_code\` first converged in 8-11 turns; the one rep that skipped it and grep-guessed regex patterns from turn 1 took 15 turns for the same final answer (g-mesh-bench, \`ex-implement-mutateelement-elbow-zero-position\`). Skip it only for a symbol whose name you already know — \`find_definition\`/\`find_references\` are cheaper and exact there. Needs the project's embedding model available; if it errors saying semantic search is unavailable, fall back to grep or the structural tools instead.
   - If a \`symbol_name\` turns out ambiguous, the result carries \`ambiguous: true\` with a ranked candidate list — re-query using a candidate's \`id\` as \`symbol_id\`, not its \`qualifiedName\` (the same qualifiedName can name more than one declaration).
 - Typical flow: call \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` directly with \`symbol_name\` when it's likely unique; only call \`find_definition\` first if you expect ambiguity or need the declaration site itself. Use \`get_file_outline\` first if you don't already know the right symbol name.
 - A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
 - Resolving an ambiguous name (the bullet above on \`ambiguous: true\` candidates) to a specific \`symbol_id\` doesn't reopen the completeness question: a \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` page anchored by that \`symbol_id\` carries the exact same \`resolved: true\`/no-\`allUnresolved\` guarantee as an unambiguous \`symbol_name\` query. Once you've picked the right candidate, treat its result as final — don't grep/Read each returned call site file-by-file to reconfirm it's "really" that symbol and not the same-named other one, and don't run a second, broad text search across the repo to check for anything the query might have missed. Both duplicate work the tool has already resolved, the same way re-verifying a plain unambiguous result would.
+- \`find_callers\`/\`find_callees\` only ever walk \`CALLS\` edges, and a \`CALLS\` edge only exists when the call site sits lexically inside a *named, tracked* function or method. A call written at a file's top level, or inside an anonymous/inline callback that isn't itself extracted as its own symbol (exactly the shape of \`it("...", () => { requireTask(...) })\` in a test file), gets a \`REFERENCES\` edge instead — which \`find_callers\` never sees, even on an otherwise complete, \`resolved: true\`, \`hasMore: false\` page. That's not a hole in its own guarantee (it's complete for \`CALLS\` edges specifically), but it's narrower than "every place this is called" when the prompt implies that — use \`find_references\` instead of (or in addition to) \`find_callers\` whenever the task needs an exhaustive caller list (before a rename/removal, or anything that should include test files).
+- A \`get_dependencies\` result's completeness is signaled by \`truncated\`/\`truncatedBy\`, not a per-row \`resolved\` flag — there isn't one; a multi-hop path can't be summarized by one boolean the way a single edge can. \`truncated: false\` means the walk reached everything within its depth/fanout bounds — trust it fully, don't re-verify with grep. \`truncated: true\` needs a follow-up keyed off \`truncatedBy\`, not a blanket re-query: on \`maxDepth\`, re-call anchored on the returned \`frontierNodes\` to go further; on \`maxFanout\`, that one node had more imports/importers than the fanout cap, so re-query just that node with the single-hop tools' own pagination; on \`explorationBudget\`/\`responseSize\`, call again with the returned \`resumeToken\`. The default \`max_depth\` is only 2 (shallower than a single-hop tool's own completeness bar), so a \`get_dependencies\` call is commonly truncated by default — check \`truncated\` before treating a shallow result as the whole dependency tree.
+- \`search_code\` is similarity-ranked, not a resolved graph query — its top hit isn't automatically "the answer" the way a \`find_definition\` hit is. But once a hit's \`qualifiedName\`/\`kind\`/\`filePath\` plausibly match what the prompt describes, one targeted confirming read (the exact lines, or \`get_file_outline\`) is enough — check the doc comment/signature there, then stop. Don't keep re-issuing \`search_code\` with reworded queries hunting for a "better" match, and don't follow a confirmed hit with a broad grep sweep across the repo "just in case" — that's the same wasted re-verification the bullet above warns against for the structural tools, just dressed up as more searching instead of more reading.
 - \`find_implementations\` only returns direct implementors/extenders by default — a class extending a class that implements the anchor interface won't show up in a \`hasMore: false\` page. For the whole hierarchy, re-call with \`transitive: true\` (walks the same edges transitively, up to a bounded depth, resumable via \`resume_token\`).
 `;
 
@@ -199,6 +289,75 @@ exact path. Otherwise, if you reach for Read / grep / find — stop and route ab
 `;
 
 /**
+ * The serena-side counterpart to GMESH_CONFIGURED_CLAUDE_MD/
+ * KUNGFU_CONFIGURED_CLAUDE_MD — except Serena's real delivery path is not a
+ * project doc at all, so this is a `.claude/settings.json` object rather than
+ * a markdown string (written into the throwaway clone by corpusResolver.ts's
+ * resolveConfigured(), and loaded because every runClaude() call already
+ * passes `--setting-sources project`).
+ *
+ * Serena ships these hooks itself, as the `serena-hooks` CLI in the very same
+ * package the MCP server comes from — this is its documented Claude Code
+ * setup, not a benchmark invention:
+ * - `activate` (SessionStart) injects additional context telling the agent to
+ *   call `activate_project` and read the Instructions Manual first.
+ * - `remind` (PreToolUse on Read/Grep) counts consecutive non-symbolic calls
+ *   and, past a threshold, returns `permissionDecision: "deny"` plus a nudge
+ *   back to Serena's symbolic tools. Matched on `Read|Grep` because those are
+ *   the only two tool names it classifies for the claude-code client.
+ * - `cleanup` (SessionEnd) removes that session's counter state from
+ *   `~/.serena/hook_data/<session-id>/`.
+ *
+ * `serena-hooks auto-approve` is deliberately *not* wired up: its own
+ * docstring says it emits a decision only for `acceptEdits`/`auto` and stays
+ * silent under `bypassPermissions`, which is the mode every runClaude() call
+ * passes. It would be a subprocess spawn per tool call that can never do
+ * anything here.
+ *
+ * Commands use the full `uvx --from git+…` form rather than a bare
+ * `serena-hooks`, for the same portability reason buildSerenaArmConfig() does:
+ * no dependency on a local install having put anything on PATH beyond `uvx`
+ * itself. The cost is real and worth stating — unlike the MCP server, which is
+ * spawned once per session, a PreToolUse hook spawns a fresh `uvx` process on
+ * every matching Read/Grep call.
+ */
+export const SERENA_CONFIGURED_SETTINGS_JSON = {
+  hooks: {
+    SessionStart: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks activate --client claude-code",
+          },
+        ],
+      },
+    ],
+    PreToolUse: [
+      {
+        matcher: "Read|Grep",
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks remind --client claude-code",
+          },
+        ],
+      },
+    ],
+    SessionEnd: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "uvx --from git+https://github.com/oraios/serena serena-hooks cleanup --client claude-code",
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/**
  * Everything `claude -p` needs to know about one arm, in one place.
  *
  * Split out of what used to be three separate if/else chains (armMcpConfig,
@@ -245,6 +404,24 @@ const KUNGFU_ARM: ArmDefinition = {
 };
 
 /**
+ * And the same again for serena-configured vs serena: one shared definition,
+ * so the two arms cannot drift apart in tools or MCP config. What differs is
+ * only the cwd they run in — serena-configured's throwaway clone carries
+ * SERENA_CONFIGURED_SETTINGS_JSON's hooks, bare serena's does not.
+ *
+ * Note that both arms allow `initial_instructions`/`activate_project` (see
+ * SERENA_TOOLS): unblocking a tool the model may call is not the same as
+ * telling it to, and keeping the tool surface identical is what makes the pair
+ * measure the hooks rather than a second, confounded difference in what was
+ * callable at all.
+ */
+const SERENA_ARM: ArmDefinition = {
+  mcpConfig: buildSerenaArmConfig,
+  tools: SERENA_TOOLS,
+  disallowedTools: SERENA_DENIED_TOOLS,
+};
+
+/**
  * The single table every per-arm accessor below reads from. Adding a *built-in*
  * arm is one entry here plus the `BuiltinArm` union and ARM_ORDER in
  * lib/types.ts — the `Record<BuiltinArm, ...>` makes a missing entry a type
@@ -267,6 +444,8 @@ export const ARM_DEFINITIONS: Record<BuiltinArm, ArmDefinition> = {
   kungfu: KUNGFU_ARM,
   "gmesh-configured": GMESH_ARM,
   "kungfu-configured": KUNGFU_ARM,
+  serena: SERENA_ARM,
+  "serena-configured": SERENA_ARM,
 };
 
 /**
