@@ -5,6 +5,7 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import {
   GMESH_CONFIGURED_CLAUDE_MD,
+  GMESH_MAP_CONFIGURED_CLAUDE_MD,
   KUNGFU_CONFIGURED_CLAUDE_MD,
   MAX_BUDGET_USD,
   MODEL,
@@ -15,7 +16,7 @@ import {
   armTools,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
-import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
+import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex, writeRepoMap } from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
@@ -26,7 +27,7 @@ import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
-import type { Arm, BenchTask, ExpectedWinner, TaskCategory } from "./lib/types.js";
+import type { Arm, BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 /**
@@ -417,6 +418,46 @@ function shouldIncludeBareGmeshArm(): boolean {
 }
 
 /**
+ * G_MESH_BENCH_INCLUDE_GMESH_MAP=yes|no gates the `gmesh-configured-map` arm —
+ * `gmesh-configured` plus g-mesh's pushed repo map (see types.ts's Arm doc and
+ * armConfig.ts's GMESH_MAP_CONFIGURED_CLAUDE_MD). Same opt-in-only pattern as
+ * every other should*Arm gate: a default run's output stays exactly what it was
+ * before this arm existed.
+ *
+ * Opt-in rather than default for a second reason beyond spend: the arm needs a
+ * g-mesh binary new enough to have the `map` subcommand (>= 2.2.0). On an older
+ * binary the run fails loudly in writeRepoMap() rather than quietly measuring a
+ * map-less arm — but making it default would turn that into everybody's
+ * problem.
+ */
+function shouldIncludeGmeshMapArm(): boolean {
+  const envOverride = process.env.G_MESH_BENCH_INCLUDE_GMESH_MAP;
+  if (envOverride === undefined) return false;
+  const normalized = envOverride.trim().toLowerCase();
+  if (["yes", "y", "true"].includes(normalized)) return true;
+  if (["no", "n", "false"].includes(normalized)) return false;
+  throw new Error(`Invalid G_MESH_BENCH_INCLUDE_GMESH_MAP value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * G_MESH_BENCH_MAP_TOKENS sets the `--tokens` budget the `gmesh-configured-map`
+ * arm generates its map at. Defaults to 1000 — g-mesh's own default, inherited
+ * in turn from Aider's, and explicitly flagged as unvalidated in the design
+ * doc's Open Questions. An env var rather than a constant precisely so the
+ * 500/1000/2000 sweep that question asks for is three runs of the same code,
+ * not three edits.
+ */
+export function mapTokenBudget(): number {
+  const raw = process.env.G_MESH_BENCH_MAP_TOKENS;
+  if (raw === undefined) return 1000;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid G_MESH_BENCH_MAP_TOKENS value "${raw}"; expected a positive integer.`);
+  }
+  return parsed;
+}
+
+/**
  * G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no gates the bare `serena` arm, which is
  * no longer part of a default run.
  *
@@ -452,6 +493,27 @@ function shouldIncludeKungfuConfiguredArm(): boolean {
   if (["yes", "y", "true"].includes(normalized)) return true;
   if (["no", "n", "false"].includes(normalized)) return false;
   throw new Error(`Invalid G_MESH_BENCH_INCLUDE_KUNGFU_CONFIGURED value "${envOverride}"; expected "yes" or "no".`);
+}
+
+/**
+ * A ready-to-run `gmesh-configured-map` cwd: the same throwaway clone and
+ * CLAUDE.md guidance `gmesh-configured` gets, plus a warm index and a generated
+ * repo map in `AGENTS.md`.
+ *
+ * The three steps are ordered, not merely grouped. `g-mesh map` reads
+ * `index.db` off disk and refuses to emit a partial map before the bulk walk
+ * has finished, so the index has to be warm *first* — and both must be done
+ * before the first measured call, or the map's generation cost would land
+ * inside a run's turn count. Pulled out of main() because the warm-up block and
+ * the per-corpus loop both need the identical sequence, and a map arm that got
+ * two subtly different setups would be two different arms.
+ */
+async function resolveMapConfigured(corpus: CorpusEntry): Promise<string> {
+  const dest = await resolveConfigured(corpus, GMESH_MAP_CONFIGURED_CLAUDE_MD);
+  console.log(`[${corpus.id}] warming g-mesh index for the gmesh-configured-map checkout...`);
+  await warmGmeshIndex(dest);
+  await writeRepoMap(dest, mapTokenBudget());
+  return dest;
 }
 
 const WARMUP_PROMPT = 'Reply with just the word "ok" and nothing else.';
@@ -544,6 +606,7 @@ type WarmCacheCwds = Partial<Record<Arm, string>>;
 async function warmCache(arms: readonly Arm[], cwd: string, armCwds: WarmCacheCwds): Promise<void> {
   const { kungfu: kungfuCwd, serena: serenaCwd } = armCwds;
   const configuredCwd = armCwds["gmesh-configured"];
+  const mapConfiguredCwd = armCwds["gmesh-configured-map"];
   const kungfuConfiguredCwd = armCwds["kungfu-configured"];
   const serenaConfiguredCwd = armCwds["serena-configured"];
   if (arms.includes("gmesh") || arms.includes("gmesh-trusted")) {
@@ -569,6 +632,14 @@ async function warmCache(arms: readonly Arm[], cwd: string, armCwds: WarmCacheCw
     // warm-up call, same reasoning as why kungfu gets one above.
     console.log("Warming prompt cache: gmesh-configured arm...");
     await warmArm(configuredCwd, "gmesh-configured");
+  }
+  if (mapConfiguredCwd !== undefined) {
+    // The repo map lands in the same system-level context region the CLAUDE.md
+    // does, so this arm's cache prefix is neither gmesh's nor
+    // gmesh-configured's — it needs its own warm-up call, from the cwd that
+    // actually has the map in it.
+    console.log("Warming prompt cache: gmesh-configured-map arm...");
+    await warmArm(mapConfiguredCwd, "gmesh-configured-map");
   }
   if (kungfuConfiguredCwd !== undefined) {
     // Same reasoning as gmesh-configured above: kungfu-configured's CLAUDE.md
@@ -705,6 +776,7 @@ async function main() {
   if (shouldIncludeTrustedArm()) toInclude.push("gmesh-trusted");
   if (includeKungfu) toInclude.push("kungfu");
   if (includeKungfuConfigured) toInclude.push("kungfu-configured");
+  if (shouldIncludeGmeshMapArm()) toInclude.push("gmesh-configured-map");
   if (shouldIncludeBareSerenaArm()) toInclude.push("serena");
   const arms = applyArmIncludeOverrides(baseArms, toInclude);
   // Unlike kungfu's preflight above, this one can't be decided from the env
@@ -738,6 +810,12 @@ async function main() {
     await warmCache(arms, warmupCwd, {
       kungfu: includeKungfu ? await resolveFresh(firstCorpus) : undefined,
       "gmesh-configured": await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD),
+      // Its own prefix again, and for a stronger reason than gmesh-configured's:
+      // the repo map *is* system-level context, so a map arm warmed from the
+      // plain configured cwd would warm a prefix it never uses.
+      "gmesh-configured-map": arms.includes("gmesh-configured-map")
+        ? await resolveMapConfigured(firstCorpus)
+        : undefined,
       "kungfu-configured": includeKungfuConfigured
         ? await resolveConfigured(firstCorpus, KUNGFU_CONFIGURED_CLAUDE_MD)
         : undefined,
@@ -811,6 +889,12 @@ async function main() {
       console.log(`[${corpus.id}] warming g-mesh index for the shared gmesh-configured checkout...`);
       await warmGmeshIndex(configuredCwd);
     }
+    // Its own clone again rather than a copy of configuredCwd with a map added:
+    // the two arms have to be measurable side by side in the same run, so the
+    // control's cwd must stay mapless while this one carries the map.
+    const mapConfiguredCwd = hasReadOnlyTask && arms.includes("gmesh-configured-map")
+      ? await resolveMapConfigured(corpus)
+      : undefined;
     // kungfu-configured needs its own throwaway clone for the same reason
     // gmesh-configured does above: a real CLAUDE.md must be written into its
     // cwd, and that must never be the live, registry-registered checkout.
@@ -862,6 +946,12 @@ async function main() {
                   await warmGmeshIndex(dest);
                   return dest;
                 })()
+              : arm === "gmesh-configured-map"
+                // Same per-rep freshness requirement as gmesh-configured above,
+                // with the map regenerated per rep too: an edit task's clone
+                // starts from the unfixed corpus every time, so a map carried
+                // over from another clone would describe a different tree.
+                ? await resolveMapConfigured(corpus)
               : arm === "kungfu-configured"
                 ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
                 : arm === "serena-configured"
@@ -870,6 +960,8 @@ async function main() {
             : (ownCloneCwds.get(arm) ??
               (arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
+                : arm === "gmesh-configured-map" && mapConfiguredCwd !== undefined
+                  ? mapConfiguredCwd
                 : arm === "kungfu-configured" && kungfuConfiguredCwd !== undefined
                   ? kungfuConfiguredCwd
                   : arm === "serena-configured" && serenaConfiguredCwd !== undefined

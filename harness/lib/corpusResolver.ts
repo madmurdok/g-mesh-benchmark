@@ -135,6 +135,61 @@ export async function resolveConfigured(
 }
 
 /**
+ * Marker the repo-map block is wrapped in, straight from g-mesh's
+ * `cli::agent_instructions` (REPO_MAP_BEGIN_MARKER). Duplicated here rather
+ * than parsed out of the binary because this harness needs it for exactly one
+ * thing: proving, after the fact, that the block really landed in the file.
+ */
+const REPO_MAP_BEGIN_MARKER = "<!-- g-mesh:repo-map:begin -->";
+
+/**
+ * Writes g-mesh's repo map into `cwd`'s `AGENTS.md`, the real delivery channel
+ * the feature ships (see g-mesh/docs/architecture/pushed-context-repo-map.md,
+ * C1) — this is what makes an arm the `gmesh-configured-map` arm rather than a
+ * second copy of `gmesh-configured`.
+ *
+ * Two things it has to do that `g-mesh map --write` does not do for itself:
+ *
+ * - **Create `AGENTS.md` when the corpus has none.** `ensure_repo_map_block`
+ *   returns `Ok(false)` — a silent no-op — on a project with no `AGENTS.md`,
+ *   because in production `g-mesh init --agent` is the only thing allowed to
+ *   create that file. Neither bench corpus ships one, so without this the map
+ *   arm would run with no map at all and still look healthy. The seeded file is
+ *   a single heading, so nothing but the map block is added to the arm's
+ *   context.
+ * - **Fail loudly.** Unlike warmGmeshIndex() above, this is not best-effort: a
+ *   map arm that silently ran mapless would not degrade the experiment, it
+ *   would invalidate it. Every failure path throws, and the marker check below
+ *   is deliberately made against the file on disk rather than against the
+ *   command's own exit code.
+ *
+ * Requires a warm index: `g-mesh map` reads `index.db` directly and refuses to
+ * emit a partial map while the bulk walk is unfinished, so callers must
+ * warmGmeshIndex() first.
+ */
+export async function writeRepoMap(cwd: string, tokens: number): Promise<void> {
+  const agentsMdPath = path.join(cwd, "AGENTS.md");
+  if (!existsSync(agentsMdPath)) {
+    await writeFile(agentsMdPath, "# AGENTS.md\n");
+  }
+  const start = performance.now();
+  const { stdout } = await execFileAsync(gmeshBinaryPath(), ["map", "--write", "--tokens", String(tokens)], {
+    cwd,
+  });
+  const written = await readFile(agentsMdPath, "utf-8");
+  if (!written.includes(REPO_MAP_BEGIN_MARKER)) {
+    throw new Error(
+      `g-mesh map --write reported success in ${cwd} but left no ${REPO_MAP_BEGIN_MARKER} block in AGENTS.md. ` +
+        `Refusing to run the map arm without a map (binary: ${gmeshBinaryPath()}).`,
+    );
+  }
+  console.log(
+    `  repo map written (${tokens}-token budget, ${written.length} B AGENTS.md, ` +
+      `${(performance.now() - start).toFixed(0)}ms): ${stdout.trim()}`,
+  );
+}
+
+/**
  * Runs `g-mesh init` in `cwd` so its g-mesh index is fully built before any
  * measured `claude -p` call touches this cwd. Idempotent (a project already
  * fully walked skips the bulk walk), so this is cheap on an already-warm cwd

@@ -135,6 +135,7 @@ const ARM_VALUES: readonly BuiltinArm[] = [
   "gmesh-trusted",
   "kungfu",
   "gmesh-configured",
+  "gmesh-configured-map",
   "kungfu-configured",
   "serena",
   "serena-configured",

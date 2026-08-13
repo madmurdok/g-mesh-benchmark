@@ -19,6 +19,18 @@
  *   throwaway clone, instead of a harness-injected prompt suffix. See
  *   armConfig.ts's GMESH_CONFIGURED_CLAUDE_MD and corpusResolver.ts's
  *   resolveConfigured().
+ * - `gmesh-configured-map` — `gmesh-configured` plus g-mesh's repo map
+ *   (`g-mesh map --write`, g-mesh >= 2.2.0). Byte-for-byte the same tools, MCP
+ *   config and CLAUDE.md guidance as `gmesh-configured`; the only difference is
+ *   an `AGENTS.md` in the throwaway clone carrying the PageRank-ranked,
+ *   token-budgeted map block, plus the one-line `@AGENTS.md` bridge that makes
+ *   Claude Code load it (verified empirically: Claude Code does *not* read a
+ *   bare AGENTS.md, it does follow the bridge — same mechanism `g-mesh init
+ *   --agent claude` ships). Exists to measure the ship gate in
+ *   g-mesh/docs/architecture/pushed-context-repo-map.md: whether always-on
+ *   pushed context buys more than it costs on the `lookup` category. See
+ *   armConfig.ts's GMESH_MAP_CONFIGURED_CLAUDE_MD and corpusResolver.ts's
+ *   writeRepoMap().
  * - `kungfu-configured` — the same real-delivery-path idea applied to
  *   `kungfu`: byte-for-byte the same restricted tool list/MCP config as
  *   `kungfu` (see armConfig.ts's KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS), but run
@@ -53,6 +65,7 @@ export type BuiltinArm =
   | "gmesh-trusted"
   | "kungfu"
   | "gmesh-configured"
+  | "gmesh-configured-map"
   | "kungfu-configured"
   | "serena"
   | "serena-configured";
@@ -106,6 +119,7 @@ export type Arm = BuiltinArm | (string & {});
  */
 export const ARM_ORDER: readonly Arm[] = [
   "gmesh-configured",
+  "gmesh-configured-map",
   "serena-configured",
   "baseline",
   "gmesh",
