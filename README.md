@@ -439,6 +439,16 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   default.) The gate itself is unchanged; it now appends onto whichever arm
   list `g-mesh-bench.config.json`'s `tokenEconomy.arms` resolves to, rather
   than onto a hardcoded literal.
+- `G_MESH_BENCH_INCLUDE_GMESH_MAP=yes|no` — also run the `gmesh-configured-map`
+  arm (default `no`): `gmesh-configured` plus g-mesh's pushed repo map
+  (`g-mesh map --write` into the clone's `AGENTS.md`, reached through the
+  one-line `@AGENTS.md` bridge that `g-mesh init --agent claude` writes — Claude
+  Code does not read a bare `AGENTS.md`). Everything else about the arm is
+  byte-for-byte `gmesh-configured`, so the pair measures the map and nothing
+  else. Needs a g-mesh binary with the `map` subcommand (>= 2.2.0); on an older
+  one the run fails loudly rather than quietly measuring a map-less arm.
+  `G_MESH_BENCH_MAP_TOKENS=<n>` sets the map's token budget (default `1000`).
+  First results: `docs/results/v0.16.0-repo-map-ship-gate-findings.md`.
 - `G_MESH_BENCH_INCLUDE_BARE_SERENA=yes|no` — also run the bare `serena` arm
   (default `no`): Serena's tools with none of the setup its own docs prescribe,
   i.e. no `initial_instructions` manual and no `serena-hooks` wiring. Exactly

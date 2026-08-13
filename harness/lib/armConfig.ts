@@ -241,6 +241,28 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
 `;
 
 /**
+ * The `gmesh-configured-map` arm's project doc: byte-for-byte
+ * GMESH_CONFIGURED_CLAUDE_MD plus g-mesh's own one-line `AGENTS.md` bridge.
+ *
+ * The bridge is the whole reason this constant exists. g-mesh writes its repo
+ * map into `AGENTS.md` (see corpusResolver.ts's writeRepoMap and
+ * g-mesh/docs/architecture/pushed-context-repo-map.md's C1), and Claude Code
+ * does *not* read a bare `AGENTS.md` — verified empirically for this
+ * experiment with a three-way probe (AGENTS.md alone: the model reported no
+ * project instructions; AGENTS.md + this `@AGENTS.md` line: it read them;
+ * CLAUDE.md directly: it read them). The bridge file is g-mesh's own shipped
+ * delivery path, written by `g-mesh init --agent claude`
+ * (cli::agent_instructions::ensure_bridge_file), so this is the real
+ * mechanism rather than a benchmark shortcut.
+ *
+ * Keeping the guidance text identical to the control arm's is what makes the
+ * pair measure the map and nothing else: the entire measured delta between
+ * `gmesh-configured` and `gmesh-configured-map` is the repo-map block plus
+ * this one 11-byte line.
+ */
+export const GMESH_MAP_CONFIGURED_CLAUDE_MD = `${GMESH_CONFIGURED_CLAUDE_MD}\n@AGENTS.md\n`;
+
+/**
  * The kungfu-side counterpart to GMESH_CONFIGURED_CLAUDE_MD: kungfu's own
  * documented recommendation for how an agent should use it, copied verbatim
  * (not paraphrased) from github.com/denyzhirkov/kungfu's README, "Manual
@@ -443,6 +465,12 @@ export const ARM_DEFINITIONS: Record<BuiltinArm, ArmDefinition> = {
   "gmesh-trusted": { ...GMESH_ARM, promptSuffix: TRUSTED_ARM_PROMPT_SUFFIX },
   kungfu: KUNGFU_ARM,
   "gmesh-configured": GMESH_ARM,
+  // Same shared GMESH_ARM base as gmesh-configured/gmesh-trusted, for the same
+  // structural reason: the map arm must differ from its control in the pushed
+  // context only, never in tools or MCP config. What makes it the map arm is
+  // entirely in its cwd (token-economy.ts writes the AGENTS.md map block
+  // there), exactly as gmesh-configured's CLAUDE.md is.
+  "gmesh-configured-map": GMESH_ARM,
   "kungfu-configured": KUNGFU_ARM,
   serena: SERENA_ARM,
   "serena-configured": SERENA_ARM,
