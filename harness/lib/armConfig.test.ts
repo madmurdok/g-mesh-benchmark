@@ -92,6 +92,11 @@ const ALL_ARMS: readonly Arm[] = [
   "gmesh-trusted",
   "kungfu",
   "gmesh-configured",
+  // Post-dates the chains too, like the serena pair: its expectation is that it
+  // is g-mesh's own config unchanged (the map is delivered through its cwd, not
+  // through tools or prompt), which is exactly what legacy*'s fall-through
+  // branch already returns — so it is graded here deliberately, not by accident.
+  "gmesh-configured-map",
   "kungfu-configured",
   "serena",
   "serena-configured",
