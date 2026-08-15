@@ -11,6 +11,8 @@ import {
   computeCategoryTokenBreakdown,
   computeCategoryTokenTable,
   computeCorrectnessTable,
+  computeMcpUnavailableSummary,
+  computeSilentMcpArms,
   computeStaleSummary,
   computeTaskTable,
   formatDurationSeconds,
@@ -18,6 +20,7 @@ import {
   loadRuns,
   pairedTokenTotals,
   partitionByCurrentDef,
+  partitionByMcpAvailability,
 } from "./lib/reportData.js";
 import { computeSequenceTokenTable, renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
@@ -156,23 +159,87 @@ function printStaleSummary(stale: TokenEconomyRun[]): void {
   console.log("");
 }
 
+/**
+ * Printed alongside the stale summary, and for the same reason: a measurement
+ * excluded silently is only marginally better than a wrong one presented
+ * confidently. See lib/mcpHealth.ts for the 2026-08-14 sweep this exists
+ * because of.
+ */
+function printMcpUnavailableSummary(unavailable: TokenEconomyRun[]): void {
+  if (unavailable.length === 0) return;
+  const summary = computeMcpUnavailableSummary(unavailable);
+
+  console.log("# Excluded: arm ran without its MCP tools\n");
+  console.log(
+    `${unavailable.length} run(s) across ${summary.length} arm(s) excluded — the CLI reported the arm's own\n` +
+      `MCP server as not connected, so the agent ran on Read/Grep/Glob alone. Those rows measure the\n` +
+      `baseline toolset under another arm's name, not that arm. Pass --all to include them anyway.\n`,
+  );
+  console.log("| Arm | Excluded runs | Reported server status |");
+  console.log("|---|---|---|");
+  for (const row of summary) {
+    console.log(`| ${row.arm} | ${row.count} | ${row.detail} |`);
+  }
+  console.log("");
+}
+
+/** The aggregate refusal: see computeSilentMcpArms for why zero-across-everything is disqualifying where zero-on-one-run is not. */
+function printSilentMcpArms(silent: { arm: string; runsWithData: number }[]): void {
+  if (silent.length === 0) return;
+
+  console.log("# Refused: arm never called an MCP tool\n");
+  console.log(
+    `The arm(s) below declared an MCP server that connected, yet made zero mcp__* calls across every\n` +
+      `run that recorded a count. An arm that never uses its own tools is not measuring that tool — it is\n` +
+      `a second copy of baseline. Their runs are excluded from every table below; pass --all to include\n` +
+      `them anyway.\n`,
+  );
+  console.log("| Arm | Runs with tool-call data | mcp__* calls |");
+  console.log("|---|---|---|");
+  for (const row of silent) {
+    console.log(`| ${row.arm} | ${row.runsWithData} | 0 |`);
+  }
+  console.log("");
+}
+
 async function reportTokenEconomy(): Promise<void> {
   const allRuns = await loadRuns<TokenEconomyRun>(path.join(ROOT, "results"), "token-economy");
 
   const useAll = process.argv.includes("--all");
   let runs = allRuns;
   let stale: TokenEconomyRun[] = [];
+  let mcpUnavailable: TokenEconomyRun[] = [];
+  let silentArms: { arm: string; runsWithData: number }[] = [];
   if (!useAll) {
     const currentHashByTaskId = await buildCurrentHashByTaskId();
     const partitioned = partitionByCurrentDef(allRuns, currentHashByTaskId);
     runs = partitioned.current;
     stale = partitioned.stale;
+
+    // Applied after the staleness filter so the two exclusions compose rather
+    // than double-count: a run already dropped as stale is never also reported
+    // as MCP-dead.
+    const byMcp = partitionByMcpAvailability(runs);
+    runs = byMcp.available;
+    mcpUnavailable = byMcp.unavailable;
+
+    // Evaluated on what survived: an arm whose only proof of life was in runs
+    // just excluded above has no proof of life. Its remaining runs go too —
+    // presenting them would put a column named after a tool next to numbers
+    // that tool never produced.
+    silentArms = computeSilentMcpArms(runs).map((r) => ({ arm: String(r.arm), runsWithData: r.runsWithData }));
+    const silentNames = new Set(silentArms.map((r) => r.arm));
+    if (silentNames.size > 0) runs = runs.filter((r) => !silentNames.has(String(r.arm)));
   }
 
   printCorrectness(runs);
   printCategoryTokenSavings(runs);
   printCategoryTokenBreakdown(runs);
-  if (!useAll) printStaleSummary(stale);
+  if (!useAll) {
+    printStaleSummary(stale);
+    printMcpUnavailableSummary(mcpUnavailable);
+    printSilentMcpArms(silentArms);
+  }
 
   const taskTable = computeTaskTable(runs);
 

@@ -318,6 +318,92 @@ export function partitionByCurrentDef(
   return { current, stale };
 }
 
+/**
+ * Splits runs into those whose arm demonstrably had its MCP tools and those
+ * whose recorded init event proves it did not — the second half of the
+ * 2026-08-14 fix (lib/mcpHealth.ts is the first: it stops such runs being
+ * *produced*, this stops the ones already on disk being *presented*).
+ *
+ * Modelled directly on partitionByCurrentDef above, and for the same reason: a
+ * per-run recorded field, compared at report time against what a valid run must
+ * look like, with the rejects surfaced in their own report section rather than
+ * silently dropped.
+ *
+ * Only positive evidence counts as unavailable — a recorded `mcpServers` entry
+ * whose status isn't "connected". Specifically NOT zero `mcpToolCalls`: an arm
+ * whose server connected fine and that then chose to answer with Grep is a
+ * perfectly valid measurement, and it is only across *every* run of an arm that
+ * zero becomes damning (see computeSilentMcpArms). A run with no `mcpServers`
+ * field at all is unknown, not unavailable — most of this repo's history
+ * predates the field.
+ */
+export function partitionByMcpAvailability(
+  runs: TokenEconomyRun[],
+): { available: TokenEconomyRun[]; unavailable: TokenEconomyRun[] } {
+  const available: TokenEconomyRun[] = [];
+  const unavailable: TokenEconomyRun[] = [];
+  for (const run of runs) {
+    const servers = run.mcpServers;
+    if (servers !== undefined && servers.length > 0 && servers.some((s) => s.status !== "connected")) {
+      unavailable.push(run);
+    } else {
+      available.push(run);
+    }
+  }
+  return { available, unavailable };
+}
+
+/** MCP-unavailable run counts grouped by arm, with the statuses that disqualified them — the report section's data source. */
+export function computeMcpUnavailableSummary(
+  unavailable: TokenEconomyRun[],
+): { arm: Arm; count: number; detail: string }[] {
+  const byArm = new Map<Arm, { count: number; detail: Set<string> }>();
+  for (const run of unavailable) {
+    const entry = byArm.get(run.arm) ?? { count: 0, detail: new Set<string>() };
+    entry.count++;
+    for (const s of run.mcpServers ?? []) {
+      if (s.status !== "connected") entry.detail.add(`${s.name}: ${s.status}`);
+    }
+    byArm.set(run.arm, entry);
+  }
+  return [...byArm.entries()]
+    .map(([arm, { count, detail }]) => ({ arm, count, detail: [...detail].sort().join(", ") }))
+    .sort((a, b) => String(a.arm).localeCompare(String(b.arm)));
+}
+
+/**
+ * Arms that declared MCP servers, recorded their tool-call counts, and never
+ * once called an MCP tool across every single run.
+ *
+ * This is the aggregate half of the guard, and the one that catches a failure
+ * mcpHealth.ts's per-run assertion cannot: a server that reports `connected`
+ * and then does nothing useful, or any future variant of "the arm was named
+ * serena but behaved exactly like baseline". One run with zero MCP calls means
+ * nothing; N runs with zero between them means the arm's whole premise is
+ * unsupported, and its numbers are baseline's numbers under another name.
+ *
+ * Counted over runs that actually recorded `mcpToolCalls` — a `undefined` is
+ * unknown, and an arm with no such runs at all is simply not evaluated here
+ * rather than being convicted on missing data.
+ */
+export function computeSilentMcpArms(runs: TokenEconomyRun[]): { arm: Arm; runsWithData: number }[] {
+  const byArm = new Map<Arm, { runsWithData: number; mcpCalls: number }>();
+  for (const run of runs) {
+    // Requires a declared server, not just the count: `mcpToolCalls: 0` on
+    // `baseline` is correct and expected, and must never be read as a fault.
+    if (run.mcpToolCalls === undefined) continue;
+    if (run.mcpServers === undefined || run.mcpServers.length === 0) continue;
+    const entry = byArm.get(run.arm) ?? { runsWithData: 0, mcpCalls: 0 };
+    entry.runsWithData++;
+    entry.mcpCalls += run.mcpToolCalls;
+    byArm.set(run.arm, entry);
+  }
+  return [...byArm.entries()]
+    .filter(([, { mcpCalls }]) => mcpCalls === 0)
+    .map(([arm, { runsWithData }]) => ({ arm, runsWithData }))
+    .sort((a, b) => String(a.arm).localeCompare(String(b.arm)));
+}
+
 /** Stale-run counts grouped by taskId, sorted by taskId ascending — the "Excluded as stale" report section's data source. */
 export function computeStaleSummary(stale: TokenEconomyRun[]): { taskId: string; count: number }[] {
   const counts = new Map<string, number>();

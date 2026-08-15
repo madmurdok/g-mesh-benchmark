@@ -136,11 +136,103 @@ test("reports no result when the stream never carried one, keeping whatever tool
 });
 
 test("returns no result and a zero tally for empty or wholly unparseable stdout", () => {
-  assert.deepEqual(parseStreamJson(""), { result: null, toolCalls: { search: 0, edit: 0, other: 0 } });
-  assert.deepEqual(parseStreamJson("not json at all\n<html>error</html>"), {
-    result: null,
-    toolCalls: { search: 0, edit: 0, other: 0 },
-  });
+  // `init` stays all-null rather than empty arrays: no init event means the CLI
+  // never told us what connected, which mcpHealth.ts must not read as "nothing
+  // was declared" (see McpInitState).
+  const empty = { result: null, toolCalls: { search: 0, edit: 0, other: 0 }, mcpToolCalls: 0, init: { servers: null, tools: null } };
+  assert.deepEqual(parseStreamJson(""), empty);
+  assert.deepEqual(parseStreamJson("not json at all\n<html>error</html>"), empty);
+});
+
+test("reads the init event's mcp_servers and tools wherever they appear in the stream", () => {
+  // Not line 0 on purpose: a serena-configured run emits its SessionStart hook
+  // events first, which is exactly why the parser scans for init rather than
+  // reading the first line (verified against a real transcript).
+  const { init } = parseStreamJson(
+    [
+      JSON.stringify({ type: "system", subtype: "hook_started", hook_name: "SessionStart:startup" }),
+      JSON.stringify({
+        type: "system",
+        subtype: "init",
+        tools: ["Glob", "Grep", "Read", "mcp__g-mesh__find_callers"],
+        mcp_servers: [{ name: "g-mesh", status: "connected" }],
+      }),
+      resultLine(),
+    ].join("\n"),
+  );
+
+  assert.deepEqual(init.servers, [{ name: "g-mesh", status: "connected" }]);
+  assert.deepEqual(init.tools, ["Glob", "Grep", "Read", "mcp__g-mesh__find_callers"]);
+});
+
+test("surfaces a failed MCP server from the init event verbatim", () => {
+  // The literal shape every serena transcript of the 2026-08-14 sweep carried.
+  const { init } = parseStreamJson(
+    [
+      JSON.stringify({
+        type: "system",
+        subtype: "init",
+        tools: ["Glob", "Grep", "Read"],
+        mcp_servers: [{ name: "serena", status: "failed" }],
+      }),
+      resultLine(),
+    ].join("\n"),
+  );
+
+  assert.deepEqual(init.servers, [{ name: "serena", status: "failed" }]);
+  assert.deepEqual(init.tools, ["Glob", "Grep", "Read"]);
+});
+
+test("drops malformed init entries rather than failing the whole parse", () => {
+  const { init, result } = parseStreamJson(
+    [
+      JSON.stringify({
+        type: "system",
+        subtype: "init",
+        tools: ["Read", 42, null],
+        mcp_servers: [{ name: "g-mesh", status: "connected" }, { name: "broken" }, "nonsense"],
+      }),
+      resultLine(),
+    ].join("\n"),
+  );
+
+  assert.ok(result);
+  assert.deepEqual(init.tools, ["Read"]);
+  // The entry missing a `status` is dropped, which leaves the declared server
+  // looking absent — mcpHealthFailure reports that as a failure, not a pass.
+  assert.deepEqual(init.servers, [{ name: "g-mesh", status: "connected" }]);
+});
+
+test("counts mcp__* calls separately from, and as a subset of, the search bucket", () => {
+  const { toolCalls, mcpToolCalls } = parseStreamJson(
+    [
+      assistantLine([toolUse("Grep", "toolu_1")]),
+      assistantLine([toolUse("mcp__g-mesh__find_callers", "toolu_2")]),
+      assistantLine([toolUse("mcp__g-mesh__find_references", "toolu_3")]),
+      assistantLine([toolUse("Edit", "toolu_4")]),
+      resultLine(),
+    ].join("\n"),
+  );
+
+  assert.deepEqual(toolCalls, { search: 3, edit: 1, other: 0 });
+  assert.equal(mcpToolCalls, 2);
+});
+
+test("reports zero mcp calls for a run that only ever used the built-in tools", () => {
+  // The tell the 2026-08-14 sweep needed and did not have: search calls alone
+  // cannot distinguish a serena arm from a baseline one, because Read/Grep/Glob
+  // land in the same bucket.
+  const { toolCalls, mcpToolCalls } = parseStreamJson(
+    [
+      assistantLine([toolUse("Grep", "toolu_1")]),
+      assistantLine([toolUse("Read", "toolu_2")]),
+      assistantLine([toolUse("Read", "toolu_3")]),
+      resultLine(),
+    ].join("\n"),
+  );
+
+  assert.deepEqual(toolCalls, { search: 3, edit: 0, other: 0 });
+  assert.equal(mcpToolCalls, 0);
 });
 
 test("keeps the last result event when a stream somehow carries more than one", () => {

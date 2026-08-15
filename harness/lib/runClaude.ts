@@ -4,6 +4,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBenchConfig } from "./benchConfig.js";
+import {
+  assertMcpHealthy,
+  declaredMcpServers,
+  expectedMcpToolNames,
+  type McpInitState,
+  type McpServerStatus,
+} from "./mcpHealth.js";
 import type { McpServerConfig } from "./mcpConfig.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -65,6 +72,19 @@ export interface RunClaudeOptions {
    * a label for it.
    */
   transcriptLabel?: string;
+
+  /**
+   * The arm this call belongs to, used for one thing only: naming it in the
+   * abort message when its MCP servers turn out not to have connected (see
+   * lib/mcpHealth.ts). runClaude otherwise has no concept of an arm — it is
+   * handed a resolved mcpConfig/tools pair — but "arm serena-configured's
+   * server failed" is the message a reader can act on, and "the MCP server in
+   * this temp config file failed" is not.
+   *
+   * Omitted by callers with no arm to name (lib/judge.ts, lib/narrative.ts),
+   * which also declare no MCP servers and so can never trip the check.
+   */
+  armLabel?: string;
 }
 
 /**
@@ -168,6 +188,18 @@ export interface ParsedStream {
   /** The stream's last `type: "result"` event — the aggregate the single-blob `--output-format json` used to be. null when the stream carried none (crash, killed process, garbage output). */
   result: ClaudeJsonResult | null;
   toolCalls: ToolCallCounts;
+  /**
+   * How many of `toolCalls.search` were `mcp__*` calls — a subset of that
+   * bucket, not a fourth one, so the existing three still sum to the total.
+   *
+   * Split out because "how many tool calls did this arm make" and "did this arm
+   * use its own tools at all" are different questions, and the search bucket
+   * cannot answer the second: a serena arm whose server never started still
+   * records 3 search calls, because Read/Grep/Glob land in the same bucket.
+   */
+  mcpToolCalls: number;
+  /** What the `type: "system", subtype: "init"` event said about this run's MCP wiring; both fields null when the stream carried no init event (see McpInitState). */
+  init: McpInitState;
 }
 
 /**
@@ -197,6 +229,8 @@ export function parseStreamJson(stdout: string): ParsedStream {
   const toolCalls: ToolCallCounts = { search: 0, edit: 0, other: 0 };
   const seenToolUseIds = new Set<string>();
   let result: ClaudeJsonResult | null = null;
+  let mcpToolCalls = 0;
+  const init: McpInitState = { servers: null, tools: null };
 
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
@@ -209,12 +243,19 @@ export function parseStreamJson(stdout: string): ParsedStream {
       continue;
     }
     if (typeof event !== "object" || event === null) continue;
-    const record = event as { type?: unknown; message?: { content?: unknown } };
+    const record = event as { type?: unknown; subtype?: unknown; message?: { content?: unknown } };
 
     // Last one wins: a well-formed stream has exactly one, but taking the last
     // keeps the old "the aggregate is whatever the CLI finished with" semantics.
     if (record.type === "result") {
       result = event as ClaudeJsonResult;
+      continue;
+    }
+    // Not necessarily the stream's first line: a `serena-configured` run emits
+    // its SessionStart `hook_started`/`hook_completed` events before init, so
+    // this is matched anywhere in the stream rather than read off line 0.
+    if (record.type === "system" && record.subtype === "init") {
+      readInitEvent(event, init);
       continue;
     }
     if (record.type !== "assistant") continue;
@@ -230,10 +271,39 @@ export function parseStreamJson(stdout: string): ParsedStream {
         seenToolUseIds.add(b.id);
       }
       toolCalls[classifyToolCall(b.name)]++;
+      if (b.name.startsWith("mcp__")) mcpToolCalls++;
     }
   }
 
-  return { result, toolCalls };
+  return { result, toolCalls, mcpToolCalls, init };
+}
+
+/**
+ * Copies the init event's `mcp_servers`/`tools` into `into`, field by field and
+ * type-checked, rather than casting the event to a shape it may not have.
+ *
+ * A malformed entry is dropped instead of failing the parse, for the same
+ * reason an unparseable line is skipped above: the init event is one line among
+ * many, and losing the whole run over it would be worse than losing the check.
+ * The consequence is honest — a dropped server entry leaves `servers` shorter
+ * than the arm declares, which mcpHealthFailure() reports as "absent from the
+ * CLI's mcp_servers list entirely", i.e. it fails loudly rather than passing
+ * quietly.
+ */
+function readInitEvent(event: unknown, into: McpInitState): void {
+  const e = event as { tools?: unknown; mcp_servers?: unknown };
+  if (Array.isArray(e.tools)) {
+    into.tools = e.tools.filter((t): t is string => typeof t === "string");
+  }
+  if (Array.isArray(e.mcp_servers)) {
+    into.servers = e.mcp_servers
+      .filter((s): s is McpServerStatus => {
+        if (typeof s !== "object" || s === null) return false;
+        const entry = s as { name?: unknown; status?: unknown };
+        return typeof entry.name === "string" && typeof entry.status === "string";
+      })
+      .map((s) => ({ name: s.name, status: s.status }));
+  }
 }
 
 export interface RunClaudeResult {
@@ -256,6 +326,17 @@ export interface RunClaudeResult {
    * usable events at all.
    */
   toolCalls: ToolCallCounts;
+  /**
+   * This run's MCP wiring as the CLI itself reported it, plus how many `mcp__*`
+   * calls the agent actually made — recorded into every run record so any
+   * result file can be audited after the fact for the failure mode that
+   * invalidated the 2026-08-14 sweep (see lib/mcpHealth.ts).
+   *
+   * Kept on the error/budget_exceeded paths too, same as toolCalls and
+   * numTurns: a run that failed still tells the truth about whether its server
+   * came up.
+   */
+  mcp: RunMcpState;
   resultText: string;
   /**
    * The CLI's `session_id` for this call — pass it back as `resumeSessionId`
@@ -282,6 +363,16 @@ export interface ClaudeJsonResult {
     cache_creation_input_tokens: number;
     cache_read_input_tokens: number;
   };
+}
+
+/** The MCP half of a run's record: what the CLI reported, and what the agent did with it. */
+export interface RunMcpState {
+  /** The init event's `mcp_servers`; null when the stream carried no init event at all. */
+  servers: McpServerStatus[] | null;
+  /** The init event's `tools`; null on the same no-init-event condition. */
+  tools: string[] | null;
+  /** `mcp__*` tool calls this run made — a subset of `toolCalls.search`, see ParsedStream.mcpToolCalls. */
+  toolCalls: number;
 }
 
 function emptyUsage() {
@@ -360,18 +451,32 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       await saveTranscript(opts.transcriptLabel, stdout);
     }
 
-    const { result: parsed, toolCalls } = parseStreamJson(stdout);
+    const { result: parsed, toolCalls, mcpToolCalls, init } = parseStreamJson(stdout);
+    const mcp: RunMcpState = { servers: init.servers, tools: init.tools, toolCalls: mcpToolCalls };
+
+    // Before any of the status branches below, so a dead arm aborts whether its
+    // call "succeeded", errored or hit the budget cap — an arm running without
+    // its tools produces perfectly ok-looking rows, which is the entire problem
+    // (see lib/mcpHealth.ts). Deliberately after the transcript save above:
+    // whatever made the server fail is worth having on disk.
+    assertMcpHealthy(
+      opts.armLabel ?? "(unlabeled call)",
+      declaredMcpServers(opts.mcpConfig),
+      expectedMcpToolNames(opts.tools),
+      init,
+    );
+
     // No result event anywhere in the stream — same failure as an unparseable
     // single blob used to be, just detected per-stream instead of per-blob.
     if (parsed === null) {
-      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, resultText: "" };
+      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, mcp, resultText: "" };
     }
 
     if (parsed.subtype === "error_max_budget_usd") {
-      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, resultText: "", sessionId: parsed.session_id };
+      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, resultText: "", sessionId: parsed.session_id };
     }
     if (parsed.is_error || parsed.subtype !== "success") {
-      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, resultText: "", sessionId: parsed.session_id };
+      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, resultText: "", sessionId: parsed.session_id };
     }
 
     return {
@@ -386,6 +491,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       durationMs: parsed.duration_ms,
       costUsd: parsed.total_cost_usd,
       toolCalls,
+      mcp,
       resultText: parsed.result ?? "",
       sessionId: parsed.session_id,
     };

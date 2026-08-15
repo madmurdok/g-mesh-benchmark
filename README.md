@@ -361,6 +361,16 @@ the arm degrades to baseline for that question. The `ex-find-callees-updateelbow
 half of this gap (the incoming/references half is already covered by
 `find_referencing_symbols`).
 
+**Not pinned to a fixed revision, on purpose.** `uvx --from git+https://github.com/oraios/serena`
+always resolves the default branch tip, same as a fresh user install — the
+harness does not pin it to a fixed commit SHA. Every `serena`/
+`serena-configured` run does record which commit that resolved to
+(`TokenEconomyRun.serenaRevision` in the result JSON, via `git ls-remote`), so
+a past result stays diagnosable without paying a hard pin's maintenance cost.
+See `docs/results/v0.17.0-serena-recovery-findings.md`'s "Pinning serena to a
+fixed revision" section for the full reasoning (and the incident that raised
+the question — a corrupted local cache, not a moving upstream target).
+
 ## Running an experiment
 
 ```bash
@@ -429,6 +439,20 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   `token-economy`) and `report.htmlNarrative` (for `report` — a separate field
   on purpose, see the Configuration section above); the env var still overrides
   either per-run.
+- `G_MESH_BENCH_SAVE_TRANSCRIPTS=yes|no` — save each run's raw
+  `--output-format stream-json` NDJSON stdout to
+  `results/transcripts/<run-timestamp>/<corpus>-<task>-<arm>-repN.ndjson`
+  (default `no`). This is the one place the full stream survives past
+  `parseStreamJson()`'s tool-name tally, so it is what lets you reconstruct
+  the actual call sequence a run made — not just how many calls of each kind
+  it made. It is what proved the 2026-08-14 sweep's `serena` arm never
+  started (see "An arm whose MCP server fails to start aborts the run"
+  below) and what showed the `gmesh` arm re-grepping on top of answers it
+  already had from an earlier tool call. Off by default purely for disk cost:
+  an unattended sweep writes one NDJSON file per (task, arm, repetition), so
+  a 387-run sweep would write 387 files. `results/transcripts/` is gitignored
+  (unlike `results/token-economy/*.json`, transcripts are a debugging aid, not
+  the permanent record).
 - `G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no` — also run the bare `gmesh` arm
   (default `no`): g-mesh's tools with no CLAUDE.md guidance at all. It was the
   default primary arm until `gmesh-configured` took over, so turn it on to
@@ -477,6 +501,65 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   `kungfu` on PATH (or `G_MESH_BENCH_KUNGFU_BINARY` pointed at it); adds a full
   extra run per (task, repetition). Same "appends onto the config-driven arm
   list" note applies here too.
+
+### An arm whose MCP server fails to start aborts the run
+
+Every `claude -p` call the harness makes now checks the CLI's own init event
+before the run counts: each MCP server the arm declares must report
+`status: "connected"`, and every tool name the arm's allow list spells out must
+appear in the tool list the model was handed. If it doesn't, the run aborts with
+exit code 1, a message naming the arm and the server, and **no results file at
+all** (`harness/lib/mcpHealth.ts`).
+
+That is deliberately harsher than recording an error row and continuing. The
+failure it guards against is not a run going badly — it is a run that goes
+*perfectly*, for the wrong tool:
+
+> The 2026-08-14 sweep (387 records, $38.75) is invalid as a g-mesh-vs-serena
+> comparison. The serena arm's MCP server failed to start on every single run,
+> so the agent was left holding Glob/Grep/Read — the baseline toolset. The
+> harness recorded 129 of those as `status: "ok"` with a 98% oracle pass rate,
+> and the report presented them as a serena result. The sweep compared g-mesh
+> against baseline twice and published the second copy under the name "serena".
+
+The failure had a mundane cause: a corrupted local `uv` git cache entry for
+serena (a checkout missing objects, not an upstream problem — `uv` re-resolved
+the identical commit once that one cache entry was cleared). Fixed, verified
+by a saved transcript's init event (`"mcp_servers": [{"name": "serena",
+"status": "connected"}]` plus a real `mcp__serena__*` tool list) and by every
+recorded `serena-configured` run since carrying non-zero `mcpToolCalls`, and
+re-run cheaply (4 of the 45 tasks, not a full sweep) against the 2026-08-14
+figures — see `docs/results/v0.17.0-serena-recovery-findings.md` for the
+fix, the proof, and the numbers.
+
+With the cache warm-up on (`G_MESH_BENCH_WARM_CACHE=yes`) a dead arm is caught
+by its warm-up call, so the abort costs one `"reply with ok"` prompt and no
+measured run exists at all. With it off, the arm's first measured call catches
+it instead.
+
+Two things back the guard up after the fact:
+
+- **Every run record carries `mcpServers` and `mcpToolCalls`** — what the CLI
+  reported about the arm's wiring, and how many `mcp__*` calls the agent
+  actually made. `searchToolCalls` cannot answer the second question, because
+  Read/Grep/Glob land in the same bucket: a serena arm with a dead server and a
+  baseline arm produce identical tallies.
+- **`npm run report` excludes what those fields convict.** A run whose recorded
+  server isn't `connected` is dropped and summarised under "Excluded: arm ran
+  without its MCP tools". An arm that connected but made zero `mcp__*` calls
+  across *every* run that recorded a count is refused outright, under "Refused:
+  arm never called an MCP tool" — one such run means nothing, but an arm that
+  never touches its own tools is a second copy of baseline. Both follow the same
+  shape as the existing stale-run exclusion, `--all` included: pass it to see
+  the raw numbers anyway.
+
+A missing field is "unknown", never "dead", so the whole history that predates
+these fields aggregates exactly as before. The historical files whose serena
+column *is* known-dead were annotated in place by
+`scripts/annotateMcpDeadRuns.ts`, which stamps each affected record with the
+evidence it rests on (`mcpAnnotation`) so an annotated record can never be
+mistaken for a measured one. Nothing else in those records was touched — the
+tokens and turns are real measurements; only the label on the column was wrong.
 
 ### `session-economy` — the same comparison, amortized instead of isolated
 
@@ -539,6 +622,9 @@ npm run report -- session-economy              # cumulative report across past r
   Appends onto whichever arm list `g-mesh-bench.config.json`'s
   `sessionEconomy.arms` resolves to, same as `token-economy`'s toggles above.
 - `G_MESH_BENCH_BINARY` — path to the g-mesh binary, same as `token-economy`.
+- `G_MESH_BENCH_SAVE_TRANSCRIPTS=yes|no` — same knob as `token-economy`'s, see
+  above; `runSessionChain()` builds the same `<corpus>-<task>-<arm>-repN`
+  transcript label for each chain call.
 - No cache warm-up knob (unlike `token-economy`'s `G_MESH_BENCH_WARM_CACHE`) and
   no narrative call: pre-warming would hide exactly the curve this experiment
   exists to measure, and the narrative prompt is written against
