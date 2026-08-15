@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -117,6 +118,18 @@ export interface TokenEconomyRun {
    * annotated record can never be mistaken for a directly measured one.
    */
   mcpAnnotation?: string;
+  /**
+   * The commit SHA `git ls-remote` resolved for github.com/oraios/serena at
+   * the moment this invocation started — the same unpinned default-branch tip
+   * `uvx` builds (see mcpConfig.ts's buildSerenaArmConfig). Recorded because
+   * this harness deliberately does not pin serena to a fixed revision (see
+   * README's "Pinning serena to a fixed revision" section for the reasoning);
+   * without this field, a run made unreproducible by an upstream change would
+   * look identical to one that isn't. Present only on `serena`/`serena-configured`
+   * records when the lookup succeeded; `undefined` on every other arm and on a
+   * lookup failure — never a stale or guessed value.
+   */
+  serenaRevision?: string;
   durationMs: number;
   /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
@@ -312,6 +325,7 @@ async function runArm(
   arm: Arm,
   repetition: number,
   timestamp: string,
+  serenaRevision?: string,
 ): Promise<TokenEconomyRun> {
   const result = await runClaude({
     cwd,
@@ -365,6 +379,7 @@ async function runArm(
     // told us, which is not the same claim as "this arm declared no servers".
     mcpServers: result.mcp.servers ?? undefined,
     mcpToolCalls: result.mcp.toolCalls,
+    serenaRevision: arm === "serena" || arm === "serena-configured" ? serenaRevision : undefined,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
     judgeCostUsd,
@@ -740,6 +755,32 @@ function serenaLauncherIsAvailable(): boolean {
 }
 
 /**
+ * Resolves the commit SHA serena's git dependency currently points at, via
+ * `git ls-remote` against the same unpinned repo URL mcpConfig.ts's
+ * buildSerenaArmConfig() launches — the same default-branch tip `uvx` would
+ * build. Stamped onto every serena/serena-configured TokenEconomyRun (see its
+ * `serenaRevision` field) so a run stays diagnosable even though the harness
+ * tracks HEAD rather than pinning a fixed revision.
+ *
+ * Best-effort by design: a network hiccup here is a lost diagnostic field,
+ * not a reason to fail the whole run, so this returns undefined (never
+ * throws) on any error — the same "undefined means unknown" contract every
+ * other optional TokenEconomyRun field follows.
+ */
+function resolveSerenaRevision(): string | undefined {
+  try {
+    const output = execFileSync("git", ["ls-remote", "https://github.com/oraios/serena", "HEAD"], {
+      encoding: "utf8",
+      timeout: 15_000,
+    });
+    const sha = output.split(/\s+/)[0];
+    return sha !== undefined && /^[0-9a-f]{40}$/.test(sha) ? sha : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Arms that must run against a throwaway clone of their own rather than the
  * shared warm checkout, because the tool behind them writes state into
  * whatever project directory it is pointed at.
@@ -837,6 +878,14 @@ async function main() {
         `(https://docs.astral.sh/uv/), or drop the serena arms from g-mesh-bench.config.json's tokenEconomy.arms.`,
     );
     process.exit(1);
+  }
+  // Resolved once per invocation, not per run: uv resolves the git dependency
+  // once and every call in this invocation reuses the same cached checkout,
+  // so every serena/serena-configured record below gets the same value. See
+  // resolveSerenaRevision()'s doc comment for why this is best-effort.
+  const serenaRevision = serenaArms.length > 0 ? resolveSerenaRevision() : undefined;
+  if (serenaArms.length > 0) {
+    console.log(`Serena git revision resolved: ${serenaRevision ?? "unknown (git ls-remote failed)"}`);
   }
   if (arms.length > 2) {
     console.log(
@@ -1017,7 +1066,7 @@ async function main() {
           // afterwards — the agent's actual diff is the only real evidence of
           // what it did, and it lives nowhere else.
           if (taskEditsCode(task)) console.log(`  edit sandbox: ${armCwd}`);
-          runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp));
+          runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp, serenaRevision));
         }
       }
     }
