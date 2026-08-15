@@ -439,6 +439,20 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   `token-economy`) and `report.htmlNarrative` (for `report` — a separate field
   on purpose, see the Configuration section above); the env var still overrides
   either per-run.
+- `G_MESH_BENCH_SAVE_TRANSCRIPTS=yes|no` — save each run's raw
+  `--output-format stream-json` NDJSON stdout to
+  `results/transcripts/<run-timestamp>/<corpus>-<task>-<arm>-repN.ndjson`
+  (default `no`). This is the one place the full stream survives past
+  `parseStreamJson()`'s tool-name tally, so it is what lets you reconstruct
+  the actual call sequence a run made — not just how many calls of each kind
+  it made. It is what proved the 2026-08-14 sweep's `serena` arm never
+  started (see "An arm whose MCP server fails to start aborts the run"
+  below) and what showed the `gmesh` arm re-grepping on top of answers it
+  already had from an earlier tool call. Off by default purely for disk cost:
+  an unattended sweep writes one NDJSON file per (task, arm, repetition), so
+  a 387-run sweep would write 387 files. `results/transcripts/` is gitignored
+  (unlike `results/token-economy/*.json`, transcripts are a debugging aid, not
+  the permanent record).
 - `G_MESH_BENCH_INCLUDE_BARE_GMESH=yes|no` — also run the bare `gmesh` arm
   (default `no`): g-mesh's tools with no CLAUDE.md guidance at all. It was the
   default primary arm until `gmesh-configured` took over, so turn it on to
@@ -608,6 +622,9 @@ npm run report -- session-economy              # cumulative report across past r
   Appends onto whichever arm list `g-mesh-bench.config.json`'s
   `sessionEconomy.arms` resolves to, same as `token-economy`'s toggles above.
 - `G_MESH_BENCH_BINARY` — path to the g-mesh binary, same as `token-economy`.
+- `G_MESH_BENCH_SAVE_TRANSCRIPTS=yes|no` — same knob as `token-economy`'s, see
+  above; `runSessionChain()` builds the same `<corpus>-<task>-<arm>-repN`
+  transcript label for each chain call.
 - No cache warm-up knob (unlike `token-economy`'s `G_MESH_BENCH_WARM_CACHE`) and
   no narrative call: pre-warming would hide exactly the curve this experiment
   exists to measure, and the narrative prompt is written against

@@ -6,3 +6,9 @@ dist/
 results/html/cumulative.html
 results/html/session-cumulative.html
 .claude/worktrees/
+
+# Raw per-run stream-json transcripts (G_MESH_BENCH_SAVE_TRANSCRIPTS=yes) —
+# debugging artifacts, not the permanent record. results/token-economy/*.json
+# and results/session-economy/*.json stay committed on purpose; this is a
+# targeted ignore, not "ignore results/".
+results/transcripts/
