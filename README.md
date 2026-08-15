@@ -361,6 +361,16 @@ the arm degrades to baseline for that question. The `ex-find-callees-updateelbow
 half of this gap (the incoming/references half is already covered by
 `find_referencing_symbols`).
 
+**Not pinned to a fixed revision, on purpose.** `uvx --from git+https://github.com/oraios/serena`
+always resolves the default branch tip, same as a fresh user install — the
+harness does not pin it to a fixed commit SHA. Every `serena`/
+`serena-configured` run does record which commit that resolved to
+(`TokenEconomyRun.serenaRevision` in the result JSON, via `git ls-remote`), so
+a past result stays diagnosable without paying a hard pin's maintenance cost.
+See `docs/results/v0.17.0-serena-recovery-findings.md`'s "Pinning serena to a
+fixed revision" section for the full reasoning (and the incident that raised
+the question — a corrupted local cache, not a moving upstream target).
+
 ## Running an experiment
 
 ```bash
@@ -497,6 +507,16 @@ failure it guards against is not a run going badly — it is a run that goes
 > harness recorded 129 of those as `status: "ok"` with a 98% oracle pass rate,
 > and the report presented them as a serena result. The sweep compared g-mesh
 > against baseline twice and published the second copy under the name "serena".
+
+The failure had a mundane cause: a corrupted local `uv` git cache entry for
+serena (a checkout missing objects, not an upstream problem — `uv` re-resolved
+the identical commit once that one cache entry was cleared). Fixed, verified
+by a saved transcript's init event (`"mcp_servers": [{"name": "serena",
+"status": "connected"}]` plus a real `mcp__serena__*` tool list) and by every
+recorded `serena-configured` run since carrying non-zero `mcpToolCalls`, and
+re-run cheaply (4 of the 45 tasks, not a full sweep) against the 2026-08-14
+figures — see `docs/results/v0.17.0-serena-recovery-findings.md` for the
+fix, the proof, and the numbers.
 
 With the cache warm-up on (`G_MESH_BENCH_WARM_CACHE=yes`) a dead arm is caught
 by its warm-up call, so the abort costs one `"reply with ok"` prompt and no
