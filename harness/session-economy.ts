@@ -15,6 +15,7 @@ import {
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
@@ -327,6 +328,7 @@ async function runSessionChain(
       maxBudgetUsd: MAX_BUDGET_USD,
       resumeSessionId,
       transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, sessionRepetition),
+      armLabel: arm,
     });
 
     // Same prospective half of the combined budget bound as token-economy's
@@ -368,6 +370,12 @@ async function runSessionChain(
       searchToolCalls: result.toolCalls.search,
       editToolCalls: result.toolCalls.edit,
       otherToolCalls: result.toolCalls.other,
+      // Same audit trail token-economy's runArm records, and needed here for a
+      // second reason: a chained session re-declares its MCP config on every
+      // `claude -p` call, so a server that dies mid-chain is a per-call fact,
+      // not a per-chain one.
+      mcpServers: result.mcp.servers ?? undefined,
+      mcpToolCalls: result.mcp.toolCalls,
       durationMs: result.durationMs,
       costUsd: result.costUsd,
       judgeCostUsd,
@@ -556,5 +564,5 @@ async function main() {
  * is unaffected: tsx sets argv[1] to this file's path.
  */
 if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main();
+  main().catch(exitOnDeadArm);
 }

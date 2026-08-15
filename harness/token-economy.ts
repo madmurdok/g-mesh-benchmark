@@ -21,6 +21,7 @@ import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTask
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
@@ -87,6 +88,35 @@ export interface TokenEconomyRun {
   searchToolCalls?: number;
   editToolCalls?: number;
   otherToolCalls?: number;
+  /**
+   * What the CLI's init event reported about this run's MCP wiring, and how
+   * many `mcp__*` calls the agent actually made — the audit trail for the
+   * failure that invalidated the 2026-08-14 sweep, where an arm whose server
+   * never started was recorded as a perfectly ok result (see lib/mcpHealth.ts).
+   *
+   * A live run can no longer *record* a non-connected server — runClaude()
+   * aborts the process first — so on a fresh result file these fields exist to
+   * prove the arm was healthy rather than to report that it wasn't. They earn
+   * their keep on historical files: reportData.ts's partitionByMcpAvailability
+   * and computeSilentMcpArms read exactly these, which is what let the
+   * 2026-08-14 records be annotated (scripts/annotateMcpDeadRuns.ts) instead of
+   * deleted.
+   *
+   * Optional for the same reason searchToolCalls is: runs recorded before the
+   * harness looked at the init event genuinely don't have them, and `undefined`
+   * means "unknown", never 0 — a zero `mcpToolCalls` is a positive claim that
+   * the agent made no MCP call at all.
+   */
+  mcpServers?: { name: string; status: string }[];
+  mcpToolCalls?: number;
+  /**
+   * Set only by scripts/annotateMcpDeadRuns.ts, never by a live run: it records
+   * that the two fields above were established *after the fact* (from saved
+   * transcripts of an identically-configured re-run) rather than observed by
+   * the harness during this run, and cites the evidence. Present so an
+   * annotated record can never be mistaken for a directly measured one.
+   */
+  mcpAnnotation?: string;
   durationMs: number;
   /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
@@ -292,6 +322,7 @@ async function runArm(
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
     transcriptLabel: buildTranscriptLabel(corpusId, task.id, arm, repetition),
+    armLabel: arm,
   });
   // Grading a failed arm run is pointless and, in judge mode, not free:
   // runClaude returns an empty resultText for both "error" and
@@ -330,6 +361,10 @@ async function runArm(
     searchToolCalls: result.toolCalls.search,
     editToolCalls: result.toolCalls.edit,
     otherToolCalls: result.toolCalls.other,
+    // `?? undefined` rather than `?? []`: no init event means the CLI never
+    // told us, which is not the same claim as "this arm declared no servers".
+    mcpServers: result.mcp.servers ?? undefined,
+    mcpToolCalls: result.mcp.toolCalls,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
     judgeCostUsd,
@@ -558,7 +593,17 @@ async function shouldWarmCache(): Promise<boolean> {
   }
 }
 
-/** One throwaway call per arm so the system-prompt/tool-schema prefix is warm before any measured run. */
+/**
+ * One throwaway call per arm so the system-prompt/tool-schema prefix is warm
+ * before any measured run.
+ *
+ * Doubles as the earliest possible MCP health check: runClaude() asserts every
+ * declared server connected (see lib/mcpHealth.ts), and with warm-up enabled
+ * this call is the first one an arm ever makes — so a dead arm aborts the run
+ * for the price of a single "reply with ok" prompt, before a single measured
+ * row exists. With warm-up disabled the same assertion fires on the arm's first
+ * measured call instead; nothing is skipped either way.
+ */
 async function warmArm(cwd: string, arm: Arm): Promise<void> {
   const result = await runClaude({
     cwd,
@@ -568,6 +613,7 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
     disallowedTools: armDisallowedTools(arm),
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
+    armLabel: arm,
   });
   if (result.status !== "ok") {
     throw new Error(
@@ -1025,5 +1071,5 @@ async function main() {
  * is unaffected: tsx sets argv[1] to this file's path.
  */
 if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main();
+  main().catch(exitOnDeadArm);
 }

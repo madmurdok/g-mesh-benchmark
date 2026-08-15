@@ -8,8 +8,11 @@ import {
   computeCategoryTokenBreakdown,
   computeCategoryTokenTable,
   computeCorrectnessTable,
+  computeMcpUnavailableSummary,
+  computeSilentMcpArms,
   computeTaskTable,
   pairedTokenTotals,
+  partitionByMcpAvailability,
   primaryComparisonArm,
   UNCATEGORIZED,
 } from "./reportData.js";
@@ -42,6 +45,8 @@ function run(overrides: {
   searchToolCalls?: number;
   editToolCalls?: number;
   otherToolCalls?: number;
+  mcpServers?: TokenEconomyRun["mcpServers"];
+  mcpToolCalls?: number;
   expectedWinner?: TokenEconomyRun["expectedWinner"];
 }): TokenEconomyRun {
   return {
@@ -62,6 +67,8 @@ function run(overrides: {
     searchToolCalls: overrides.searchToolCalls,
     editToolCalls: overrides.editToolCalls,
     otherToolCalls: overrides.otherToolCalls,
+    mcpServers: overrides.mcpServers,
+    mcpToolCalls: overrides.mcpToolCalls,
     durationMs: 1,
     costUsd: 0,
     judgeCostUsd: 0,
@@ -343,4 +350,83 @@ test("a group mixing pre- and post-instrumentation runs means only the runs that
   ])!;
 
   assert.equal(agg.meanSearchToolCalls, 7);
+});
+
+const CONNECTED = [{ name: "serena", status: "connected" }];
+const FAILED = [{ name: "serena", status: "failed" }];
+
+test("a run whose recorded MCP server failed is partitioned out as unavailable", () => {
+  // The 2026-08-14 shape: status "ok", oracle passed, and the arm never had its
+  // tools. Nothing but mcpServers can tell it apart from a real serena result.
+  const dead = run({ taskId: "t1", arm: "serena-configured", mcpServers: FAILED, mcpToolCalls: 0 });
+  const live = run({ taskId: "t1", arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 4 });
+
+  const { available, unavailable } = partitionByMcpAvailability([dead, live]);
+
+  assert.deepEqual(available, [live]);
+  assert.deepEqual(unavailable, [dead]);
+});
+
+test("a connected server with zero calls on one run is available, not unavailable", () => {
+  // An arm that had its tools and chose Grep is a real measurement. Only the
+  // whole-arm view (computeSilentMcpArms) may convict on zero.
+  const { available, unavailable } = partitionByMcpAvailability([
+    run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
+  ]);
+
+  assert.equal(available.length, 1);
+  assert.equal(unavailable.length, 0);
+});
+
+test("runs predating the mcp fields, and arms with no MCP servers, stay available", () => {
+  // undefined is unknown, never a conviction — most of this repo's history has
+  // no such field, and baseline legitimately declares no server at all.
+  const { available, unavailable } = partitionByMcpAvailability([
+    run({ arm: "gmesh" }),
+    run({ arm: "baseline", mcpServers: [], mcpToolCalls: 0 }),
+  ]);
+
+  assert.equal(available.length, 2);
+  assert.equal(unavailable.length, 0);
+});
+
+test("computeMcpUnavailableSummary groups excluded runs by arm with the disqualifying status", () => {
+  const rows = computeMcpUnavailableSummary([
+    run({ arm: "serena-configured", mcpServers: FAILED }),
+    run({ arm: "serena-configured", mcpServers: FAILED }),
+  ]);
+
+  assert.deepEqual(rows, [{ arm: "serena-configured", count: 2, detail: "serena: failed" }]);
+});
+
+test("an arm that connected but never once called an MCP tool is refused", () => {
+  const silent = computeSilentMcpArms([
+    run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
+    run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
+    run({ arm: "gmesh-configured", mcpServers: [{ name: "g-mesh", status: "connected" }], mcpToolCalls: 2 }),
+  ]);
+
+  assert.deepEqual(silent, [{ arm: "serena-configured", runsWithData: 2 }]);
+});
+
+test("one MCP call anywhere in an arm's history clears it", () => {
+  assert.deepEqual(
+    computeSilentMcpArms([
+      run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
+      run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 1 }),
+    ]),
+    [],
+  );
+});
+
+test("baseline and pre-instrumentation runs are never convicted as silent MCP arms", () => {
+  // baseline records mcpToolCalls: 0 on every run by construction; a run with no
+  // tally at all is unknown. Neither is evidence of anything.
+  assert.deepEqual(
+    computeSilentMcpArms([
+      run({ arm: "baseline", mcpServers: [], mcpToolCalls: 0 }),
+      run({ arm: "serena-configured" }),
+    ]),
+    [],
+  );
 });
