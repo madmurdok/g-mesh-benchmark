@@ -3,7 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Arm, type BuiltinArm } from "./types.js";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+/**
+ * This repo's own root, exported so other modules that need to locate a
+ * sibling checkout (e.g. armConfig.test.ts's g-mesh snippet-drift guard,
+ * which looks for `../g-mesh` next to this repo — the layout README.md
+ * documents and gmeshBinaryPath()'s DEFAULT_GMESH_BINARY already assumes)
+ * reuse this computation instead of re-deriving it.
+ */
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DEFAULT_CONFIG_PATH = path.join(ROOT, "g-mesh-bench.config.json");
 
 export type RepetitionPreset = "low" | "normal" | "max";
