@@ -11,6 +11,7 @@
     "cold-start": "tsx harness/cold-start.ts",
     "report": "tsx harness/report.ts",
     "candidate-pool": "tsx scripts/computeCandidatePool.ts",
+    "clean:corpora": "tsx scripts/cleanCorpora.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
