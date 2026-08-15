@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { loadBenchConfig, resetBenchConfigCache } from "./benchConfig.js";
+import { ROOT, loadBenchConfig, resetBenchConfigCache } from "./benchConfig.js";
 import {
   ARM_DEFINITIONS,
   BASELINE_TOOLS,
   EDIT_TOOLS,
+  GMESH_CONFIGURED_CLAUDE_MD,
   GMESH_TOOLS,
   KUNGFU_DENIED_TOOLS,
   KUNGFU_TOOLS,
@@ -337,6 +338,132 @@ test("an arm in neither the table nor customArms throws, naming both places", ()
       assert.throws(accessor, /Unknown arm "nope".*built-in arm.*customArms.*g-mesh-bench\.config\.json/s);
     }
   });
+});
+
+/**
+ * Guards against GMESH_CONFIGURED_CLAUDE_MD (this file's hand-maintained copy
+ * of g-mesh's shipped project-instruction snippet) silently drifting from the
+ * real thing.
+ *
+ * Why this exists: g-mesh task #189 found the `symbol_id` bullet present in
+ * g-mesh's README, in this repo's copy, and in the user's own
+ * `~/.claude/CLAUDE.md` — but MISSING from the shipped `AGENTS_MD_SNIPPET`
+ * real users receive via `g-mesh init --agent claude`. Nothing compared the
+ * copies, so the drift went unnoticed. The gmesh-configured arm writes this
+ * exact copy into its throwaway checkout (see corpusResolver.ts), so a
+ * drifted copy means every result depending on that arm measures guidance no
+ * g-mesh user actually gets — quietly invalid, the same failure class as the
+ * dead serena arm (task #14), but harder to see because nothing errors.
+ *
+ * Locating the g-mesh checkout: same sibling-repo convention
+ * gmeshBinaryPath()'s DEFAULT_GMESH_BINARY already assumes (see
+ * mcpConfig.ts and README.md's "clone this repo as a sibling of g-mesh"
+ * step), overridable with `G_MESH_BENCH_REPO` for a non-standard layout
+ * (e.g. running from a nested worktree, where the sibling-of-ROOT default
+ * does not resolve to the real checkout).
+ */
+const GMESH_REPO_ROOT = process.env.G_MESH_BENCH_REPO ?? path.resolve(ROOT, "..", "g-mesh");
+const AGENT_INSTRUCTIONS_PATH = path.join(GMESH_REPO_ROOT, "core", "src", "cli", "agent_instructions.rs");
+
+const AGENTS_MD_SNIPPET_START = 'pub const AGENTS_MD_SNIPPET: &str = r#"';
+const AGENTS_MD_SNIPPET_END = '"#;';
+
+/**
+ * Pulls `AGENTS_MD_SNIPPET`'s literal content out of g-mesh's own source.
+ * It's a Rust raw string (`r#"..."#`), which applies zero escape processing
+ * to its content — so the slice this returns is already the exact text
+ * `g-mesh init` writes, verbatim, no unescaping needed on this side.
+ *
+ * The TS side needs no unescaping either, but for a different reason:
+ * GMESH_CONFIGURED_CLAUDE_MD is *imported*, not read as raw .ts source text,
+ * so the JS engine has already resolved the template literal's own escapes
+ * (`\`` and `\${`) into their literal characters by the time this test sees
+ * it. Both sides land here as plain, already-unescaped text, which is what
+ * makes a strict `===` comparison valid — extracting either side as raw
+ * source text (instead of importing/parsing it properly) is the only case
+ * that would need manual unescaping, and this test avoids that path entirely.
+ */
+function extractAgentsMdSnippet(rustSource: string, sourcePath: string): string {
+  const startIdx = rustSource.indexOf(AGENTS_MD_SNIPPET_START);
+  if (startIdx === -1) {
+    throw new Error(
+      `Could not find "${AGENTS_MD_SNIPPET_START}" in ${sourcePath} — g-mesh's own source shape changed; ` +
+        `update this test's extraction to match it.`,
+    );
+  }
+  const contentStart = startIdx + AGENTS_MD_SNIPPET_START.length;
+  const endIdx = rustSource.indexOf(AGENTS_MD_SNIPPET_END, contentStart);
+  if (endIdx === -1) {
+    throw new Error(
+      `Found AGENTS_MD_SNIPPET's opening in ${sourcePath} but not its closing '"#;' — update this test's extraction.`,
+    );
+  }
+  return rustSource.slice(contentStart, endIdx);
+}
+
+function firstDifferenceIndex(a: string, b: string): number {
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== b[i]) return i;
+  }
+  return a.length === b.length ? -1 : len;
+}
+
+/**
+ * The actual guard: fails (never just warns) when the two copies diverge, and
+ * the failure message both says how to fix it and names the fourth,
+ * unautomated copy this test cannot check. Factored out of the test body so
+ * the "fails loudly on divergence" behavior itself is unit-testable without
+ * needing a real g-mesh checkout (see the two tests below).
+ */
+function assertSnippetsMatch(shipped: string, local: string, shippedPath: string): void {
+  if (shipped === local) return;
+  const diffAt = firstDifferenceIndex(shipped, local);
+  assert.fail(
+    `armConfig.ts's GMESH_CONFIGURED_CLAUDE_MD has drifted from g-mesh's shipped AGENTS_MD_SNIPPET ` +
+      `(${shippedPath}) — first difference at character ${diffAt}.\n\n` +
+      `Fix: copy AGENTS_MD_SNIPPET's content verbatim out of that file into GMESH_CONFIGURED_CLAUDE_MD in ` +
+      `harness/lib/armConfig.ts (re-escape backticks and \${ for the template literal).\n\n` +
+      `There is a FOURTH copy this test cannot check: the user's own ~/.claude/CLAUDE.md "Code search" ` +
+      `section, synced by hand on 2026-08-15 (backup: ~/.claude/CLAUDE.md.bak-2026-08-15). Update it too ` +
+      `whenever this snippet changes — nothing automates that copy.`,
+  );
+}
+
+test("assertSnippetsMatch fails (not warns) on divergence, naming the fix and the unautomated CLAUDE.md copy", () => {
+  assert.throws(
+    () => assertSnippetsMatch("shipped text", "local text (drifted)", "/fake/path/agent_instructions.rs"),
+    (err: unknown) => {
+      assert.ok(err instanceof Error);
+      const msg = (err as Error).message;
+      assert.match(msg, /drifted/);
+      assert.match(msg, /GMESH_CONFIGURED_CLAUDE_MD/);
+      assert.match(msg, /harness\/lib\/armConfig\.ts/);
+      assert.match(msg, /~\/\.claude\/CLAUDE\.md/);
+      assert.match(msg, /2026-08-15/);
+      return true;
+    },
+  );
+});
+
+test("assertSnippetsMatch passes silently when both sides match", () => {
+  assert.doesNotThrow(() => assertSnippetsMatch("same text", "same text", "/fake/path"));
+});
+
+test("GMESH_CONFIGURED_CLAUDE_MD stays byte-for-byte in sync with g-mesh's shipped AGENTS_MD_SNIPPET", (t) => {
+  if (!existsSync(AGENT_INSTRUCTIONS_PATH)) {
+    t.skip(
+      `No g-mesh checkout found at ${GMESH_REPO_ROOT} (expected ${AGENT_INSTRUCTIONS_PATH} to exist). ` +
+        `This guard needs a sibling g-mesh checkout (README.md's documented layout) or G_MESH_BENCH_REPO ` +
+        `pointed at one — SKIPPED, not passed: this run has NOT verified that armConfig.ts's copy matches ` +
+        `what g-mesh actually ships.`,
+    );
+    return;
+  }
+
+  const rustSource = readFileSync(AGENT_INSTRUCTIONS_PATH, "utf8");
+  const shipped = extractAgentsMdSnippet(rustSource, AGENT_INSTRUCTIONS_PATH);
+  assertSnippetsMatch(shipped, GMESH_CONFIGURED_CLAUDE_MD, AGENT_INSTRUCTIONS_PATH);
 });
 
 test("built-in arms never consult the config: they resolve with no customArms registered at all", () => {
