@@ -9,11 +9,46 @@ const DEFAULT_GMESH_BINARY = path.resolve(
 );
 
 export interface McpServerConfig {
-  mcpServers: Record<string, { command: string; args: string[] }>;
+  mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }>;
 }
 
 export function gmeshBinaryPath(): string {
   return process.env.G_MESH_BENCH_BINARY ?? DEFAULT_GMESH_BINARY;
+}
+
+/**
+ * `daemon.coreIdleTimeoutHours`'s test-only escape hatch (`G_MESH_CORE_IDLE_MS`,
+ * documented in g-mesh's `daemon::lifecycle` — "real installs never set it")
+ * repurposed here as this harness's backstop against its own leaks (task #16):
+ * every (task, arm, repetition) that touches a g-mesh arm now gets `g-mesh
+ * stop`'d at the end of the run (see corpusResolver.ts's
+ * stopTrackedGmeshDaemons), but a harness process that crashes or is killed
+ * mid-sweep never reaches that teardown — its daemons would otherwise sit idle
+ * for the core's real 24h default. Setting this env var on every g-mesh MCP
+ * server this harness spawns means an abandoned daemon retires in minutes
+ * instead of a day, with no dependency on the harness surviving to clean up
+ * after itself.
+ *
+ * 30 minutes by default: two orders of magnitude below the 24h production
+ * default, and generous enough that a legitimately busy sweep — cycling
+ * through other arms/corpora between two touches of the same g-mesh cwd —
+ * won't trip it, since a clean run also stops its daemons directly rather
+ * than relying on this timer at all. Overridable with
+ * `G_MESH_BENCH_CORE_IDLE_TIMEOUT_MS` for a fast demonstration of the
+ * backstop without waiting out the real default.
+ */
+const DEFAULT_CORE_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+export function gmeshCoreIdleTimeoutMs(): number {
+  const raw = process.env.G_MESH_BENCH_CORE_IDLE_TIMEOUT_MS;
+  if (raw === undefined) return DEFAULT_CORE_IDLE_TIMEOUT_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(
+      `Invalid G_MESH_BENCH_CORE_IDLE_TIMEOUT_MS value "${raw}"; expected a non-negative number of milliseconds.`,
+    );
+  }
+  return parsed;
 }
 
 export function buildGmeshArmConfig(): McpServerConfig {
@@ -22,6 +57,7 @@ export function buildGmeshArmConfig(): McpServerConfig {
       "g-mesh": {
         command: gmeshBinaryPath(),
         args: ["mcp-shim"],
+        env: { G_MESH_CORE_IDLE_MS: String(gmeshCoreIdleTimeoutMs()) },
       },
     },
   };

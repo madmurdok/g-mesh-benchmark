@@ -21,6 +21,59 @@ const execFileAsync = promisify(execFile);
  */
 const CACHE_ROOT = path.join(tmpdir(), "gmesh-bench-corpora");
 
+/**
+ * Every cwd this process has bootstrapped (or reused) a g-mesh daemon for —
+ * populated by trackGmeshCwd() below, called from warmGmeshIndex()/
+ * writeRepoMap() in this file and from runClaude.ts whenever a call's
+ * mcpConfig declares the "g-mesh" server.
+ *
+ * A single process-wide set rather than a return value threaded through every
+ * resolve*()/runArm() call site, because the same cwd is legitimately reused
+ * across many (task, arm, repetition) combinations within one corpus (see
+ * resolveWarm()'s doc comment) — only the harness's own end-of-run teardown
+ * knows a cwd is truly done with, not any one caller mid-loop.
+ */
+const gmeshTrackedCwds = new Set<string>();
+
+/** Registers `cwd` as one stopTrackedGmeshDaemons() must stop at teardown. */
+export function trackGmeshCwd(cwd: string): void {
+  gmeshTrackedCwds.add(cwd);
+}
+
+/**
+ * Runs `g-mesh stop` against every cwd this process bootstrapped a daemon
+ * for — see task #16: the harness never called this at all, so every (task,
+ * arm, repetition) touching a g-mesh arm left a perfectly healthy daemon
+ * alive for the full 24h `coreIdleTimeoutHours`. Meant to be called once, at
+ * the same place each entry point (token-economy.ts/session-economy.ts)
+ * already tears its run down.
+ *
+ * Best-effort per cwd: one daemon that fails to stop (already gone, a
+ * permissions hiccup, whatever) must not stop this from stopping the rest,
+ * and must not fail an otherwise-successful benchmark run over pure cleanup.
+ * `g-mesh stop` is itself a documented no-op (exit 0) against a cwd with
+ * nothing running, so calling it for every tracked cwd — including ones a
+ * particular arm never actually queried — costs nothing but a wasted process
+ * spawn.
+ *
+ * Not a substitute for the coreIdleTimeoutHours backstop (see mcpConfig.ts's
+ * gmeshCoreIdleTimeoutMs) — this only runs on a clean exit; a killed or
+ * crashed harness process never reaches it, which is exactly the gap that
+ * backstop covers.
+ */
+export async function stopTrackedGmeshDaemons(): Promise<void> {
+  const cwds = [...gmeshTrackedCwds];
+  gmeshTrackedCwds.clear();
+  for (const cwd of cwds) {
+    try {
+      const { stdout } = await execFileAsync(gmeshBinaryPath(), ["stop"], { cwd });
+      console.log(`  g-mesh stop (${cwd}): ${stdout.trim().split("\n")[0]}`);
+    } catch (err) {
+      console.warn(`  g-mesh stop failed for ${cwd}: ${(err as Error).message}`);
+    }
+  }
+}
+
 async function cloneAt(entry: CorpusEntry, dest: string): Promise<void> {
   if (!entry.repoUrl || !entry.ref) {
     throw new Error(`corpus ${entry.id} is kind=git but missing repoUrl/ref`);
@@ -168,6 +221,7 @@ const REPO_MAP_BEGIN_MARKER = "<!-- g-mesh:repo-map:begin -->";
  * warmGmeshIndex() first.
  */
 export async function writeRepoMap(cwd: string, tokens: number): Promise<void> {
+  trackGmeshCwd(cwd);
   const agentsMdPath = path.join(cwd, "AGENTS.md");
   if (!existsSync(agentsMdPath)) {
     await writeFile(agentsMdPath, "# AGENTS.md\n");
@@ -216,6 +270,7 @@ export async function writeRepoMap(cwd: string, tokens: number): Promise<void> {
  * CONNECT_TIMEOUT_MS.
  */
 export async function warmGmeshIndex(cwd: string): Promise<void> {
+  trackGmeshCwd(cwd);
   const start = performance.now();
   try {
     await execFileAsync(gmeshBinaryPath(), ["init"], { cwd });

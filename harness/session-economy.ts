@@ -13,7 +13,13 @@ import {
   armTools,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
-import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex } from "./lib/corpusResolver.js";
+import {
+  resolveConfigured,
+  resolveFresh,
+  resolveWarm,
+  stopTrackedGmeshDaemons,
+  warmGmeshIndex,
+} from "./lib/corpusResolver.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { checkOracle } from "./lib/oracleCheck.js";
@@ -523,6 +529,14 @@ async function main() {
       }
     }
   }
+
+  // See token-economy.ts's identical call for the full rationale (task #16):
+  // stops every g-mesh daemon this run bootstrapped, once, after every
+  // corpus/arm/rep chain above is done rather than per call — several of the
+  // cwds above are deliberately reused across many chains in the loop. A
+  // crashed/killed run never reaches this; mcpConfig.ts's
+  // coreIdleTimeoutHours backstop covers that gap instead.
+  await stopTrackedGmeshDaemons();
 
   const fileStamp = timestamp.replace(/[:.]/g, "-");
 
