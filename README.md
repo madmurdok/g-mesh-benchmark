@@ -478,6 +478,55 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   extra run per (task, repetition). Same "appends onto the config-driven arm
   list" note applies here too.
 
+### An arm whose MCP server fails to start aborts the run
+
+Every `claude -p` call the harness makes now checks the CLI's own init event
+before the run counts: each MCP server the arm declares must report
+`status: "connected"`, and every tool name the arm's allow list spells out must
+appear in the tool list the model was handed. If it doesn't, the run aborts with
+exit code 1, a message naming the arm and the server, and **no results file at
+all** (`harness/lib/mcpHealth.ts`).
+
+That is deliberately harsher than recording an error row and continuing. The
+failure it guards against is not a run going badly — it is a run that goes
+*perfectly*, for the wrong tool:
+
+> The 2026-08-14 sweep (387 records, $38.75) is invalid as a g-mesh-vs-serena
+> comparison. The serena arm's MCP server failed to start on every single run,
+> so the agent was left holding Glob/Grep/Read — the baseline toolset. The
+> harness recorded 129 of those as `status: "ok"` with a 98% oracle pass rate,
+> and the report presented them as a serena result. The sweep compared g-mesh
+> against baseline twice and published the second copy under the name "serena".
+
+With the cache warm-up on (`G_MESH_BENCH_WARM_CACHE=yes`) a dead arm is caught
+by its warm-up call, so the abort costs one `"reply with ok"` prompt and no
+measured run exists at all. With it off, the arm's first measured call catches
+it instead.
+
+Two things back the guard up after the fact:
+
+- **Every run record carries `mcpServers` and `mcpToolCalls`** — what the CLI
+  reported about the arm's wiring, and how many `mcp__*` calls the agent
+  actually made. `searchToolCalls` cannot answer the second question, because
+  Read/Grep/Glob land in the same bucket: a serena arm with a dead server and a
+  baseline arm produce identical tallies.
+- **`npm run report` excludes what those fields convict.** A run whose recorded
+  server isn't `connected` is dropped and summarised under "Excluded: arm ran
+  without its MCP tools". An arm that connected but made zero `mcp__*` calls
+  across *every* run that recorded a count is refused outright, under "Refused:
+  arm never called an MCP tool" — one such run means nothing, but an arm that
+  never touches its own tools is a second copy of baseline. Both follow the same
+  shape as the existing stale-run exclusion, `--all` included: pass it to see
+  the raw numbers anyway.
+
+A missing field is "unknown", never "dead", so the whole history that predates
+these fields aggregates exactly as before. The historical files whose serena
+column *is* known-dead were annotated in place by
+`scripts/annotateMcpDeadRuns.ts`, which stamps each affected record with the
+evidence it rests on (`mcpAnnotation`) so an annotated record can never be
+mistaken for a measured one. Nothing else in those records was touched — the
+tokens and turns are real measurements; only the label on the column was wrong.
+
 ### `session-economy` — the same comparison, amortized instead of isolated
 
 `token-economy` runs every (task, arm, repetition) as a brand-new `claude -p`
