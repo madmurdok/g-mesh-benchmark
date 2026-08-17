@@ -205,11 +205,24 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * `--setting-sources project`, see runClaude.ts), rather than appended to the
  * task prompt as a benchmark-only shortcut.
  *
- * Copied verbatim from the user's own `~/.claude/CLAUDE.md` "Code search"
- * section and from g-mesh/README.md's matching published snippet — this text
- * lives in two other places outside this repo and must be kept in sync with
- * both by hand if either changes, same manually-synced caveat this file
- * already states for KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS above.
+ * Copied verbatim from g-mesh's own `AGENTS_MD_SNIPPET`
+ * (core/src/cli/agent_instructions.rs) — the text `g-mesh init --agent claude`
+ * actually writes into a real user's project — plus g-mesh/README.md's
+ * matching published snippet and the user's own `~/.claude/CLAUDE.md` "Code
+ * search" section. This text lives in three other places outside this repo
+ * and must be kept in sync with all of them by hand if any changes, same
+ * manually-synced caveat this file already states for
+ * KUNGFU_TOOLS/KUNGFU_DENIED_TOOLS above.
+ *
+ * The copy vs. `AGENTS_MD_SNIPPET` specifically is guarded, not just
+ * documented: armConfig.test.ts's drift test reads that constant straight out
+ * of the g-mesh checkout (sibling-repo layout, see benchConfig.ts's `ROOT` and
+ * README.md; override with `G_MESH_BENCH_REPO`) and fails the suite if it no
+ * longer matches this constant byte-for-byte — skipping loudly, never
+ * silently, when no g-mesh checkout is reachable. That guard cannot reach
+ * `~/.claude/CLAUDE.md` (outside any repo) or README.md's copy — both still
+ * need a human to notice and re-sync by hand. `~/.claude/CLAUDE.md` was last
+ * synced 2026-08-15 (backup: `~/.claude/CLAUDE.md.bak-2026-08-15`).
  *
  * The bullet after the `resolved: false` one below (on a `symbol_id`
  * anchoring an already-disambiguated name) was validated here first — a

@@ -17,7 +17,14 @@ import {
   armTools,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
-import { resolveConfigured, resolveFresh, resolveWarm, warmGmeshIndex, writeRepoMap } from "./lib/corpusResolver.js";
+import {
+  resolveConfigured,
+  resolveFresh,
+  resolveWarm,
+  stopTrackedGmeshDaemons,
+  warmGmeshIndex,
+  writeRepoMap,
+} from "./lib/corpusResolver.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
@@ -1071,6 +1078,19 @@ async function main() {
       }
     }
   }
+
+  // Every (task, arm, repetition) above that touched a g-mesh arm left its
+  // daemon running (by design — the core survives past any one MCP call, see
+  // g-mesh's daemon::lifecycle) until this run explicitly stops it. Task #16:
+  // the harness used to never do this at all, leaking one daemon per run for
+  // the full 24h coreIdleTimeoutHours. Run here, once every corpus/task/arm/
+  // rep is done, rather than per call: several of the cwds above (the shared
+  // resolveWarm()/resolveConfigured() checkouts) are deliberately reused
+  // across many calls in the loop, and stopping mid-reuse would just force
+  // the next call to re-bootstrap a fresh daemon. A run that crashes or is
+  // killed before reaching this point never stops its daemons this way — that
+  // gap is what mcpConfig.ts's coreIdleTimeoutHours backstop covers instead.
+  await stopTrackedGmeshDaemons();
 
   const resultsDir = path.join(ROOT, "results/token-economy");
   await mkdir(resultsDir, { recursive: true });

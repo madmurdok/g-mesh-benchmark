@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBenchConfig } from "./benchConfig.js";
+import { trackGmeshCwd } from "./corpusResolver.js";
 import {
   assertMcpHealthy,
   declaredMcpServers,
@@ -380,6 +381,15 @@ function emptyUsage() {
 }
 
 export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult> {
+  // Records opts.cwd as one this process bootstrapped a g-mesh daemon for
+  // (task #16) — the g-mesh MCP server, once spawned, bootstraps or reuses a
+  // daemon rooted at this cwd, which stopTrackedGmeshDaemons() must stop at
+  // teardown. A no-op for every other arm, whose mcpConfig declares no
+  // "g-mesh" server.
+  if ("g-mesh" in opts.mcpConfig.mcpServers) {
+    trackGmeshCwd(opts.cwd);
+  }
+
   const configDir = await mkdtemp(path.join(tmpdir(), "gmesh-bench-mcp-"));
   const configPath = path.join(configDir, "mcp-config.json");
   await writeFile(configPath, JSON.stringify(opts.mcpConfig));
