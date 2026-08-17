@@ -135,6 +135,22 @@ export interface CorpusEntry {
   path?: string;
   repoUrl?: string;
   ref?: string;
+  /**
+   * The commit every arm of every run measures this corpus at — a SHA, tag or
+   * branch name, resolved to one commit per process by corpusResolver.ts's
+   * resolveCorpusRevision() and checked out into every clone (warm, fresh and
+   * configured alike).
+   *
+   * Optional so a new corpus can be registered without hunting a SHA first;
+   * unpinned resolves `HEAD` for `kind: "local"` / `ref` for `kind: "git"`
+   * and warns. Pinning is the recommended state for a corpus with tasks
+   * authored against it: this benchmark's ground truth is content-anchored
+   * (exact `mode: "pool"` file lists, `mode: "test"` tasks premised on a bug
+   * present in a specific revision), so a corpus that tracks a live checkout's
+   * HEAD silently changes what "correct" means between two runs. Bumping a pin
+   * is the moment to re-run scripts/computeCandidatePool.ts — see README.
+   */
+  revision?: string;
   language: "ts" | "js";
 }
 

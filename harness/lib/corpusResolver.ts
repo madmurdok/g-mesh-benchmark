@@ -74,17 +74,150 @@ export async function stopTrackedGmeshDaemons(): Promise<void> {
   }
 }
 
-async function cloneAt(entry: CorpusEntry, dest: string): Promise<void> {
-  if (!entry.repoUrl || !entry.ref) {
-    throw new Error(`corpus ${entry.id} is kind=git but missing repoUrl/ref`);
+/**
+ * Every corpus revision this process has resolved, keyed by corpus id.
+ *
+ * The memo is the actual mechanism that makes arms comparable, not an
+ * optimization: resolveCorpusRevision() is called from every clone path
+ * (warm, fresh, configured) and from the experiment entry points that stamp
+ * the revision onto their result records, so a single memoized answer per
+ * process is what guarantees that `baseline`'s checkout, `gmesh-configured`'s
+ * throwaway clone and the recorded `corpusRevision` are all the same commit —
+ * even for an unpinned `kind: "local"` corpus whose source repo receives a
+ * commit halfway through a 15-hour sweep.
+ *
+ * Task #116: before this existed, `baseline` ran from a CACHE_ROOT clone made
+ * once and never refreshed while the `-configured` arms cloned the registry
+ * path's current HEAD on every invocation, so a sweep silently compared arms
+ * against different code (visibly so in the 2026-08-16 sweep, where every
+ * baseline answer cited `cancelTask` at line 372 and every g-mesh answer at
+ * line 425 — both correct, different checkouts).
+ */
+const resolvedRevisions = new Map<string, string>();
+
+function isCommitSha(value: string): boolean {
+  return /^[0-9a-f]{40}$/.test(value);
+}
+
+async function computeCorpusRevision(entry: CorpusEntry): Promise<string> {
+  if (entry.kind === "local") {
+    if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
+    // `^{commit}` so a tag or branch name resolves to the commit it points at
+    // rather than to a tag object, and so a bad `revision` fails here — once,
+    // loudly, before anything is cloned or any money is spent — instead of at
+    // the first checkout.
+    const requested = entry.revision ?? "HEAD";
+    try {
+      const { stdout } = await execFileAsync("git", ["-C", entry.path, "rev-parse", `${requested}^{commit}`]);
+      return stdout.trim();
+    } catch (err) {
+      throw new Error(
+        `corpus ${entry.id}: cannot resolve revision "${requested}" in ${entry.path} ` +
+          `(${(err as Error).message.trim()}). Fix corpora/registry.json's "revision", or fetch it in that checkout.`,
+      );
+    }
+  }
+  if (!entry.repoUrl) throw new Error(`corpus ${entry.id} is kind=git but missing repoUrl`);
+  const requested = entry.revision ?? entry.ref;
+  if (!requested) throw new Error(`corpus ${entry.id} is kind=git but missing revision/ref`);
+  if (isCommitSha(requested)) return requested;
+  // A branch or tag name still has to be turned into a commit *once*, here,
+  // for the same reason the memo above exists: resolving it per clone would
+  // let two arms of one run land on different commits of a moving branch.
+  const { stdout } = await execFileAsync("git", ["ls-remote", entry.repoUrl, requested]);
+  const sha = stdout.split(/\s+/)[0];
+  if (sha === undefined || !isCommitSha(sha)) {
+    throw new Error(`corpus ${entry.id}: git ls-remote ${entry.repoUrl} ${requested} resolved no commit`);
+  }
+  return sha;
+}
+
+/**
+ * The one commit every checkout of `entry` in this process is pinned to, and
+ * the value experiments record as `corpusRevision`.
+ *
+ * `revision` in corpora/registry.json is the pin; without one, a `kind:
+ * "local"` corpus resolves its source checkout's current HEAD and a `kind:
+ * "git"` corpus resolves its `ref`. Unpinned is supported (adding a corpus
+ * shouldn't require hunting a SHA first) but warned about, because ground
+ * truth in this benchmark is content-anchored — `mode: "pool"` candidate
+ * pools are exact file lists, and `mode: "test"` tasks are premised on a bug
+ * that exists in a particular revision — so a corpus that tracks HEAD grades
+ * against ground truth that rots without anyone noticing. See README's
+ * "Pin the corpus to a revision".
+ */
+export async function resolveCorpusRevision(entry: CorpusEntry): Promise<string> {
+  const memoized = resolvedRevisions.get(entry.id);
+  if (memoized !== undefined) return memoized;
+  const revision = await computeCorpusRevision(entry);
+  resolvedRevisions.set(entry.id, revision);
+  if (entry.revision === undefined) {
+    console.warn(
+      `  ! corpus ${entry.id} has no "revision" pin in corpora/registry.json; using ${revision} ` +
+        `(resolved once for this run). Results stay internally consistent, but this corpus's ground truth ` +
+        `is not protected against upstream commits — pin it to keep past runs reproducible.`,
+    );
+  }
+  return revision;
+}
+
+/**
+ * Drops the per-process revision memo. Exists for tests only — the memo is
+ * deliberately process-wide (see resolvedRevisions), so a test that needs to
+ * observe a *second* resolution of the same corpus id has no other way to get
+ * one. Same test-only-reset precedent as benchConfig.ts's
+ * resetBenchConfigCache(). Never call this mid-run: a run that re-resolves a
+ * corpus can pin two arms to two commits, which is exactly the bug this file
+ * fixes.
+ */
+export function resetResolvedRevisionsCache(): void {
+  resolvedRevisions.clear();
+}
+
+/**
+ * Puts an already-cloned `dest` on exactly `revision`, detached.
+ *
+ * `--force` because this is also the refresh path for the reused warm cache:
+ * whatever a previous run's arm left modified in there is not part of the
+ * corpus and must not survive into the next run's measurement.
+ */
+async function checkoutRevision(entry: CorpusEntry, dest: string, revision: string): Promise<void> {
+  try {
+    await execFileAsync("git", ["-C", dest, "checkout", "--detach", "--force", revision]);
+  } catch (err) {
+    throw new Error(
+      `corpus ${entry.id}: checkout ${dest} does not contain revision ${revision} ` +
+        `(${(err as Error).message.trim()}). If this is the warm cache, delete ${dest} and re-run.`,
+    );
+  }
+}
+
+async function cloneAt(entry: CorpusEntry, dest: string, revision: string): Promise<void> {
+  if (!entry.repoUrl) {
+    throw new Error(`corpus ${entry.id} is kind=git but missing repoUrl`);
   }
   await execFileAsync("git", ["clone", entry.repoUrl, dest]);
-  await execFileAsync("git", ["checkout", entry.ref], { cwd: dest });
+  await checkoutRevision(entry, dest, revision);
 }
 
 /** Clones from a local git working copy — tracked files only, no node_modules/.git bloat. */
-async function cloneLocal(sourcePath: string, dest: string): Promise<void> {
+async function cloneLocal(entry: CorpusEntry, sourcePath: string, dest: string, revision: string): Promise<void> {
   await execFileAsync("git", ["clone", sourcePath, dest]);
+  await checkoutRevision(entry, dest, revision);
+}
+
+/**
+ * Every clone path funnels through here so "which commit" is decided in one
+ * place: an arm can only ever get the revision resolveCorpusRevision() settled
+ * for this process, whatever route it took to a directory.
+ */
+async function cloneCorpus(entry: CorpusEntry, dest: string, revision: string): Promise<void> {
+  if (entry.kind === "local") {
+    if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
+    await cloneLocal(entry, entry.path, dest, revision);
+    return;
+  }
+  await cloneAt(entry, dest, revision);
 }
 
 /**
@@ -98,34 +231,54 @@ async function cloneLocal(sourcePath: string, dest: string): Promise<void> {
  * 80% of `baseline`-arm results replied in Russian (this machine's global
  * CLAUDE.md says to) while `gmesh-configured`/`serena` — which always ran
  * from a `CACHE_ROOT`/mkdtemp clone — never did once.
+ *
+ * Reused, but no longer *stale*: the cache is checked against this run's
+ * resolveCorpusRevision() and hard-checked-out onto it when it differs (task
+ * #116). Before that, this clone was made once and never touched again, so
+ * the arms that run from here — `baseline` above all — measured whatever the
+ * corpus looked like on the day the cache directory was first created, while
+ * every mkdtemp-cloning arm measured current HEAD. The reuse itself is still
+ * the point (a shared path keeps g-mesh's index and any installed
+ * node_modules warm across runs); only the "never refreshed" part was the bug.
  */
 export async function resolveWarm(entry: CorpusEntry): Promise<string> {
+  const revision = await resolveCorpusRevision(entry);
   const dest = path.join(CACHE_ROOT, entry.id);
   await mkdir(CACHE_ROOT, { recursive: true });
+  let cachedHead: string | undefined;
   try {
-    await execFileAsync("git", ["-C", dest, "rev-parse", "HEAD"]);
+    const { stdout } = await execFileAsync("git", ["-C", dest, "rev-parse", "HEAD"]);
+    cachedHead = stdout.trim();
   } catch {
-    if (entry.kind === "local") {
-      if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
-      await cloneLocal(entry.path, dest);
-    } else {
-      await cloneAt(entry, dest);
+    cachedHead = undefined;
+  }
+  if (cachedHead === undefined) {
+    await cloneCorpus(entry, dest, revision);
+    return dest;
+  }
+  if (cachedHead !== revision) {
+    console.log(`  warm ${entry.id} cache: ${cachedHead.slice(0, 8)} -> ${revision.slice(0, 8)} (refreshing)`);
+    // Best-effort: the fetch only matters when the pinned commit isn't in the
+    // cached clone yet, and the checkout below is what actually decides —
+    // failing here on a network/offline hiccup while the commit is already
+    // present would abort a run that could have proceeded.
+    try {
+      await execFileAsync("git", ["-C", dest, "fetch", "--quiet", "origin"]);
+    } catch (err) {
+      console.warn(`  fetch into the warm ${entry.id} cache failed: ${(err as Error).message.trim()}`);
     }
+    await checkoutRevision(entry, dest, revision);
   }
   return dest;
 }
 
 /** Fresh throwaway checkout guaranteeing no prior g-mesh index exists for this path (cold-start). */
 export async function resolveFresh(entry: CorpusEntry): Promise<string> {
+  const revision = await resolveCorpusRevision(entry);
+  // mkdtemp already created `dest` as an empty dir; git clone refuses to clone into
+  // a non-empty one but is fine with an existing *empty* one.
   const dest = await mkdtemp(path.join(tmpdir(), `gmesh-bench-${entry.id}-`));
-  if (entry.kind === "local") {
-    if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
-    // mkdtemp already created `dest` as an empty dir; git clone refuses to clone into
-    // a non-empty one but is fine with an existing *empty* one.
-    await cloneLocal(entry.path, dest);
-    return dest;
-  }
-  await cloneAt(entry, dest);
+  await cloneCorpus(entry, dest, revision);
   return dest;
 }
 

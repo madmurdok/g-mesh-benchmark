@@ -15,6 +15,7 @@ import {
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import {
   resolveConfigured,
+  resolveCorpusRevision,
   resolveFresh,
   resolveWarm,
   stopTrackedGmeshDaemons,
@@ -231,10 +232,15 @@ function skippedRun(
   timestamp: string,
   sequenceIndex: number,
   sessionLength: number,
+  corpusRevision: string,
 ): SessionEconomyRun {
   return {
     taskId: task.id,
     corpusId,
+    // Known even for a call that never happened — unlike the token/turn
+    // tallies below, this is a property of the checkout the chain was pointed
+    // at, not of the measurement.
+    corpusRevision,
     arm,
     repetition,
     timestamp,
@@ -281,6 +287,7 @@ async function runSessionChain(
   arm: Arm,
   sessionRepetition: number,
   timestamp: string,
+  corpusRevision: string,
 ): Promise<SessionEconomyRun[]> {
   const sessionLength = tasks.length;
   const ceilingUsd = sessionBudgetCeiling(sessionLength, MAX_COMBINED_BUDGET_USD);
@@ -306,12 +313,16 @@ async function runSessionChain(
         `  [${corpusId}] ${arm} rep ${sessionRepetition}: ${sequenceIndex}/${sessionLength} ${task.id} — ` +
           `skipping (oracle.mode "test" task; can't run inside a shared chained session).`,
       );
-      runs.push(skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength));
+      runs.push(
+        skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength, corpusRevision),
+      );
       continue;
     }
 
     if (abortReason !== null) {
-      runs.push(skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength));
+      runs.push(
+        skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength, corpusRevision),
+      );
       continue;
     }
 
@@ -319,7 +330,9 @@ async function runSessionChain(
       abortReason =
         `chain spend $${cumulativeCostUsd.toFixed(4)} exceeded its ceiling $${ceilingUsd.toFixed(4)}`;
       console.warn(`  ! [${corpusId}] ${arm} chain (rep ${sessionRepetition}): ${abortReason}; skipping the rest.`);
-      runs.push(skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength));
+      runs.push(
+        skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength, corpusRevision),
+      );
       continue;
     }
 
@@ -356,6 +369,10 @@ async function runSessionChain(
     runs.push({
       taskId: task.id,
       corpusId,
+      // Same revision for every arm's chain in this run, by construction — see
+      // TokenEconomyRun.corpusRevision and corpusResolver.ts's
+      // resolveCorpusRevision().
+      corpusRevision,
       arm,
       repetition: sessionRepetition,
       timestamp,
@@ -481,6 +498,13 @@ async function main() {
       console.log(`[${corpus.id}] no tasks defined; skipping.`);
       continue;
     }
+    // Resolved (and logged) before the first clone, same as token-economy's
+    // loop: every chain below is pinned to this commit and records it.
+    const corpusRevision = await resolveCorpusRevision(corpus);
+    console.log(
+      `[${corpus.id}] corpus revision ${corpusRevision}` +
+        `${corpus.revision === undefined ? " (unpinned: source HEAD at run start)" : " (pinned in registry.json)"}`,
+    );
     const cwd = await resolveWarm(corpus);
     // resolveWarm() reuses the same absolute path across runs, so g-mesh's
     // index there is cold only on the very first-ever invocation against
@@ -525,7 +549,7 @@ async function main() {
                 : arm === "serena" && serenaCwd !== undefined
                   ? serenaCwd
                   : cwd;
-        runs.push(...(await runSessionChain(armCwd, tasks, corpus.id, arm, rep, timestamp)));
+        runs.push(...(await runSessionChain(armCwd, tasks, corpus.id, arm, rep, timestamp, corpusRevision)));
       }
     }
   }
