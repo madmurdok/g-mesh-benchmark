@@ -13,6 +13,7 @@ import {
   armTools,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
+import { mapWithConcurrency } from "./lib/concurrency.js";
 import {
   resolveConfigured,
   resolveCorpusRevision,
@@ -31,7 +32,9 @@ import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { Arm, BenchTask } from "./lib/types.js";
 import {
   MAX_COMBINED_BUDGET_USD,
+  armConcurrencyLimit,
   combinedBudgetStatus,
+  groupArmsByCwd,
   taskEditsCode,
   type RunStatus,
   type TokenEconomyRun,
@@ -424,6 +427,30 @@ async function runSessionChain(
   return runs;
 }
 
+/**
+ * How many arm chains may run at once, for `session-economy` specifically.
+ *
+ * Reads the same G_MESH_BENCH_ARM_CONCURRENCY as token-economy.ts (through the
+ * same parser, so the two can't drift on what a valid value is) but defaults
+ * the other way — **1, today's serial behaviour** — because the two experiments
+ * are not equally insulated from being overlapped. token-economy measures each
+ * call in isolation, so an arm's numbers cannot depend on what another arm is
+ * doing; session-economy's entire subject is how a *chain's* prompt cache
+ * amortizes across successive calls, and that has not been A/B'd under
+ * concurrency the way task #118 A/B'd token-economy's. The mechanism is
+ * identical and the lanes are the same (see groupArmsByCwd), so raising this is
+ * expected to work — it just has not been demonstrated to leave the chain
+ * numbers unchanged, and this experiment's own conclusions are the thing at
+ * risk.
+ *
+ * Set G_MESH_BENCH_ARM_CONCURRENCY=<n> to opt in: a normal-REPS run of this
+ * experiment takes hours, and the arms of one repetition have separate
+ * checkouts and separate cache prefixes exactly as they do in token-economy.
+ */
+function sessionArmConcurrency(): number {
+  return armConcurrencyLimit(1);
+}
+
 async function main() {
   if (!existsSync(gmeshBinaryPath())) {
     console.error(
@@ -489,9 +516,16 @@ async function main() {
 
   const runs: SessionEconomyRun[] = [];
 
-  // Sequential on purpose, no parallelism: two chains sharing one resolveWarm()
-  // checkout concurrently is untested, and overlapping sessions would blur the
-  // very cache behavior being measured.
+  // Corpora and repetitions are sequential on purpose: two chains of the *same*
+  // arm share both a checkout and a prompt-cache prefix, and overlapping those
+  // would blur the very cache behaviour this experiment measures. Different
+  // arms of one repetition may overlap, but only when explicitly asked for —
+  // see sessionArmConcurrency() for why the default here differs from
+  // token-economy's.
+  const armConcurrency = sessionArmConcurrency();
+  if (armConcurrency > 1) {
+    console.log(`Arm concurrency: up to ${armConcurrency} arm chains in parallel per repetition.`);
+  }
   for (const corpus of corpora) {
     const tasks = await loadTasks(corpus.id);
     if (tasks.length === 0) {
@@ -537,20 +571,33 @@ async function main() {
     // falling through to the shared resolveWarm() checkout before this change.
     const serenaCwd = arms.includes("serena") ? await resolveFresh(corpus) : undefined;
     for (let rep = 1; rep <= reps; rep++) {
-      for (const arm of arms) {
-        console.log(`[${corpus.id}] ${arm} session (chain ${rep}/${reps}, ${tasks.length} tasks)...`);
-        const armCwd =
-          arm === "kungfu" && kungfuCwd !== undefined
-            ? kungfuCwd
-            : arm === "gmesh-configured" && gmeshConfiguredCwd !== undefined
-              ? gmeshConfiguredCwd
-              : arm === "serena-configured" && serenaConfiguredCwd !== undefined
-                ? serenaConfiguredCwd
-                : arm === "serena" && serenaCwd !== undefined
-                  ? serenaCwd
-                  : cwd;
-        runs.push(...(await runSessionChain(armCwd, tasks, corpus.id, arm, rep, timestamp, corpusRevision)));
-      }
+      const armCwds = arms.map((arm) =>
+        arm === "kungfu" && kungfuCwd !== undefined
+          ? kungfuCwd
+          : arm === "gmesh-configured" && gmeshConfiguredCwd !== undefined
+            ? gmeshConfiguredCwd
+            : arm === "serena-configured" && serenaConfiguredCwd !== undefined
+              ? serenaConfiguredCwd
+              : arm === "serena" && serenaCwd !== undefined
+                ? serenaCwd
+                : cwd,
+      );
+      // Lanes, not arms — arms that resolved to the same checkout (bare
+      // `gmesh` and `baseline` both fall through to the shared warm one) run
+      // one after another inside a single lane, so a chain never shares a cwd
+      // with a concurrently-running one. Identical rule to token-economy.ts's
+      // groupArmsByCwd, which is where it is documented and tested.
+      const lanes = groupArmsByCwd(arms, armCwds);
+      const chains = new Array<SessionEconomyRun[]>(arms.length);
+      await mapWithConcurrency(lanes, armConcurrency, async (lane) => {
+        for (const i of lane) {
+          const arm = arms[i] as Arm;
+          console.log(`[${corpus.id}] ${arm} session (chain ${rep}/${reps}, ${tasks.length} tasks)...`);
+          chains[i] = await runSessionChain(armCwds[i] as string, tasks, corpus.id, arm, rep, timestamp, corpusRevision);
+        }
+        return null;
+      });
+      for (const chain of chains) runs.push(...chain);
     }
   }
 

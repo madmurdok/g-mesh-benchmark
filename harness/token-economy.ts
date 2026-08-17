@@ -17,6 +17,7 @@ import {
   armTools,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
+import { mapWithConcurrency } from "./lib/concurrency.js";
 import {
   resolveConfigured,
   resolveCorpusRevision,
@@ -33,6 +34,7 @@ import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./li
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle } from "./lib/oracleCheck.js";
+import { formatPhaseSummary, phaseProfileJson, timePhase } from "./lib/phaseTimer.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
@@ -212,6 +214,77 @@ function repetitionCount(): number {
 }
 
 /**
+ * How many of a (task, repetition)'s arms may have a `claude -p` call in flight
+ * at once.
+ *
+ * Defaults to all of them, which is the whole point: a sweep's wall-clock was
+ * dominated by waiting on the API one arm at a time, and the arms of one group
+ * are the largest set of runs in this harness that provably share nothing — a
+ * cwd apiece, a prompt prefix apiece (an arm *is* its tool schemas plus its
+ * project configuration), and no ordering relationship to each other. Measured
+ * on the 2026-08-16 sweep's own records, replacing each group's serial sum with
+ * its slowest arm removes 49% of all agent time.
+ *
+ * What it does NOT do is overlap two repetitions of the same arm, or two tasks:
+ * those share a cwd and a prompt-cache prefix, and racing two calls onto one
+ * cache prefix is exactly how a token measurement stops being reproducible.
+ *
+ * G_MESH_BENCH_ARM_CONCURRENCY=1 restores strictly serial execution — the right
+ * setting when reproducing a pre-#118 number exactly, or when diagnosing a run
+ * where interleaved logs get in the way.
+ *
+ * `fallback` is what an unset variable means, which is *not* the same answer
+ * for both experiments: token-economy passes its arm count (parallel by
+ * default), session-economy passes 1 (serial by default, see its
+ * sessionArmConcurrency). The parsing and the error message are shared so the
+ * two can't drift on what a valid value is.
+ */
+export function armConcurrencyLimit(fallback: number): number {
+  const raw = process.env.G_MESH_BENCH_ARM_CONCURRENCY;
+  if (raw === undefined) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`Invalid G_MESH_BENCH_ARM_CONCURRENCY value "${raw}"; expected a positive integer.`);
+  }
+  return parsed;
+}
+
+/**
+ * Splits a (task, repetition)'s arms into lanes that may run concurrently:
+ * arms that resolved to the *same* cwd share a lane and run in sequence,
+ * everything else gets a lane of its own.
+ *
+ * Returns arm *indices*, not arms, so the caller can write each result back at
+ * the position that arm has in its own `arms` list — the records file stays
+ * ordered by arm regardless of which lane finished first.
+ *
+ * Lane order follows first appearance, and within a lane the arms keep their
+ * original relative order, so a fully-serial configuration
+ * (G_MESH_BENCH_ARM_CONCURRENCY=1) executes in exactly the order the arm list
+ * spells out.
+ *
+ * Pure and exported so the sharing rule is testable without running a
+ * benchmark: getting it wrong doesn't crash, it silently races two arms that
+ * share a checkout (see taskSelection.test.ts's sibling cases).
+ */
+export function groupArmsByCwd(arms: readonly Arm[], cwds: readonly string[]): number[][] {
+  const laneByCwd = new Map<string, number[]>();
+  const lanes: number[][] = [];
+  for (let i = 0; i < arms.length; i++) {
+    const cwd = cwds[i] as string;
+    const existing = laneByCwd.get(cwd);
+    if (existing) {
+      existing.push(i);
+      continue;
+    }
+    const lane = [i];
+    laneByCwd.set(cwd, lane);
+    lanes.push(lane);
+  }
+  return lanes;
+}
+
+/**
  * Which of excalidraw's `implementation` tasks a full, unfiltered run
  * includes, ordered by measured API spend per arm call (the test commands cost
  * about the same as each other — they're all dominated by the same `yarn
@@ -337,7 +410,11 @@ interface GradingOutcome {
  */
 async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promise<GradingOutcome> {
   if (taskEditsCode(task)) {
-    const verdict = await runAcceptanceTest(cwd, task.oracle);
+    // Timed as its own phase because this is not a cheap assertion check: it
+    // installs the corpus's dependencies into the throwaway clone before the
+    // test runner starts (excalidraw's `yarn install` alone is ~58s on a cold
+    // clone), which is real sweep wall-clock spent outside every arm call.
+    const verdict = await timePhase("grade.test", () => runAcceptanceTest(cwd, task.oracle));
     return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
   }
   const verdict = await checkOracle(resultText, task.oracle);
@@ -662,6 +739,7 @@ async function warmArm(cwd: string, arm: Arm): Promise<void> {
     model: MODEL,
     maxBudgetUsd: MAX_BUDGET_USD,
     armLabel: arm,
+    phase: "warmup",
   });
   if (result.status !== "ok") {
     throw new Error(
@@ -840,7 +918,39 @@ function armsNeedingOwnClone(): ReadonlySet<Arm> {
   return new Set<Arm>(["kungfu", "serena", ...custom]);
 }
 
+/**
+ * Writes whatever records a run had produced before it aborted, to
+ * `results/token-economy/<timestamp>-partial.json`.
+ *
+ * The `-partial` suffix is for the human reading the directory; every row in
+ * the file is a complete, healthy, fully-graded run, so `npm run report` is
+ * right to pick it up like any other file — a sweep that died at run 380 of 405
+ * measured 379 real things.
+ *
+ * Best-effort and never re-throws: this runs on the way out of a run that is
+ * already failing, and a second failure here would replace an actionable "arm X
+ * never connected" message with a filesystem error about the attempt to salvage
+ * it.
+ */
+async function writePartialRuns(runs: readonly TokenEconomyRun[], timestamp: string): Promise<void> {
+  if (runs.length === 0) return;
+  try {
+    const resultsDir = path.join(ROOT, "results/token-economy");
+    await mkdir(resultsDir, { recursive: true });
+    const outPath = path.join(resultsDir, `${timestamp.replace(/[:.]/g, "-")}-partial.json`);
+    await writeFile(outPath, JSON.stringify(runs, null, 2));
+    console.error(`\nRun aborted. Wrote the ${runs.length} record(s) completed before the failure to ${outPath}`);
+  } catch (err) {
+    console.error(`Could not save partial results: ${(err as Error).message}`);
+  }
+}
+
 async function main() {
+  // Taken before the binary preflight rather than after the arm list is
+  // resolved, so the profile's denominator is the run as an operator
+  // experiences it — `npm run token-economy` to the last line of output —
+  // rather than only the part after setup.
+  const runStart = performance.now();
   if (!existsSync(gmeshBinaryPath())) {
     console.error(
       `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
@@ -959,6 +1069,12 @@ async function main() {
 
   const reps = repetitionCount();
   console.log(`Repetitions per (task, arm): ${reps}`);
+  const armConcurrency = armConcurrencyLimit(arms.length);
+  console.log(
+    armConcurrency > 1
+      ? `Arm concurrency: ${Math.min(armConcurrency, arms.length)} of ${arms.length} arms run in parallel per (task, rep).`
+      : "Arm concurrency: 1 (serial — G_MESH_BENCH_ARM_CONCURRENCY=1).",
+  );
 
   // Resolved once, outside the corpus loop: it reads the config, not the run.
   const ownCloneArms = armsNeedingOwnClone();
@@ -1047,8 +1163,16 @@ async function main() {
 
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
+        // Every arm's cwd is prepared *before* any of them runs, and strictly
+        // one at a time, even though the calls themselves then overlap. Setup
+        // is the CPU/disk-bound half of a run — a cold `g-mesh init` on
+        // excalidraw is a 211s walk that already saturates several cores, and
+        // an edit task's clone is followed by a dependency install — so running
+        // three of those at once on an 8-core machine would trade the agent
+        // latency this parallelism recovers for contention, and would make each
+        // arm's setup time depend on what the other arms happened to be doing.
+        const armCwds: string[] = [];
         for (const arm of arms) {
-          console.log(`[${corpus.id}] ${task.id}: ${arm} arm (rep ${rep}/${reps})...`);
           // A task graded by `mode: "test"` hands the agent Edit/Write, so its
           // cwd is about to be modified. The shared `cwd` above is either the
           // live registered checkout (kind=local) or a cache reused by every
@@ -1106,14 +1230,58 @@ async function main() {
           // Logged (and left on disk) so a surprising verdict can be examined
           // afterwards — the agent's actual diff is the only real evidence of
           // what it did, and it lives nowhere else.
-          if (taskEditsCode(task)) console.log(`  edit sandbox: ${armCwd}`);
-          runs.push(
-            await runArm(armCwd, task, corpus.id, arm, rep, timestamp, {
-              serena: serenaRevision,
-              corpus: corpusRevision,
-            }),
+          if (taskEditsCode(task)) console.log(`  edit sandbox (${arm}): ${armCwd}`);
+          armCwds.push(armCwd);
+        }
+
+        const lanes = groupArmsByCwd(arms, armCwds);
+        console.log(
+          `[${corpus.id}] ${task.id} (rep ${rep}/${reps}): ${lanes.map((l) => l.map((i) => arms[i]).join(" -> ")).join(" | ")}` +
+            `${armConcurrency > 1 && lanes.length > 1 ? ` — ${Math.min(armConcurrency, lanes.length)} lanes in parallel` : ""}...`,
+        );
+        // The one place this harness overlaps anything, and it overlaps *lanes*
+        // rather than arms: two arms that resolved to the same directory (bare
+        // `gmesh`, `gmesh-trusted` and `baseline` all run from the shared warm
+        // checkout) stay in one lane and run one after another. That single
+        // rule covers both hazards at once — a shared cwd, and the shared
+        // prompt-cache prefix that `gmesh`/`gmesh-trusted` have by definition
+        // (identical MCP config and tool list; they differ only in the user
+        // turn) — because the arms that share a prefix are exactly the arms
+        // that share a checkout.
+        //
+        // Results are written back at each arm's own index, so the records file
+        // is ordered by `arms`, not by which lane finished first, and stays
+        // comparable with a serial run's.
+        const groupRuns = new Array<TokenEconomyRun>(arms.length);
+        try {
+          await mapWithConcurrency(lanes, armConcurrency, async (lane) => {
+            for (const i of lane) {
+              groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, arms[i] as Arm, rep, timestamp, {
+                serena: serenaRevision,
+                corpus: corpusRevision,
+              });
+            }
+            return null;
+          });
+        } catch (err) {
+          // A dead arm still aborts (see lib/mcpHealth.ts) — but not before the
+          // runs that already completed are on disk. Losing a 30-minute run's
+          // worth of healthy records to one arm that failed to start in its
+          // last group is pure waste, and it is not what the fail-fast rule is
+          // protecting: that rule exists so a run without its tools is never
+          // *recorded as a result*, and the dead arm's own row never is. Rows
+          // from this group are dropped wholesale rather than partially, so no
+          // task ever lands in the file with some of its arms missing.
+          await writePartialRuns(runs, timestamp);
+          throw err;
+        }
+        for (const run of groupRuns) {
+          console.log(
+            `  ${run.arm}: ${run.status} in ${(run.durationMs / 1000).toFixed(1)}s, ` +
+              `${run.numTurns} turns, oracle ${run.oraclePassed ? "pass" : "fail"}`,
           );
         }
+        runs.push(...groupRuns);
       }
     }
   }
@@ -1158,11 +1326,14 @@ async function main() {
     narrativeSpend = narrative?.costUsd ?? 0;
   }
 
-  const html = renderHtmlReport(runs, { title: "g-mesh-bench token-economy run", narrative: narrativeText });
-  const htmlDir = path.join(ROOT, "results/html");
-  await mkdir(htmlDir, { recursive: true });
-  const htmlPath = path.join(htmlDir, `${timestamp.replace(/[:.]/g, "-")}.html`);
-  await writeFile(htmlPath, html);
+  const htmlPath = await timePhase("report.render", async () => {
+    const html = renderHtmlReport(runs, { title: "g-mesh-bench token-economy run", narrative: narrativeText });
+    const htmlDir = path.join(ROOT, "results/html");
+    await mkdir(htmlDir, { recursive: true });
+    const dest = path.join(htmlDir, `${timestamp.replace(/[:.]/g, "-")}.html`);
+    await writeFile(dest, html);
+    return dest;
+  });
   console.log(`Wrote HTML report to ${htmlPath}`);
 
   console.log(
@@ -1170,6 +1341,20 @@ async function main() {
   );
   const overBudget = runs.filter((r) => r.status === "budget_exceeded").length;
   if (overBudget > 0) console.log(`Runs recorded as budget_exceeded: ${overBudget}`);
+
+  // Printed and written last, so the wall-clock it divides by is the whole run
+  // including its own reporting tail. The JSON copy sits beside the run's
+  // records under the same timestamp: a profile is only useful next to the run
+  // it profiles, and "which sweep was this?" is otherwise unanswerable a week
+  // later.
+  const wallMs = performance.now() - runStart;
+  console.log(formatPhaseSummary(wallMs));
+  const profileDir = path.join(ROOT, "results/profile");
+  await mkdir(profileDir, { recursive: true });
+  await writeFile(
+    path.join(profileDir, `${timestamp.replace(/[:.]/g, "-")}.json`),
+    JSON.stringify({ runCount: runs.length, ...phaseProfileJson(wallMs) }, null, 2),
+  );
 }
 
 /**

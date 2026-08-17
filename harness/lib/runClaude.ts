@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { loadBenchConfig } from "./benchConfig.js";
 import { trackGmeshCwd } from "./corpusResolver.js";
 import {
+  McpArmUnavailableError,
   assertMcpHealthy,
   declaredMcpServers,
   expectedMcpToolNames,
@@ -13,6 +14,7 @@ import {
   type McpServerStatus,
 } from "./mcpHealth.js";
 import type { McpServerConfig } from "./mcpConfig.js";
+import { recordPhase, type Phase } from "./phaseTimer.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -86,6 +88,18 @@ export interface RunClaudeOptions {
    * which also declare no MCP servers and so can never trip the check.
    */
   armLabel?: string;
+
+  /**
+   * Which phase bucket this call's wall-clock belongs to (see lib/phaseTimer.ts).
+   *
+   * Defaults to "agent.call", the measured arm calls that dominate a run — the
+   * three callers that are *not* measurements (a cache warm-up, a judge's
+   * grading call, the report's narrative call) pass their own bucket so the
+   * profile can say how much of a sweep goes on grading and warming rather than
+   * on the thing being measured. It only ever affects the profile; the spawned
+   * argv is identical either way.
+   */
+  phase?: Phase;
 }
 
 /**
@@ -380,7 +394,66 @@ function emptyUsage() {
   return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
 }
 
+/** How much of a failed call's stderr is kept for the abort message. The tail: a launcher prints its diagnosis last. */
+const STDERR_TAIL_CHARS = 2000;
+
+/**
+ * Do not set `MCP_TIMEOUT` on these child processes. Measured, not assumed
+ * (task #118): raising the CLI's MCP startup allowance from its default to
+ * 180s — an attempt to stop `serena-configured` occasionally failing to connect
+ * under concurrency — made *successful* serena calls 13x slower. The same
+ * `tt-references-requiretask` call that takes ~20s serially and ~32s with three
+ * lanes running took 402-513s with the variable set, at unchanged turn count
+ * and an unchanged oracle verdict; both figures land within a few seconds of
+ * two full timeout windows, i.e. the serena arm waits out that timeout twice
+ * per call and the variable simply sets how long each wait is. The right lever
+ * for a flaky arm is G_MESH_BENCH_ARM_CONCURRENCY, not this.
+ */
+
+
+/**
+ * How many extra attempts a call gets when its MCP server reports back as not
+ * connected, and how long to wait before each.
+ *
+ * Measured, not defensive coding (task #118): running a (task, repetition)'s
+ * arms concurrently makes `serena-configured` intermittently fail to come up —
+ * 2 failures in 9 concurrent calls, against 0 in every serial call measured,
+ * with the CLI's stderr showing its `uvx`-launched hooks being cancelled. That
+ * contradicts the assumption the abort was built on ("an MCP server that can't
+ * start won't start for the next 128 runs either"): under load it is exactly
+ * per-run bad luck, and a sweep that aborts on it throws away hours.
+ *
+ * A retry cannot launder a bad result, which is why this is safe: a call whose
+ * server never connected returns no record at all, so the retry is a clean
+ * call, not a second opinion about a run that already happened. An arm that is
+ * genuinely misconfigured still fails every attempt and still aborts the run —
+ * just one call later, and with both failures visible in the log.
+ */
+const MCP_CONNECT_ATTEMPTS = 2;
+const MCP_RETRY_DELAY_MS = 10_000;
+
+/**
+ * Runs one `claude -p` call, retrying only the "its MCP server never connected"
+ * failure (see MCP_CONNECT_ATTEMPTS). Every other outcome — including an
+ * errored or over-budget run — is returned to the caller untouched on the first
+ * attempt, because those are results, not failures to produce one.
+ */
 export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await runClaudeOnce(opts);
+    } catch (err) {
+      if (!(err instanceof McpArmUnavailableError) || attempt >= MCP_CONNECT_ATTEMPTS) throw err;
+      console.warn(
+        `  ! ${opts.armLabel ?? "call"}: MCP server did not connect on attempt ${attempt}/${MCP_CONNECT_ATTEMPTS}; ` +
+          `retrying in ${MCP_RETRY_DELAY_MS / 1000}s. Original failure:\n${err.message}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, MCP_RETRY_DELAY_MS));
+    }
+  }
+}
+
+async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
   // Records opts.cwd as one this process bootstrapped a g-mesh daemon for
   // (task #16) — the g-mesh MCP server, once spawned, bootstraps or reuses a
   // daemon rooted at this cwd, which stopTrackedGmeshDaemons() must stop at
@@ -442,6 +515,13 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       opts.prompt,
     ];
 
+    // Timed around the whole child process, not around the API call the model
+    // makes inside it: the gap between this and the CLI's own `duration_ms`
+    // (recorded below) is per-call startup — node boot, settings discovery and,
+    // for an MCP arm, spawning and handshaking its server — which is paid 387
+    // times in a full sweep and was invisible before task #118.
+    const spawnStart = performance.now();
+    let stderrTail = "";
     const stdout = await new Promise<string>((resolve, reject) => {
       const child = spawn("claude", args, { cwd: opts.cwd });
       // Decodes across chunk boundaries (StringDecoder) instead of calling
@@ -453,9 +533,20 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
       child.stdout.setEncoding("utf8");
       let out = "";
       child.stdout.on("data", (chunk) => (out += chunk));
+      // Kept, bounded, purely so a failure has an explanation. The CLI reports
+      // a server that didn't come up as `status: "failed"` in its init event
+      // and nothing more; *why* it failed (a crashed launcher, a startup
+      // timeout, a missing binary) only ever appears on stderr, which this
+      // harness discarded — so the abort message that stops a whole sweep used
+      // to name the arm and say nothing actionable about it.
+      child.stderr.setEncoding("utf8");
+      child.stderr.on("data", (chunk) => {
+        stderrTail = `${stderrTail}${chunk}`.slice(-STDERR_TAIL_CHARS);
+      });
       child.on("error", reject);
       child.on("close", () => resolve(out));
     });
+    recordPhase(opts.phase ?? "agent.call", performance.now() - spawnStart);
 
     if (opts.transcriptLabel !== undefined && shouldSaveTranscripts()) {
       await saveTranscript(opts.transcriptLabel, stdout);
@@ -463,18 +554,34 @@ export async function runClaude(opts: RunClaudeOptions): Promise<RunClaudeResult
 
     const { result: parsed, toolCalls, mcpToolCalls, init } = parseStreamJson(stdout);
     const mcp: RunMcpState = { servers: init.servers, tools: init.tools, toolCalls: mcpToolCalls };
+    // Only for the calls bucketed as `agent.call`, so the two rows stay
+    // count-for-count comparable and their difference is exactly the startup
+    // overhead of the measured calls (see formatPhaseSummary).
+    if ((opts.phase ?? "agent.call") === "agent.call" && parsed !== null) {
+      recordPhase("agent.cli", parsed.duration_ms ?? 0);
+    }
 
     // Before any of the status branches below, so a dead arm aborts whether its
     // call "succeeded", errored or hit the budget cap — an arm running without
     // its tools produces perfectly ok-looking rows, which is the entire problem
     // (see lib/mcpHealth.ts). Deliberately after the transcript save above:
     // whatever made the server fail is worth having on disk.
-    assertMcpHealthy(
-      opts.armLabel ?? "(unlabeled call)",
-      declaredMcpServers(opts.mcpConfig),
-      expectedMcpToolNames(opts.tools),
-      init,
-    );
+    try {
+      assertMcpHealthy(
+        opts.armLabel ?? "(unlabeled call)",
+        declaredMcpServers(opts.mcpConfig),
+        expectedMcpToolNames(opts.tools),
+        init,
+      );
+    } catch (err) {
+      // Re-thrown with the CLI's own stderr attached, rather than logged
+      // separately: this error aborts the entire run (see mcpHealth.ts's
+      // exitOnDeadArm), so whatever it carries is all the operator gets.
+      if (err instanceof McpArmUnavailableError && stderrTail.trim().length > 0) {
+        throw new McpArmUnavailableError(`${err.message}\n\nLast stderr from the CLI:\n${stderrTail.trim()}`);
+      }
+      throw err;
+    }
 
     // No result event anywhere in the stream — same failure as an unparseable
     // single blob used to be, just detected per-stream instead of per-blob.

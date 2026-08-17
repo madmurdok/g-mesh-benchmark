@@ -162,10 +162,12 @@ export class McpArmUnavailableError extends Error {
  * re-thrown untouched, which leaves node's own unhandled-rejection reporting —
  * and therefore every existing failure's output — exactly as it was.
  *
- * Note what does *not* happen on this path: no results file is written. A sweep
- * that discovers halfway through that one arm was never running produces no
- * rows at all, rather than a file whose reader has to know which column to
- * distrust.
+ * What is written on this path (task #118) is a `<timestamp>-partial.json`
+ * holding the runs that had already completed — every one of them a healthy,
+ * fully-graded row. The rule this preserves is "a run without its tools is
+ * never recorded as a result", not "a failure destroys the hours of measurement
+ * that preceded it": the dead arm's own row is still never written, and neither
+ * is any other arm's row from the same (task, repetition) group.
  */
 export function exitOnDeadArm(error: unknown): never {
   if (error instanceof McpArmUnavailableError) {
