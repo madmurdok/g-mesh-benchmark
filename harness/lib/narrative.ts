@@ -59,6 +59,7 @@ export async function generateNarrative(
   try {
     const result = await runClaude({
       cwd: process.cwd(),
+      phase: "report.narrative",
       prompt: buildNarrativePrompt(bullets, aggregate),
       mcpConfig: buildBaselineArmConfig(),
       tools: "",

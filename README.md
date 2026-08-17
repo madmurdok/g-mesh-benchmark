@@ -423,6 +423,19 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
 `G_MESH_BENCH_INCLUDE_BARE_SERENA` below.
 
 `token-economy` also supports:
+- `G_MESH_BENCH_ARM_CONCURRENCY=<n>` — how many of a (task, repetition)'s arms
+  may have a `claude -p` call in flight at once. Defaults to **all of them**;
+  set it to `1` to restore the strictly serial execution the harness used
+  before v0.20.0. The arms of one group are the largest set of runs here that
+  provably share nothing — a cwd apiece (each arm already gets its own clone,
+  precisely because `gmesh-configured`/`kungfu-configured` write a `CLAUDE.md`,
+  `serena-configured` a `.claude/settings.json`, and kungfu/serena their index
+  directories into it) and a prompt-cache prefix apiece, since an arm *is* its
+  tool schemas plus its project configuration. Two repetitions of the same arm
+  share both, so the repetition loop stays serial and is not affected by this
+  setting. Per-arm setup (clone, `g-mesh init`, dependency install) and
+  `mode: "test"` grading also stay serial — see "What parallelism does and does
+  not overlap" below.
 - `G_MESH_BENCH_REPS=low|normal|max` — repetitions per (task, arm): 1/3/5 (default `normal`).
   Default now comes from `g-mesh-bench.config.json`'s `tokenEconomy.repetitions`; the env
   var still overrides it per-run.
@@ -519,14 +532,66 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
   extra run per (task, repetition). Same "appends onto the config-driven arm
   list" note applies here too.
 
+### What parallelism does and does not overlap
+
+Since v0.20.0 a `token-economy` run executes the arms of one (task, repetition)
+concurrently. Everything else stays strictly serial, and the boundary is drawn
+where measurement validity is, not where the code happened to be easiest to
+change:
+
+| Overlapped | Kept serial | Why |
+| --- | --- | --- |
+| The `claude -p` call of each arm in a group, and its judge-mode grading | Two repetitions of the same arm; two tasks | Arms differ by exactly their tool schemas and project configuration, i.e. by their prompt-cache prefix, and each has its own cwd. Two reps of one arm share both — racing two calls onto one cache prefix is how a token measurement stops being reproducible. |
+| — | Per-arm setup: clone, `g-mesh init`, repo map | Setup is CPU/disk-bound (a cold `g-mesh init` on excalidraw is a ~3.5-minute walk that already uses several cores). Overlapping it trades the API latency this recovers for contention, on an 8-core machine. |
+| — | `mode: "test"` grading (`lib/testRunner.ts` takes a process-wide lock) | Every test command installs dependencies first; concurrent `yarn install`s share one cache with no cross-process lock, and three parallel vitest runs at once can push a suite past its timeout — which would change a recorded verdict. |
+
+What this does **not** change: which runs happen, in what order they are
+recorded (results are appended in arm order, not completion order), which cwd
+each arm gets, or what any arm is asked. Token totals are unaffected by
+construction — the harness's headline number sums `input + output + cacheRead +
+cacheCreation` precisely so a cache hit and a cache miss cost the same on paper
+(see `lib/reportData.ts`) — while `costUsd` and the report's "Duration mean"
+column can move slightly, because cache *hits* get cheaper and a saturated
+machine is a hair slower. Set `G_MESH_BENCH_ARM_CONCURRENCY=1` when reproducing
+a pre-v0.20.0 number exactly.
+
+### Every run prints a phase profile
+
+Each `token-economy` invocation ends with a wall-clock breakdown (corpus clone,
+`g-mesh init`, agent calls, grading, reporting) and writes the same numbers to
+`results/profile/<timestamp>.json` beside the run's records. It is always on:
+the point is to have the profile of the slow run you just did, not the ability
+to re-run it with profiling enabled.
+
+Two rows are worth reading together. `agent.call` is the whole `claude -p`
+process; `agent.cli` is what the CLI itself reported as that call's duration.
+Their difference is per-call startup — node boot, settings discovery, MCP server
+spawn and handshake — paid on every single run, and invisible in the results
+file, which records only the CLI's own number.
+
 ### An arm whose MCP server fails to start aborts the run
 
 Every `claude -p` call the harness makes now checks the CLI's own init event
 before the run counts: each MCP server the arm declares must report
 `status: "connected"`, and every tool name the arm's allow list spells out must
-appear in the tool list the model was handed. If it doesn't, the run aborts with
-exit code 1, a message naming the arm and the server, and **no results file at
-all** (`harness/lib/mcpHealth.ts`).
+appear in the tool list the model was handed. If it doesn't, the call is
+retried once, and if it fails again the run aborts with exit code 1 and a
+message naming the arm, the server, and the tail of the CLI's own stderr
+(`harness/lib/mcpHealth.ts`). The records completed before the failure are
+written to `results/token-economy/<timestamp>-partial.json` — every row in that
+file is a healthy, fully-graded run, and the failing group contributes no rows
+at all, for any arm.
+
+The retry is there because concurrency changed the odds. Measured in v0.20.0:
+`serena-configured` failed to connect on 2 of 9 calls once a (task, repetition)'s
+arms began running in parallel, and on 0 of every serial call — its `uvx`-launched
+hooks get cancelled under load. A retry cannot launder a bad result (a call whose
+server never connected produces no record at all, so the retry is a clean call),
+while an arm that is genuinely misconfigured still fails both attempts and still
+aborts. Do **not** try to fix this with `MCP_TIMEOUT`: raising it to 180s was
+measured to make *successful* serena calls 13x slower (a ~20s call became
+402-513s, at unchanged turn count and verdict). Use
+`G_MESH_BENCH_ARM_CONCURRENCY=1` if an arm is too fragile to overlap.
 
 That is deliberately harsher than recording an error row and continuing. The
 failure it guards against is not a run going badly — it is a run that goes
@@ -621,6 +686,15 @@ npm run report -- session-economy              # cumulative report across past r
   chain (5 or 15 calls per arm), not a single call. Default now comes from
   `g-mesh-bench.config.json`'s `sessionEconomy.repetitions`; the env var still
   overrides it per-run.
+- `G_MESH_BENCH_ARM_CONCURRENCY=<n>` — run up to `n` arm chains of one
+  repetition at once. **Defaults to 1 here**, unlike `token-economy`, where the
+  same variable defaults to running every arm in parallel. The mechanism and
+  the safety rule are identical (arms that share a checkout stay in one serial
+  lane), but only `token-economy` has been A/B'd under concurrency; this
+  experiment's whole subject is how a chain's prompt cache amortizes across
+  successive calls, so opting in is left to whoever is willing to check that
+  their chain numbers didn't move. Worth opting into: a normal-REPS run of this
+  experiment takes hours.
 - `npm run session-economy -- <corpusId...>` — run only the named corpus/corpora.
   Corpus-level only, never a task subset: a chain's premise is one realistic
   session over that codebase's whole question list, so an arbitrary subset would
