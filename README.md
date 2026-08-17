@@ -82,6 +82,23 @@ Follow these in order the first time; after that, jumping straight to
      as needed. This is the right choice for a corpus you don't already have
      checked out, or for a config you intend to share/commit.
 
+   **Pin the corpus to a revision.** Every entry takes a `"revision"` (a commit
+   SHA, tag or branch name; the two shipped entries pin a SHA). It is resolved
+   to one commit per run and checked out into *every* arm's clone — the shared
+   warm cache and each `-configured` throwaway clone alike — so an arm-to-arm
+   comparison is guaranteed to be a comparison of arms rather than of
+   checkouts. A `kind: "local"` entry without a pin falls back to the source
+   checkout's `HEAD` (resolved once, at run start, and warned about); that is
+   supported so a new corpus can be registered before anyone picks a SHA, but
+   it is not a state to leave a corpus in: this benchmark's ground truth is
+   content-anchored, so a corpus tracking a live checkout grades against a
+   ground truth that rots without anyone noticing. Bumping a pin is exactly
+   when [`computeCandidatePool.ts`](#authoring-mode-pool-oracle-tasks) has to
+   be re-run for that corpus. See
+   `docs/results/corpus-revision-skew-note.md` for the incident that made
+   pinning mandatory — before it, `baseline` ran from a never-refreshed cache
+   clone while the other arms cloned current HEAD.
+
    Either way, each corpus also needs its own `corpora/<corpus-id>/tasks.json`
    (already present for the two shipped corpora) — see
    [Authoring `mode: "pool"` oracle tasks](#authoring-mode-pool-oracle-tasks)
@@ -661,9 +678,10 @@ npx tsx scripts/computeCandidatePool.ts --corpus excalidraw \
 
 then paste the printed file list into the task's `oracle.candidatePool`.
 
-**Re-run it whenever a corpus's pinned `ref` in `corpora/registry.json` is
-bumped.** Pools are computed once, at authoring time, against that specific
-ref — they are not automatically refreshed. Moving the ref without
+**Re-run it whenever a corpus's pinned `revision`/`ref` in
+`corpora/registry.json` is bumped.** Pools are computed once, at authoring
+time, against that specific revision — they are not automatically refreshed.
+Moving the pin without
 re-running `computeCandidatePool.ts` for every `mode: "pool"` task in that
 corpus silently grades against a stale ground truth (a real, if less severe,
 version of the same bug the pool mode itself exists to fix). This is a

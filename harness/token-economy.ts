@@ -19,6 +19,7 @@ import {
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import {
   resolveConfigured,
+  resolveCorpusRevision,
   resolveFresh,
   resolveWarm,
   stopTrackedGmeshDaemons,
@@ -137,6 +138,24 @@ export interface TokenEconomyRun {
    * lookup failure — never a stale or guessed value.
    */
   serenaRevision?: string;
+  /**
+   * The corpus commit this run's cwd was checked out at — the answer to "what
+   * code did this measurement actually read", recorded for the same reason
+   * `serenaRevision` above is: a result that can't name its inputs can't be
+   * re-read later.
+   *
+   * Same on every arm of a run by construction, not by coincidence: it is the
+   * value corpusResolver.ts's resolveCorpusRevision() memoized for this
+   * process, and the same value every clone in it was checked out onto. Task
+   * #116 exists because that was previously untrue — `baseline` ran from a
+   * never-refreshed warm cache while the `-configured` arms cloned current
+   * HEAD — and unlike serena's revision, which affects one arm's tooling, a
+   * corpus skew silently invalidates the arm-to-arm comparison itself. Present
+   * on every arm; `undefined` only on records written before this field
+   * existed, which is exactly the set of results that carry that confound (see
+   * docs/results/corpus-revision-skew-note.md).
+   */
+  corpusRevision?: string;
   durationMs: number;
   /** Arm call only. Judge spend is kept out of this number and reported beside it as judgeCostUsd. */
   costUsd: number;
@@ -332,7 +351,11 @@ async function runArm(
   arm: Arm,
   repetition: number,
   timestamp: string,
-  serenaRevision?: string,
+  // One object rather than a growing tail of optional positional strings:
+  // both fields answer "what version of what was measured", and a positional
+  // pair of same-typed optionals is exactly the shape a caller silently
+  // transposes.
+  revisions: { serena?: string; corpus?: string },
 ): Promise<TokenEconomyRun> {
   const result = await runClaude({
     cwd,
@@ -386,7 +409,10 @@ async function runArm(
     // told us, which is not the same claim as "this arm declared no servers".
     mcpServers: result.mcp.servers ?? undefined,
     mcpToolCalls: result.mcp.toolCalls,
-    serenaRevision: arm === "serena" || arm === "serena-configured" ? serenaRevision : undefined,
+    serenaRevision: arm === "serena" || arm === "serena-configured" ? revisions.serena : undefined,
+    // Unconditional, unlike serenaRevision's arm gate: every arm reads the
+    // corpus, so every arm has to state which revision of it it read.
+    corpusRevision: revisions.corpus,
     durationMs: result.durationMs,
     costUsd: result.costUsd,
     judgeCostUsd,
@@ -941,6 +967,14 @@ async function main() {
     const corpusTasks = tasksByCorpus.get(corpus.id) ?? [];
     const tasks = selectTasksForCorpus(corpus.id, corpusTasks, selectedTaskIds, excalidrawScope);
     if (tasks.length === 0) continue;
+    // Resolved before the first clone of this corpus, and logged, so the
+    // revision every arm below is about to be pinned to is visible in the run
+    // log as well as in each record's corpusRevision.
+    const corpusRevision = await resolveCorpusRevision(corpus);
+    console.log(
+      `[${corpus.id}] corpus revision ${corpusRevision}` +
+        `${corpus.revision === undefined ? " (unpinned: source HEAD at run start)" : " (pinned in registry.json)"}`,
+    );
     const cwd = await resolveWarm(corpus);
     // resolveWarm() reuses the same absolute path across runs, so g-mesh's
     // index there is only cold on the very first-ever invocation against
@@ -1073,7 +1107,12 @@ async function main() {
           // afterwards — the agent's actual diff is the only real evidence of
           // what it did, and it lives nowhere else.
           if (taskEditsCode(task)) console.log(`  edit sandbox: ${armCwd}`);
-          runs.push(await runArm(armCwd, task, corpus.id, arm, rep, timestamp, serenaRevision));
+          runs.push(
+            await runArm(armCwd, task, corpus.id, arm, rep, timestamp, {
+              serena: serenaRevision,
+              corpus: corpusRevision,
+            }),
+          );
         }
       }
     }

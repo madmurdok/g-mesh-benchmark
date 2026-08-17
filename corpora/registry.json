@@ -3,12 +3,14 @@
     "id": "task-tracker-mcp",
     "kind": "local",
     "path": "/Users/Valentin_Taiurskii/Projects/ClaudeProjects/task-tracker-mcp",
+    "revision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
     "language": "ts"
   },
   {
     "id": "excalidraw",
     "kind": "local",
     "path": "/Users/Valentin_Taiurskii/Projects/excalidraw",
+    "revision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
     "language": "ts"
   }
 ]
