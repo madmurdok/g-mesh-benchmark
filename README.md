@@ -426,7 +426,9 @@ available as an opt-in extra: `G_MESH_BENCH_INCLUDE_BARE_GMESH` and
 - `G_MESH_BENCH_ARM_CONCURRENCY=<n>` — how many of a (task, repetition)'s arms
   may have a `claude -p` call in flight at once. Defaults to **all of them**;
   set it to `1` to restore the strictly serial execution the harness used
-  before v0.20.0. The arms of one group are the largest set of runs here that
+  before v0.20.0 — which you should do for any run whose output is a close
+  comparison or a claim about spread, see "When to run serial anyway". The arms
+  of one group are the largest set of runs here that
   provably share nothing — a cwd apiece (each arm already gets its own clone,
   precisely because `gmesh-configured`/`kungfu-configured` write a `CLAUDE.md`,
   `serena-configured` a `.claude/settings.json`, and kungfu/serena their index
@@ -554,6 +556,51 @@ cacheCreation` precisely so a cache hit and a cache miss cost the same on paper
 column can move slightly, because cache *hits* get cheaper and a saturated
 machine is a hair slower. Set `G_MESH_BENCH_ARM_CONCURRENCY=1` when reproducing
 a pre-v0.20.0 number exactly.
+
+#### When to run serial anyway
+
+**Parallel for iterating; serial for any number you intend to draw a
+conclusion from.** Concretely, set `G_MESH_BENCH_ARM_CONCURRENCY=1` whenever the
+run's output is a close arm-to-arm comparison, a claim about per-rep spread, or
+anything headed for `docs/results/`. Leave the default alone for exploratory
+runs, oracle checks and iteration, where wall-clock is what hurts.
+
+This is not superstition about parallelism, and it is not about the mean. The
+A/B behind v0.20.0 found **no mean shift** — pooled over 16 reps per side and
+both arms, total tokens were 7,634,734 serial vs 7,643,144 parallel (+0.11%),
+oracle pass 22/24 either way — and the mechanism evidence points at latency
+rather than model behaviour: the slowest parallel call (126s, 13.9s/turn)
+produced the *lowest* token count of all 32 records, and the parallel side's
+seconds-per-turn floor is identical to serial while only its ceiling stretches.
+
+The open question is **variance**, and it is a question of arithmetic. Overlapping
+arms buys ~1.5x throughput (-34.5% and -38.6% wall on two runs). Reps needed for
+a given precision scale with variance, so overlapping pays only while the
+variance ratio stays below ~1.5. Measured ratios straddle that line:
+
+| | ratio (parallel ÷ serial) |
+| --- | --- |
+| gmesh tokens, raw | 5.17 |
+| gmesh tokens, minus one 1.14M-token rep | **1.02** |
+| baseline tokens (no outlier involved) | 3.15 |
+| turns, both arms | 3.1-3.7 |
+
+None is individually significant (F(7,7), 95th pct = 3.79) and they are not
+independent tests — tokens, turns and search calls move together. So most point
+estimates sit *above* break-even while none is established: at n=8 the data
+cannot say whether overlapping arms is a free 1.5x or a net loss for precision
+work. Until that is settled, do not spend the speedup on the runs whose whole
+value is precision.
+
+Two limits on what was actually measured. The A/B covered one implementation
+task deeply plus three read-only tasks at 3 reps, all on `task-tracker-mcp`,
+two arms — **`excalidraw` and the `serena` arm were never in it**, and serena is
+the arm most sensitive to machine load, so nothing here should be assumed to
+transfer to it. And `session-economy` defaults to serial for a separate reason:
+its subject is intra-chain cache amortization, and it has not been A/B'd at all.
+
+The experiment that settles this — 20 reps per side with `saveTranscripts`
+on — is tracked as "Settle whether overlapping arms widens per-rep variance".
 
 ### Every run prints a phase profile
 
