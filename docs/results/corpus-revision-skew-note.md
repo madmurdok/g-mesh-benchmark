@@ -95,8 +95,9 @@ It is a separate, independent confound that happens to sit on the same data.
 `results/token-economy/2026-08-17T11-37-51-162Z.json` is a deliberately
 minimal three-arm run (`tt-references-requiretask`, `G_MESH_BENCH_REPS=low`)
 kept as the evidence that the arms now agree — a full sweep would have cost
-~15.7h and ~$41 to prove the same one-line fact. All three records
-(`gmesh-configured`, `serena-configured`, `baseline`) carry the identical
+roughly 3.5-4h and ~$41 to prove the same one-line fact.[^sweep-cost] All
+three records (`gmesh-configured`, `serena-configured`, `baseline`) carry the
+identical
 `"corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f"`, and the run log
 shows the warm cache being brought forward on the way there:
 
@@ -138,3 +139,13 @@ available in a safe form — persistent per-`(corpus, arm, revision)` clones
 instead of `mkdtemp` ones, so each arm keeps its own directory but stops
 re-indexing it every run — and belongs to the separate "benchmark runs are too
 slow to iterate on" task, not here.
+
+[^sweep-cost]: An earlier draft of this note said "~15.7h", which was wrong by
+    about 4x. Task `cbe5b69f`'s phase profiling measured the two most recent
+    387-run sweeps at **3.55h and 3.98h** wall, ~62% of it in agent calls; the
+    12-24h figures in circulation came from older overnight runs whose elapsed
+    time included the machine sleeping. The ~$41 spend was not contradicted and
+    stands. Since those sweeps, `cbe5b69f` also landed arm-level parallelism
+    (~35% off wall-clock), so a sweep today is faster again — check
+    `results/profile/` for the current breakdown rather than trusting any
+    number quoted in prose, including this one.

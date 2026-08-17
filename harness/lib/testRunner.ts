@@ -50,19 +50,66 @@ export interface AcceptanceTestResult {
  * rewrite them.
  */
 export async function runAcceptanceTest(cwd: string, oracle: Oracle): Promise<AcceptanceTestResult> {
-  if (!oracle.testCommand) {
+  const testCommand = oracle.testCommand;
+  if (!testCommand) {
     return { passed: false, reason: 'test mode requires oracle.testCommand' };
   }
 
-  for (const [dest, src] of Object.entries(oracle.holdoutFiles ?? {})) {
-    const contents = await readFile(path.join(ROOT, src), "utf-8");
-    const destPath = path.join(cwd, dest);
-    await mkdir(path.dirname(destPath), { recursive: true });
-    await writeFile(destPath, contents);
-  }
+  return withAcceptanceLock(async () => {
+    for (const [dest, src] of Object.entries(oracle.holdoutFiles ?? {})) {
+      const contents = await readFile(path.join(ROOT, src), "utf-8");
+      const destPath = path.join(cwd, dest);
+      await mkdir(path.dirname(destPath), { recursive: true });
+      await writeFile(destPath, contents);
+    }
 
-  const { exitCode, output } = await runCommand(oracle.testCommand, cwd);
-  return { passed: exitCode === 0, reason: output.slice(-REASON_TAIL_CHARS) };
+    const { exitCode, output } = await runCommand(testCommand, cwd);
+    return { passed: exitCode === 0, reason: output.slice(-REASON_TAIL_CHARS) };
+  });
+}
+
+/**
+ * Tail of the queue of acceptance runs; each new run chains onto it so at most
+ * one is ever executing in this process.
+ */
+let acceptanceQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Serializes acceptance runs process-wide, even when the arms that produced
+ * them ran concurrently (token-economy.ts runs a task's arms in parallel).
+ *
+ * Two reasons, both about the *install* half of a `testCommand` rather than the
+ * assertions:
+ *
+ * - Every shipped test command installs dependencies first (`yarn install`,
+ *   `npm ci`). Those share one package-manager cache directory per user, and
+ *   yarn v1 in particular takes no cross-process lock by default — concurrent
+ *   installs are a documented way to corrupt that cache, which would fail runs
+ *   for reasons that have nothing to do with the arm being measured.
+ * - The test runners are themselves parallel (vitest spawns a worker per core).
+ *   Three of them at once on an 8-core machine oversubscribes it badly enough
+ *   that a suite can cross TEST_TIMEOUT_MS and be graded as a failure — i.e.
+ *   concurrency would change the recorded verdict, which is the one thing a
+ *   speedup must never do.
+ *
+ * The cost is bounded and known: grading is ~10-15% of a sweep's wall-clock
+ * (see task #118's phase profile), and only `mode: "test"` tasks reach here at
+ * all. The agent calls — the part that actually dominates — still overlap.
+ */
+async function withAcceptanceLock<T>(fn: () => Promise<T>): Promise<T> {
+  const prior = acceptanceQueue;
+  let release!: () => void;
+  acceptanceQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // `.catch` so one failed acceptance run doesn't poison every later one's
+  // wait: the queue exists to order them, not to propagate their outcomes.
+  await prior.catch(() => undefined);
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
 }
 
 /**

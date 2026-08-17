@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { gmeshBinaryPath } from "./mcpConfig.js";
+import { timePhase } from "./phaseTimer.js";
 import type { CorpusEntry } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -212,12 +213,14 @@ async function cloneLocal(entry: CorpusEntry, sourcePath: string, dest: string, 
  * for this process, whatever route it took to a directory.
  */
 async function cloneCorpus(entry: CorpusEntry, dest: string, revision: string): Promise<void> {
-  if (entry.kind === "local") {
-    if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
-    await cloneLocal(entry, entry.path, dest, revision);
-    return;
-  }
-  await cloneAt(entry, dest, revision);
+  await timePhase("corpus.clone", async () => {
+    if (entry.kind === "local") {
+      if (!entry.path) throw new Error(`corpus ${entry.id} is kind=local but missing path`);
+      await cloneLocal(entry, entry.path, dest, revision);
+      return;
+    }
+    await cloneAt(entry, dest, revision);
+  });
 }
 
 /**
@@ -262,12 +265,14 @@ export async function resolveWarm(entry: CorpusEntry): Promise<string> {
     // cached clone yet, and the checkout below is what actually decides —
     // failing here on a network/offline hiccup while the commit is already
     // present would abort a run that could have proceeded.
-    try {
-      await execFileAsync("git", ["-C", dest, "fetch", "--quiet", "origin"]);
-    } catch (err) {
-      console.warn(`  fetch into the warm ${entry.id} cache failed: ${(err as Error).message.trim()}`);
-    }
-    await checkoutRevision(entry, dest, revision);
+    await timePhase("corpus.refresh", async () => {
+      try {
+        await execFileAsync("git", ["-C", dest, "fetch", "--quiet", "origin"]);
+      } catch (err) {
+        console.warn(`  fetch into the warm ${entry.id} cache failed: ${(err as Error).message.trim()}`);
+      }
+      await checkoutRevision(entry, dest, revision);
+    });
   }
   return dest;
 }
@@ -380,9 +385,9 @@ export async function writeRepoMap(cwd: string, tokens: number): Promise<void> {
     await writeFile(agentsMdPath, "# AGENTS.md\n");
   }
   const start = performance.now();
-  const { stdout } = await execFileAsync(gmeshBinaryPath(), ["map", "--write", "--tokens", String(tokens)], {
-    cwd,
-  });
+  const { stdout } = await timePhase("gmesh.map", () =>
+    execFileAsync(gmeshBinaryPath(), ["map", "--write", "--tokens", String(tokens)], { cwd }),
+  );
   const written = await readFile(agentsMdPath, "utf-8");
   if (!written.includes(REPO_MAP_BEGIN_MARKER)) {
     throw new Error(
@@ -426,7 +431,7 @@ export async function warmGmeshIndex(cwd: string): Promise<void> {
   trackGmeshCwd(cwd);
   const start = performance.now();
   try {
-    await execFileAsync(gmeshBinaryPath(), ["init"], { cwd });
+    await timePhase("gmesh.index", () => execFileAsync(gmeshBinaryPath(), ["init"], { cwd }));
     console.log(`  g-mesh index warm (${(performance.now() - start).toFixed(0)}ms): ${cwd}`);
   } catch (err) {
     console.warn(

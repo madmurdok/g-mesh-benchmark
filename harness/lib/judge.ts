@@ -61,6 +61,10 @@ export async function judgeAnswer(resultText: string, rubric: string): Promise<J
     tools: "",
     model: JUDGE_MODEL,
     maxBudgetUsd: JUDGE_MAX_BUDGET_USD,
+    // Grading infrastructure, not a measurement — kept out of the profile's
+    // `agent.call` bucket for the same reason its spend is kept out of the
+    // arm's `costUsd`.
+    phase: "grade.judge",
   });
 
   if (result.status !== "ok") {
