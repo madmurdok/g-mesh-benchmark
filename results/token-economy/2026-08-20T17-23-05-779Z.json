@@ -1,0 +1,3522 @@
+[
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 6,
+    "outputTokens": 824,
+    "cacheReadTokens": 48642,
+    "cacheCreationTokens": 17401,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 9946,
+        "cacheCreationTokens": 9209
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 33,
+        "cacheReadTokens": 19155,
+        "cacheCreationTokens": 386
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19541,
+        "cacheCreationTokens": 7806
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 541
+      },
+      {
+        "name": "mcp__g-mesh__find_callers",
+        "chars": 17342
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10728,
+    "costUsd": 0.1323916,
+    "judgeCostUsd": 0,
+    "resultText": "`pointFrom` is defined in `packages/math/src/point.ts:34`. Here are 10+ distinct non-test files that call it:\n\n1. `packages/element/src/linearElementEditor.ts`\n2. `packages/excalidraw/components/App.tsx`\n3. `packages/element/src/binding.ts`\n4. `packages/element/src/bounds.ts`\n5. `packages/utils/src/shape.ts`\n6. `packages/element/src/elbowArrow.ts`\n7. `packages/excalidraw/snapping.ts`\n8. `packages/element/src/collision.ts`\n9. `packages/element/src/resizeElements.ts`\n10. `packages/element/src/utils.ts`\n11. `packages/element/src/shape.ts`\n12. `packages/element/src/cropElement.ts`\n13. `packages/excalidraw/renderer/interactiveScene.ts`\n14. `packages/math/src/curve.ts`",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 14,
+    "outputTokens": 2032,
+    "cacheReadTokens": 117026,
+    "cacheCreationTokens": 11841,
+    "numTurns": 9,
+    "searchToolCalls": 8,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 4,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 9723,
+        "cacheCreationTokens": 6906
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 16629,
+        "cacheCreationTokens": 575
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17204,
+        "cacheCreationTokens": 197
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 30,
+        "cacheReadTokens": 17401,
+        "cacheCreationTokens": 355
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17756,
+        "cacheCreationTokens": 462
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 18218,
+        "cacheCreationTokens": 1877
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 20095,
+        "cacheCreationTokens": 1469
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 465
+      },
+      {
+        "name": "Grep",
+        "chars": 16
+      },
+      {
+        "name": "Grep",
+        "chars": 42
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 655
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 1803
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 1500
+      },
+      {
+        "name": "Grep",
+        "chars": 2558
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 62705,
+    "costUsd": 0.1366758,
+    "judgeCostUsd": 0,
+    "resultText": "Excluding `packages/math/src/point.ts` (definition), test files, and CHANGELOG.md, here are 10+ files that call `pointFrom`:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/hyperlink/Hyperlink.tsx`\n12. `packages/excalidraw/components/Stats/utils.ts`\n13. `packages/excalidraw/components/Stats/Position.tsx`\n14. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n15. `packages/excalidraw/components/Stats/MultiDimension.tsx`\n16. `packages/excalidraw/components/ConvertElementTypePopup.tsx`\n17. `packages/excalidraw/components/App.tsx`\n18. `packages/excalidraw/components/App.arrowText.ts`\n19. `packages/excalidraw/charts/charts.radar.ts`\n20. `packages/excalidraw/charts/charts.line.ts`\n21. `packages/excalidraw/charts/charts.helpers.ts`\n22. `packages/excalidraw/actions/actionProperties.tsx`\n23. `packages/excalidraw/actions/actionFinalize.tsx`\n24. `packages/element/src/utils.ts`\n25. `packages/element/src/transformHandles.ts`\n26. `packages/element/src/transform.ts`\n27. `packages/element/src/textElement.ts`\n28. `packages/element/src/shape.ts`\n29. `packages/element/src/resizeTest.ts`\n30. `packages/element/src/resizeElements.ts`\n31. `packages/element/src/linearElementEditor.ts`\n32. `packages/element/src/heading.ts`\n33. `packages/element/src/frame.ts`\n34. `packages/element/src/flowchart.ts`\n35. `packages/element/src/elbowArrow.ts`\n36. `packages/element/src/cropElement.ts`\n37. `packages/element/src/convertToShape.ts`\n38. `packages/element/src/collision.ts`\n39. `packages/element/src/bounds.ts`\n40. `packages/element/src/binding.ts`\n41. `packages/element/src/arrows/focus.ts`\n\nThe function itself is defined at `packages/math/src/point.ts` (a set of overloads with the implementation around line 40).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 4,
+    "outputTokens": 1213,
+    "cacheReadTokens": 25886,
+    "cacheCreationTokens": 1535,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 1535
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 42
+      },
+      {
+        "name": "Grep",
+        "chars": 2558
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10995,
+    "costUsd": 0.0361928,
+    "judgeCostUsd": 0,
+    "resultText": "`pointFrom` is defined in `packages/math/src/point.ts`. Excluding that file, test files, and CHANGELOG.md, here are 10+ files that call it:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/hyperlink/Hyperlink.tsx`\n12. `packages/excalidraw/components/Stats/utils.ts`\n13. `packages/excalidraw/components/Stats/Position.tsx`\n14. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n15. `packages/excalidraw/components/Stats/MultiDimension.tsx`\n16. `packages/excalidraw/components/ConvertElementTypePopup.tsx`\n17. `packages/excalidraw/components/App.tsx`\n18. `packages/excalidraw/components/App.arrowText.ts`\n19. `packages/excalidraw/charts/charts.radar.ts`\n20. `packages/excalidraw/charts/charts.line.ts`\n21. `packages/excalidraw/charts/charts.helpers.ts`\n22. `packages/excalidraw/actions/actionProperties.tsx`\n23. `packages/excalidraw/actions/actionFinalize.tsx`\n24. `packages/element/src/utils.ts`\n25. `packages/element/src/transformHandles.ts`\n26. `packages/element/src/transform.ts`\n27. `packages/element/src/textElement.ts`\n28. `packages/element/src/shape.ts`\n29. `packages/element/src/resizeTest.ts`\n30. `packages/element/src/resizeElements.ts`\n31. `packages/element/src/linearElementEditor.ts`\n32. `packages/element/src/heading.ts`\n33. `packages/element/src/frame.ts`\n34. `packages/element/src/flowchart.ts`\n35. `packages/element/src/elbowArrow.ts`\n36. `packages/element/src/cropElement.ts`\n37. `packages/element/src/convertToShape.ts`\n38. `packages/element/src/collision.ts`\n39. `packages/element/src/bounds.ts`\n40. `packages/element/src/binding.ts`\n41. `packages/element/src/arrows/focus.ts`\n\nThat's 41 non-test, non-definition files calling `pointFrom`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 6,
+    "outputTokens": 550,
+    "cacheReadTokens": 57835,
+    "cacheCreationTokens": 8751,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 19155,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 19155,
+        "cacheCreationTokens": 370
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19525,
+        "cacheCreationTokens": 8381
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 541
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 18793
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10292,
+    "costUsd": 0.0791395,
+    "judgeCostUsd": 0,
+    "resultText": "I found `pointFrom` defined in `packages/math/src/point.ts:34`. Excluding the definition file and test files, here are 10+ distinct files that call it:\n\n1. `packages/element/src/linearElementEditor.ts`\n2. `packages/excalidraw/components/App.tsx`\n3. `packages/element/src/binding.ts`\n4. `packages/element/src/bounds.ts`\n5. `packages/utils/src/shape.ts`\n6. `packages/element/src/elbowArrow.ts`\n7. `packages/excalidraw/snapping.ts`\n8. `packages/element/src/collision.ts`\n9. `packages/element/src/resizeElements.ts`\n10. `packages/element/src/utils.ts`\n11. `packages/element/src/shape.ts`\n12. `packages/element/src/visualdebug.ts`\n13. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n14. `packages/excalidraw/data/restore.ts`\n15. `packages/excalidraw/renderer/interactiveScene.ts`\n16. `packages/math/src/curve.ts`",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 8,
+    "outputTokens": 880,
+    "cacheReadTokens": 65951,
+    "cacheCreationTokens": 11631,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 9723,
+        "cacheCreationTokens": 6908
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16631,
+        "cacheCreationTokens": 2984
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 19615,
+        "cacheCreationTokens": 367
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 19982,
+        "cacheCreationTokens": 1372
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "Grep",
+        "chars": 401
+      },
+      {
+        "name": "Grep",
+        "chars": 2524
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 17872,
+    "costUsd": 0.10279529999999999,
+    "judgeCostUsd": 0,
+    "resultText": "Excluding the definition file (`packages/math/src/point.ts`) and all test files, here are 10+ distinct files that call `pointFrom`:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/hyperlink/Hyperlink.tsx`\n12. `packages/excalidraw/components/Stats/utils.ts`\n13. `packages/excalidraw/components/Stats/Position.tsx`\n14. `packages/excalidraw/components/App.tsx`\n15. `packages/element/src/binding.ts`\n16. `packages/element/src/bounds.ts`\n17. `packages/element/src/elbowArrow.ts`\n\n(Definition lives in `packages/math/src/point.ts`, excluded as requested.)",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 6,
+    "outputTokens": 1259,
+    "cacheReadTokens": 39070,
+    "cacheCreationTokens": 1604,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 241
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 13184,
+        "cacheCreationTokens": 1363
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 42
+      },
+      {
+        "name": "Grep",
+        "chars": 2558
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 12048,
+    "costUsd": 0.041263,
+    "judgeCostUsd": 0,
+    "resultText": "`pointFrom` is defined in `packages/math/src/point.ts:packages/math/src/point.ts`. Excluding the definition file, `CHANGELOG.md`, and test files, here are 10+ files that call it:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/hyperlink/Hyperlink.tsx`\n12. `packages/excalidraw/components/Stats/utils.ts`\n13. `packages/excalidraw/components/Stats/Position.tsx`\n14. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n15. `packages/excalidraw/components/Stats/MultiDimension.tsx`\n16. `packages/excalidraw/components/ConvertElementTypePopup.tsx`\n17. `packages/excalidraw/components/App.tsx`\n18. `packages/excalidraw/components/App.arrowText.ts`\n19. `packages/excalidraw/charts/charts.radar.ts`\n20. `packages/excalidraw/charts/charts.line.ts`\n21. `packages/excalidraw/charts/charts.helpers.ts`\n22. `packages/excalidraw/actions/actionProperties.tsx`\n23. `packages/excalidraw/actions/actionFinalize.tsx`\n24. `packages/element/src/utils.ts`\n25. `packages/element/src/transformHandles.ts`\n26. `packages/element/src/transform.ts`\n27. `packages/element/src/textElement.ts`\n28. `packages/element/src/shape.ts`\n29. `packages/element/src/resizeTest.ts`\n30. `packages/element/src/resizeElements.ts`\n31. `packages/element/src/linearElementEditor.ts`\n32. `packages/element/src/heading.ts`\n33. `packages/element/src/frame.ts`\n34. `packages/element/src/flowchart.ts`\n35. `packages/element/src/elbowArrow.ts`\n36. `packages/element/src/cropElement.ts`\n37. `packages/element/src/convertToShape.ts`\n38. `packages/element/src/collision.ts`\n39. `packages/element/src/bounds.ts`\n40. `packages/element/src/binding.ts`\n41. `packages/element/src/arrows/focus.ts`\n\nThat's well over 10 non-test, non-definition files that call `pointFrom`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 6,
+    "outputTokens": 608,
+    "cacheReadTokens": 57852,
+    "cacheCreationTokens": 8191,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19155,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 33,
+        "cacheReadTokens": 19155,
+        "cacheCreationTokens": 387
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19542,
+        "cacheCreationTokens": 7804
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 541
+      },
+      {
+        "name": "mcp__g-mesh__find_callers",
+        "chars": 17342
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10372,
+    "costUsd": 0.0766546,
+    "judgeCostUsd": 0,
+    "resultText": "I have the complete `files` list from `find_callers`, excluding `packages/math/src/point.ts` (definition file) and test files. Here are 10+ distinct non-test files that call `pointFrom`:\n\n1. `packages/element/src/linearElementEditor.ts`\n2. `packages/excalidraw/components/App.tsx`\n3. `packages/element/src/binding.ts`\n4. `packages/element/src/bounds.ts`\n5. `packages/utils/src/shape.ts`\n6. `packages/element/src/elbowArrow.ts`\n7. `packages/excalidraw/snapping.ts`\n8. `packages/element/src/collision.ts`\n9. `packages/element/src/resizeElements.ts`\n10. `packages/element/src/utils.ts`\n11. `packages/element/src/shape.ts`\n12. `packages/element/src/visualdebug.ts`\n13. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n14. `packages/excalidraw/data/restore.ts`\n15. `packages/excalidraw/renderer/interactiveScene.ts`\n16. `packages/math/src/curve.ts`\n\n`pointFrom` is defined in `packages/math/src/point.ts:34`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 8,
+    "outputTokens": 735,
+    "cacheReadTokens": 73001,
+    "cacheCreationTokens": 4856,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16631,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16631,
+        "cacheCreationTokens": 2989
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 19620,
+        "cacheCreationTokens": 499
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 20119,
+        "cacheCreationTokens": 1368
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "Grep",
+        "chars": 706
+      },
+      {
+        "name": "Grep",
+        "chars": 2558
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 18110,
+    "costUsd": 0.06208529999999999,
+    "judgeCostUsd": 0,
+    "resultText": "`pointFrom` is defined in `packages/math/src/point.ts:22`. Here are 10+ non-test files that call it:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/App.tsx`\n12. `packages/element/src/binding.ts`\n13. `packages/element/src/elbowArrow.ts`\n14. `packages/element/src/bounds.ts`",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-references-pointfrom-highfanout",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e8575eb7866b",
+    "inputTokens": 6,
+    "outputTokens": 1239,
+    "cacheReadTokens": 39070,
+    "cacheCreationTokens": 1596,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 12943,
+        "cacheCreationTokens": 241
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 13184,
+        "cacheCreationTokens": 1355
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 42
+      },
+      {
+        "name": "Grep",
+        "chars": 2558
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 12332,
+    "costUsd": 0.04091500000000001,
+    "judgeCostUsd": 0,
+    "resultText": "`pointFrom` is defined in `packages/math/src/point.ts:packages/math/src/point.ts`. Excluding that file, its own tests, and any other test files/CHANGELOG, here are 10+ files that call it:\n\n1. `packages/utils/src/shape.ts`\n2. `packages/math/src/rectangle.ts`\n3. `packages/math/src/ellipse.ts`\n4. `packages/math/src/curve.ts`\n5. `packages/excalidraw/wysiwyg/textWysiwyg.tsx`\n6. `packages/excalidraw/viewport.ts`\n7. `packages/excalidraw/textAutoResizeHandle.ts`\n8. `packages/excalidraw/snapping.ts`\n9. `packages/excalidraw/renderer/renderSnaps.ts`\n10. `packages/excalidraw/components/hyperlink/helpers.ts`\n11. `packages/excalidraw/components/hyperlink/Hyperlink.tsx`\n12. `packages/excalidraw/components/Stats/utils.ts`\n13. `packages/excalidraw/components/Stats/Position.tsx`\n14. `packages/excalidraw/components/Stats/MultiPosition.tsx`\n15. `packages/excalidraw/components/Stats/MultiDimension.tsx`\n16. `packages/excalidraw/components/ConvertElementTypePopup.tsx`\n17. `packages/excalidraw/components/App.tsx`\n18. `packages/excalidraw/components/App.arrowText.ts`\n19. `packages/excalidraw/charts/charts.radar.ts`\n20. `packages/excalidraw/charts/charts.line.ts`\n21. `packages/excalidraw/charts/charts.helpers.ts`\n22. `packages/excalidraw/actions/actionProperties.tsx`\n23. `packages/excalidraw/actions/actionFinalize.tsx`\n24. `packages/element/src/utils.ts`\n25. `packages/element/src/transformHandles.ts`\n26. `packages/element/src/transform.ts`\n27. `packages/element/src/textElement.ts`\n28. `packages/element/src/shape.ts`\n29. `packages/element/src/resizeTest.ts`\n30. `packages/element/src/resizeElements.ts`\n31. `packages/element/src/linearElementEditor.ts`\n32. `packages/element/src/heading.ts`\n33. `packages/element/src/frame.ts`\n34. `packages/element/src/flowchart.ts`\n35. `packages/element/src/elbowArrow.ts`\n36. `packages/element/src/cropElement.ts`\n37. `packages/element/src/convertToShape.ts`\n38. `packages/element/src/collision.ts`\n39. `packages/element/src/bounds.ts`\n40. `packages/element/src/binding.ts`\n41. `packages/element/src/arrows/focus.ts`\n\nThat's well over 10 — plenty to choose from.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 6,
+    "outputTokens": 1034,
+    "cacheReadTokens": 63136,
+    "cacheCreationTokens": 13230,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15564,
+        "cacheCreationTokens": 3587
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19151,
+        "cacheCreationTokens": 9270
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 28421,
+        "cacheCreationTokens": 373
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 16508
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 3570
+      },
+      {
+        "name": "Grep",
+        "chars": 122
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 39237,
+    "costUsd": 0.1148948,
+    "judgeCostUsd": 0,
+    "resultText": "## `packages/excalidraw/types.ts`\n\nOnly 3 of its exports are true `interface` declarations (everything else exported from this file — the bulk of it — is a `type` alias, not an interface):\n\n- `AppState`\n- `ExcalidrawProps`\n- `ExcalidrawImperativeAPI`\n\n(For reference, the file exports ~65 more symbols as `type` aliases — e.g. `Collaborator`, `BinaryFileData`, `ToolType`, `LibraryItem`, `SceneData`, `UIConfig`, `PointerDownState`, etc. — but none of those use `interface` syntax.)\n\n## `packages/excalidraw/i18n.ts`\n\nThis file contains **no interfaces at all**. It's a small utility module exporting:\n- Types: `Language`, `TranslationKeys`\n- Values: `defaultLang`, `languages`, `setLanguage`, `getLanguage`, `t`, `useI18n`\n\n## Contrast\n\n- **Scale**: `types.ts` is a large type-definition hub (~70 exported types/interfaces, no runtime logic exports); `i18n.ts` is a small runtime module (~8 exports) mixing 2 type exports with 6 functions/values.\n- **Interfaces specifically**: `types.ts` has exactly 3 true interfaces (`AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`) — its dominant style is `type` aliases, not interfaces. `i18n.ts` has zero interfaces.\n- **Purpose**: `types.ts` exports pure type definitions describing the editor's public/internal shape; `i18n.ts` exports live functionality (translation lookup, language switching, a React hook) alongside just two supporting types.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 8,
+    "outputTokens": 1496,
+    "cacheReadTokens": 72587,
+    "cacheCreationTokens": 7565,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 4,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15342,
+        "cacheCreationTokens": 1285
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16627,
+        "cacheCreationTokens": 2987
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 19614,
+        "cacheCreationTokens": 1390
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21004,
+        "cacheCreationTokens": 1903
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 1839
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 478
+      },
+      {
+        "name": "Grep",
+        "chars": 3253
+      },
+      {
+        "name": "Grep",
+        "chars": 386
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 25851,
+    "costUsd": 0.08963009999999999,
+    "judgeCostUsd": 0,
+    "resultText": "## Exported interfaces — `packages/excalidraw/types.ts`\n\nOnly three exports use the `interface` keyword (the file overwhelmingly prefers `type` aliases):\n\n1. `AppState` (types.ts:317)\n2. `ExcalidrawProps` (types.ts:756)\n3. `ExcalidrawImperativeAPI` (types.ts:1202)\n\nFor context, these sit alongside ~70 other exports in the file, almost all `export type ...` (e.g. `Collaborator`, `ToolType`, `LibraryItem`, `AppProps`, `SceneData`, `ExportOpts`, etc.) plus one `export declare class GestureEvent` and a re-exported `App` type.\n\n## Exported interfaces — `packages/excalidraw/i18n.ts`\n\nJust one:\n\n1. `Language` (i18n.ts:11)\n\nThe rest of `i18n.ts`'s exports are a mix of a `type` alias (`TranslationKeys`), constants (`defaultLang`, `languages`, `TEST_LANG_CODE`), and functions (`setLanguage`, `getLanguage`, `t`, `useI18n`).\n\n## Contrast\n\n- **Scale**: `types.ts` has ~70 exports total vs. ~8 in `i18n.ts` — consistent with it being the central type-definition hub for the whole editor (app state, props, imperative API, canvas/UI config, library items, etc.), while `i18n.ts` is a small, self-contained module for language/translation handling.\n- **Interface usage**: both files use `interface` sparingly and prefer `type`. `types.ts` reserves `interface` for its three biggest, most complex public contracts (`AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`) — the shapes consumers extend/implement most directly. `i18n.ts` uses `interface` only for the simple `Language` shape (`code`, `label`, `rtl`).\n- **Export kind mix**: `types.ts` exports are exclusively type-level (types, interfaces, one declared class) — it has no runtime logic. `i18n.ts`, despite being smaller, exports actual runtime values and functions (constants + functions), reflecting its role as a working module rather than a pure type-definition file.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 4,
+    "outputTokens": 2527,
+    "cacheReadTokens": 25878,
+    "cacheCreationTokens": 26817,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 26817
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 57832
+      },
+      {
+        "name": "Read",
+        "chars": 6581
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 22311,
+    "costUsd": 0.2076284,
+    "judgeCostUsd": 0,
+    "resultText": "## `packages/excalidraw/types.ts` exports (~65 exported identifiers)\n\n**Interfaces:** `AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`\n\n**Re-export:** `App` (type-only re-export from `./components/App`)\n\n**Types (~60):** `SocketId`, `Collaborator`, `CollaboratorPointer`, `DataURL`, `BinaryFileData`, `BinaryFileMetadata`, `BinaryFiles`, `ToolType`, `ElementOrToolType`, `ActiveTool`, `SidebarName`, `SidebarTabName`, `UserToFollow`, `StaticCanvasAppState`, `InteractiveCanvasAppState`, `ObservedAppState`, `ObservedStandaloneAppState`, `ObservedElementsAppState`, `BoxSelectionMode`, `ScrollConstraints`, `SearchMatch`, `UIAppState`, `NormalizedZoomValue`, `Zoom`, `PointerCoords`, `Gesture`, `GestureEvent` (declared class), `LibraryItem_v1`, `LibraryItem`, `LibraryItems`, `LibraryItems_anyVersion`, `LibraryItemsSource`, `ExcalidrawInitialDataState`, `ExcalidrawInitialState`, `OnUserFollowedPayload`, `OnExportProgress`, `InteractionConfig`, `UIConfig`, `SceneData`, `ExportOpts`, `ImageOptions`, `CanvasActions`, `UIOptions`, `AppProps`, `AppClassProperties`, `PointerDownState`, `UnsubscribeCallback`, `ExcalidrawMountPayload`, `ExcalidrawImperativeAPIEventMap`, `FrameNameBounds`, `FrameNameBoundsCache`, `KeyboardModifiersObject`, `Primitive`, `JSONValue`, `EmbedsValidationStatus`, `ElementsPendingErasure`, `PendingExcalidrawElements`, `NullableGridSize`, `GenerateDiagramToCode`, `Offsets`, `ViewportUIDock`, `ViewportOffsetsOptions`, `ViewportOffsets`, `ViewportUIName`\n\n(Note: `LibraryItems_v1` at line 604 is *not* exported — it's a private helper type behind `LibraryItems_anyVersion`.)\n\n## `packages/excalidraw/i18n.ts` exports (8 identifiers)\n\n- `Language` — interface\n- `TranslationKeys` — type\n- `defaultLang` — value (const)\n- `languages` — value (const, mutable array)\n- `setLanguage` — value (async function)\n- `getLanguage` — value (function)\n- `t` — value (function)\n- `useI18n` — value (React hook)\n\n## Contrast\n\n- **Scale**: `types.ts` exports roughly 8x more identifiers than `i18n.ts` (~65 vs 8), consistent with it being the central type-definition surface for the whole editor.\n- **Kind of export**: `types.ts` exports are almost entirely `type`/`interface` declarations (pure compile-time surface, tree-shaken away at runtime) plus one `declare class`. `i18n.ts` mixes two type exports (`Language`, `TranslationKeys`) with six runtime value exports (functions and mutable state) — it's a working module, not just a type-definitions file.\n- **Coupling**: `types.ts` pulls in and re-exports/depends on types from many other modules (`@excalidraw/common`, `@excalidraw/element`, `@excalidraw/math`, local `App`, `Library`, etc.), acting as an aggregation point. `i18n.ts` is comparatively self-contained, only importing `isDevEnv`, `NestedKeyOf`, jotai atoms, and locale JSON.\n- **Purpose**: `types.ts` defines the public/internal type contracts (props, app state, imperative API) that other files consume for typing. `i18n.ts` provides an actual runtime feature (translation lookup, language switching, a React hook) alongside minimal supporting types.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 8,
+    "outputTokens": 1378,
+    "cacheReadTokens": 95720,
+    "cacheCreationTokens": 10293,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19151,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19151,
+        "cacheCreationTokens": 9297
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 28448,
+        "cacheCreationTokens": 522
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 28970,
+        "cacheCreationTokens": 474
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 16508
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 3570
+      },
+      {
+        "name": "Grep",
+        "chars": 44
+      },
+      {
+        "name": "Grep",
+        "chars": 43
+      },
+      {
+        "name": "Grep",
+        "chars": 122
+      },
+      {
+        "name": "Grep",
+        "chars": 32
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 16697,
+    "costUsd": 0.11221400000000001,
+    "judgeCostUsd": 0,
+    "resultText": "## Exported interfaces\n\n**`packages/excalidraw/types.ts`** — 3 exported interfaces (out of ~65 total exported type-level symbols in the file, the rest being `type` aliases):\n- `AppState` (line 317) — the large central editor state shape\n- `ExcalidrawProps` (line 756) — public component props\n- `ExcalidrawImperativeAPI` (line 1202) — the imperative ref API\n\n**`packages/excalidraw/i18n.ts`** — 1 exported interface:\n- `Language` (line 11) — `{ code, label, rtl? }` shape for a locale entry\n\n## Contrast\n\n- **Scale**: `types.ts` is huge (~1440 lines, dozens of exported types/interfaces covering app state, props, canvas, library items, viewport, etc.) versus `i18n.ts` (~171 lines) which exports just one interface plus a handful of functions/constants (`TranslationKeys` type, `defaultLang`, `languages`, `setLanguage`, `getLanguage`, `t`, `useI18n`).\n- **Style**: `types.ts` almost exclusively uses `type X = ...` aliases (interfaces are the rare exception — only 3 of its exported type-level declarations use `interface`), while `i18n.ts`'s sole type-level export happens to be an `interface`.\n- **Purpose**: `types.ts` defines the library's structural/type surface (state, props, API contracts); `i18n.ts` is a runtime module (translation loading/lookup logic) that only incidentally exports one small interface alongside its functions.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 12,
+    "outputTokens": 2249,
+    "cacheReadTokens": 117458,
+    "cacheCreationTokens": 7109,
+    "numTurns": 10,
+    "searchToolCalls": 9,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 4,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16627,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 31,
+        "cacheReadTokens": 16627,
+        "cacheCreationTokens": 2989
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19616,
+        "cacheCreationTokens": 1375
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20991,
+        "cacheCreationTokens": 458
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21449,
+        "cacheCreationTokens": 699
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22148,
+        "cacheCreationTokens": 1588
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 1839
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 478
+      },
+      {
+        "name": "Grep",
+        "chars": 44
+      },
+      {
+        "name": "Grep",
+        "chars": 43
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "Grep",
+        "chars": 386
+      },
+      {
+        "name": "Grep",
+        "chars": 3196
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 36624,
+    "costUsd": 0.1116624,
+    "judgeCostUsd": 0,
+    "resultText": "## Exported interfaces in `packages/excalidraw/types.ts`\n\ntypes.ts is dominated by `export type` aliases (60+ of them), but only **3** are declared with the `interface` keyword specifically:\n\n- `AppState` (line 317) — the large canonical app state shape\n- `ExcalidrawProps` (line 756) — public props for the `<Excalidraw>` component\n- `ExcalidrawImperativeAPI` (line 1202) — the imperative ref API surface\n\n(It also re-exports `App` as a type via `export type { App }`, and exports one `class`, `GestureEvent` — but those aren't `interface`s.)\n\n## Exports of `packages/excalidraw/i18n.ts`\n\nMuch smaller surface, 8 exports total, only **1** of which is an `interface`:\n\n- `interface Language` (line 11)\n- `type TranslationKeys` (line 17)\n- `const defaultLang` (line 19)\n- `const languages: Language[]` (line 21)\n- `const setLanguage` (line 92)\n- `const getLanguage` (line 111)\n- `const t` (line 127)\n- `const useI18n` (line 169)\n\n## Contrast\n\n- **Volume**: types.ts exports ~70 symbols (mostly `type` aliases) vs. i18n.ts's 8 — reflecting types.ts's role as the central type-definition hub for the whole editor, while i18n.ts is a focused runtime module (language state + translation helpers).\n- **Shape of exports**: types.ts is almost entirely `type`/`interface` declarations (compile-time only) plus one class; i18n.ts is mostly runtime `const` values (functions/data) plus a couple of supporting types (`Language`, `TranslationKeys`).\n- **True `interface` count**: types.ts has 3 interfaces (`AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`) — all central to the public component API — while i18n.ts has just 1 (`Language`), describing a single language-entry record.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 6,
+    "outputTokens": 1518,
+    "cacheReadTokens": 43452,
+    "cacheCreationTokens": 5134,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 4635
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 17574,
+        "cacheCreationTokens": 499
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 3196
+      },
+      {
+        "name": "Read",
+        "chars": 6581
+      },
+      {
+        "name": "Grep",
+        "chars": 122
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 18572,
+    "costUsd": 0.0676736,
+    "judgeCostUsd": 0,
+    "resultText": "## `packages/excalidraw/types.ts` — exported `interface` declarations\n\nOnly **3** actual `interface` exports (the file is otherwise dominated by `export type` aliases):\n\n1. `AppState` (line 317)\n2. `ExcalidrawProps` (line 756)\n3. `ExcalidrawImperativeAPI` (line 1202)\n\nFor context, the file has ~70 total exports, the rest being `export type` aliases (e.g. `Collaborator`, `ToolType`, `UIAppState`, `AppClassProperties`, `SceneData`, `UIOptions`, etc.) plus one `export type { App }` re-export.\n\n## `packages/excalidraw/i18n.ts` — all exports\n\nThis file has **no** `interface`-keyword exports among its runtime exports, but does export one type-level `interface`:\n\n- `interface Language` (type) — the only `interface`\n- `type TranslationKeys`\n- `const defaultLang`\n- `const languages`\n- `const setLanguage` (async function)\n- `const getLanguage`\n- `const t` (translation function)\n- `const useI18n` (hook)\n\n## Contrast\n\n- **Scale**: `types.ts` exports ~70 declarations vs. `i18n.ts`'s 7 — consistent with one being the central type-definition surface for the whole library and the other a small, focused module.\n- **Interface usage**: `types.ts` uses `interface` for its three largest, most \"object-shaped\" public contracts (`AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`) — all things consumers implement/extend or pass to the `<Excalidraw>` component — while everything else is a `type` alias (often unions or `Readonly`/`Merge`/`Partial` transformations, which don't work well as interfaces). `i18n.ts` has only one interface (`Language`), a simple flat shape, and one type alias (`TranslationKeys`).\n- **Kind of exports**: `types.ts` is exclusively type-level (no runtime values). `i18n.ts` is mostly runtime exports (functions/constants: `t`, `useI18n`, `setLanguage`, `getLanguage`, `languages`, `defaultLang`) with just two type-level exports — reflecting that `i18n.ts` is a working module (translation logic) whereas `types.ts` is purely a type-definition file.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 6,
+    "outputTokens": 1209,
+    "cacheReadTokens": 66724,
+    "cacheCreationTokens": 9821,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19151,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19151,
+        "cacheCreationTokens": 9271
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 28422,
+        "cacheCreationTokens": 550
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 16508
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 3570
+      },
+      {
+        "name": "Grep",
+        "chars": 122
+      },
+      {
+        "name": "Grep",
+        "chars": 32
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 16245,
+    "costUsd": 0.0981322,
+    "judgeCostUsd": 0,
+    "resultText": "## Exported interfaces\n\n**`packages/excalidraw/types.ts`** (3 interfaces, out of ~65 total exported symbols in the file — mostly `type` aliases):\n- `AppState` (types.ts:317)\n- `ExcalidrawProps` (types.ts:756)\n- `ExcalidrawImperativeAPI` (types.ts:1202)\n\n**`packages/excalidraw/i18n.ts`** (1 interface, out of 6 total exported symbols):\n- `Language` (i18n.ts:11)\n\n## Contrast\n\n| | `types.ts` | `i18n.ts` |\n|---|---|---|\n| Exported interfaces | 3 | 1 |\n| Total exported symbols | ~65 (mostly `type` aliases: `SocketId`, `Collaborator`, `BinaryFileData`, `ToolType`, `LibraryItem`, `SceneData`, `AppClassProperties`, etc.) | 6 (`Language` interface, `TranslationKeys` type, `defaultLang`, `languages`, `setLanguage`, `getLanguage`, `t`, `useI18n`) |\n| Character/purpose | Pure type-definition file — no runtime logic, defines the shape of nearly every core data structure in the editor (`AppState`, element/library/canvas types, component prop contracts) | Small runtime module — actual i18n logic (loading translations, `t()` lookup, language switching) with `Language` as its only structural interface; the rest are functions/values, not types |\n\n`types.ts` is overwhelmingly `type` aliases rather than `interface` declarations (unions, mapped/utility types like `LibraryItems`, `ElementOrToolType` can't be `interface`s), so its 3 interfaces are a small fraction of its exports. `i18n.ts`'s single interface (`Language`) is proportionally larger relative to its small export surface, but the file is dominated by exported functions/values rather than types at all.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 10,
+    "outputTokens": 2157,
+    "cacheReadTokens": 96813,
+    "cacheCreationTokens": 7214,
+    "numTurns": 9,
+    "searchToolCalls": 8,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 4,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16627,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16627,
+        "cacheCreationTokens": 2981
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 19608,
+        "cacheCreationTokens": 1392
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21000,
+        "cacheCreationTokens": 1951
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 22951,
+        "cacheCreationTokens": 890
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 1839
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 478
+      },
+      {
+        "name": "Grep",
+        "chars": 3196
+      },
+      {
+        "name": "Grep",
+        "chars": 386
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "Grep",
+        "chars": 18
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 35045,
+    "costUsd": 0.1047129,
+    "judgeCostUsd": 0,
+    "resultText": "No default/`export *` re-exports in either file — I have everything I need from the symbol overview and grep results.\n\n## Exported interfaces in `types.ts`\n\nOnly 3 top-level `export interface` declarations:\n\n1. **`AppState`** (line 317) — the large canonical editor state shape\n2. **`ExcalidrawProps`** (line 756) — the public props contract for the `<Excalidraw>` component\n3. **`ExcalidrawImperativeAPI`** (line 1202) — the imperative ref API surface\n\n## Contrast with `i18n.ts` exports\n\n`i18n.ts` has exactly **one** exported interface:\n\n- **`Language`** (line 11) — shape of a language entry (`code`, `label`, `rtl`)\n\nBeyond that single interface, `i18n.ts`'s full export surface is small and mixed-kind:\n- `TranslationKeys` (exported `type`)\n- `defaultLang`, `languages`, `TEST_LANG_CODE`(?), `setLanguage`, `getLanguage`, `t`, `useI18n` (exported `const`s — functions/values)\n\n## Contrast summary\n\n| | `types.ts` | `i18n.ts` |\n|---|---|---|\n| Exported interfaces | 3 (`AppState`, `ExcalidrawProps`, `ExcalidrawImperativeAPI`) | 1 (`Language`) |\n| Total top-level exports | ~70+ (almost entirely `export type` aliases, plus the 3 interfaces) | ~8 (mix of 1 interface, 1 type alias, and several `const` functions/values) |\n| Dominant export style | Type aliases (`export type X = ...`), used to model the app's large, structurally-nested state/props | `const` exports — actual runtime functions (`t`, `setLanguage`, `getLanguage`, `useI18n`) plus a couple of small type/data declarations |\n| Role | Pure type-definition file — no runtime logic, defines the shape of nearly the entire app's public/internal state contracts | Small runtime module — the interface is just a data shape for one array (`languages: Language[]`), the bulk of the file's value is executable i18n logic |\n\nIn short, `types.ts` is a large, interface-light file that leans almost entirely on `type` aliases for its ~70 exports (with only 3 formal `interface`s, reserved for its biggest/most extensible object shapes), while `i18n.ts` is a small, mostly-runtime module where the single `interface` (`Language`) is just supporting data typing alongside a handful of exported functions.",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-outline-types-vs-i18n",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "ed80aab75d17",
+    "inputTokens": 4,
+    "outputTokens": 1468,
+    "cacheReadTokens": 25878,
+    "cacheCreationTokens": 26826,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 12939,
+        "cacheCreationTokens": 26826
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 57832
+      },
+      {
+        "name": "Read",
+        "chars": 6581
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 16208,
+    "costUsd": 0.19179739999999998,
+    "judgeCostUsd": 0,
+    "resultText": "## Exported interfaces — `packages/excalidraw/types.ts`\n\ntypes.ts is large (1441 lines) with dozens of exported types, but only three use the `interface` keyword specifically:\n\n1. `AppState` (line 317) — the central editor state shape (tool, selection, canvas, UI dialogs, etc.)\n2. `ExcalidrawProps` (line 756) — public props accepted by the `<Excalidraw>` component\n3. `ExcalidrawImperativeAPI` (line 1202) — the imperative API surface exposed via `onExcalidrawAPI`\n\nEverything else in the file (`Collaborator`, `ToolType`, `LibraryItem`, `UIOptions`, `AppClassProperties`, `PointerDownState`, etc.) is exported as `export type` rather than `export interface`.\n\n## All exports — `packages/excalidraw/i18n.ts`\n\ni18n.ts is only 173 lines and exports a mix of one interface, one type, and five runtime values:\n\n1. `interface Language` — `{ code, label, rtl? }`\n2. `type TranslationKeys` — derived key paths from the fallback locale JSON\n3. `const defaultLang`\n4. `const languages` — `Language[]`\n5. `const setLanguage` — async function\n6. `const getLanguage` — function\n7. `const t` — the translation lookup function\n8. `const useI18n` — React hook\n\n## Contrast\n\n- **Type-vs-value ratio**: types.ts is exclusively type-level exports (types/interfaces, no runtime values) — it's a pure type-definition module. i18n.ts is the opposite: only 2 of its 8 exports (`Language`, `TranslationKeys`) are types; the rest are runtime constants/functions.\n- **`interface` usage**: types.ts uses `interface` sparingly (3 of ~60+ exported type declarations) in favor of `type`, reserving `interface` for the three largest, most \"object contract\"-like shapes (state, props, imperative API). i18n.ts's single type-level export that's an interface (`Language`) is its smallest shape — a 3-field record — so the choice doesn't track complexity the way it does in types.ts.\n- **Purpose**: types.ts defines the shared type vocabulary consumed across the whole package (imported by dozens of files); i18n.ts is a self-contained, functional module (load language, translate, hook) that happens to export a couple of supporting types alongside its logic.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 6,
+    "outputTokens": 510,
+    "cacheReadTokens": 54664,
+    "cacheCreationTokens": 5386,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15564,
+        "cacheCreationTokens": 3605
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19169,
+        "cacheCreationTokens": 762
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19931,
+        "cacheCreationTokens": 1019
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 1345
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1842
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 7921,
+    "costUsd": 0.0574312,
+    "judgeCostUsd": 0,
+    "resultText": "The public-API `exportToSvg` wrapper is defined in `packages/utils/src/export.ts:168`. Every other file that calls it:\n\n1. **`packages/utils/src/export.ts`** — called internally by `exportToClipboard` (line 203)\n2. **`packages/excalidraw/components/PublishLibrary.tsx`** — called by `SingleLibraryItem` (line 106)\n3. **`packages/excalidraw/hooks/useLibraryItemSvg.ts`** — called by `exportLibraryItemToSvg` (line 13)\n4. **`packages/utils/tests/utils.unmocked.test.ts`**\n5. **`packages/element/tests/cropElement.test.tsx`**\n6. **`packages/utils/tests/export.test.ts`**\n7. **`packages/excalidraw/tests/scene/export.test.ts`**",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 28,
+    "outputTokens": 6419,
+    "cacheReadTokens": 312404,
+    "cacheCreationTokens": 14459,
+    "numTurns": 29,
+    "searchToolCalls": 28,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15342,
+        "cacheCreationTokens": 1303
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16645,
+        "cacheCreationTokens": 664
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 17309,
+        "cacheCreationTokens": 1291
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 18600,
+        "cacheCreationTokens": 369
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 18969,
+        "cacheCreationTokens": 1780
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20749,
+        "cacheCreationTokens": 1586
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22335,
+        "cacheCreationTokens": 1287
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 23622,
+        "cacheCreationTokens": 1143
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 24765,
+        "cacheCreationTokens": 605
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 25370,
+        "cacheCreationTokens": 253
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 25623,
+        "cacheCreationTokens": 1262
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 26885,
+        "cacheCreationTokens": 702
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 27587,
+        "cacheCreationTokens": 1016
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 28603,
+        "cacheCreationTokens": 1198
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Grep",
+        "chars": 146
+      },
+      {
+        "name": "Grep",
+        "chars": 188
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 1850
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "Grep",
+        "chars": 3301
+      },
+      {
+        "name": "Grep",
+        "chars": 20
+      },
+      {
+        "name": "Grep",
+        "chars": 110
+      },
+      {
+        "name": "Grep",
+        "chars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 131
+      },
+      {
+        "name": "Grep",
+        "chars": 59
+      },
+      {
+        "name": "Grep",
+        "chars": 72
+      },
+      {
+        "name": "Grep",
+        "chars": 84
+      },
+      {
+        "name": "Grep",
+        "chars": 258
+      },
+      {
+        "name": "Grep",
+        "chars": 338
+      },
+      {
+        "name": "Grep",
+        "chars": 460
+      },
+      {
+        "name": "Read",
+        "chars": 307
+      },
+      {
+        "name": "Read",
+        "chars": 583
+      },
+      {
+        "name": "Grep",
+        "chars": 18
+      },
+      {
+        "name": "Grep",
+        "chars": 239
+      },
+      {
+        "name": "Grep",
+        "chars": 47
+      },
+      {
+        "name": "Grep",
+        "chars": 302
+      },
+      {
+        "name": "Grep",
+        "chars": 557
+      },
+      {
+        "name": "Grep",
+        "chars": 316
+      },
+      {
+        "name": "Read",
+        "chars": 665
+      },
+      {
+        "name": "Read",
+        "chars": 524
+      },
+      {
+        "name": "Grep",
+        "chars": 16
+      },
+      {
+        "name": "Read",
+        "chars": 1466
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 118634,
+    "costUsd": 0.2768442,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed — that file only calls `exportToCanvas`, not `exportToSvg` (the earlier match was just an i18n translation key). No excalidraw-app matches either.\n\n## Summary\n\nThe public-API wrapper is `exportToSvg` in `packages/utils/src/export.ts:169`, which calls the internal `exportToSvg` from `packages/excalidraw/scene/export.ts:293`.\n\nFiles that call the wrapper (directly or via the package's public API, which re-exports it), excluding its own definition file:\n\n1. **`packages/excalidraw/hooks/useLibraryItemSvg.ts`** — imports from `@excalidraw/utils/export`\n2. **`packages/excalidraw/components/PublishLibrary.tsx`** — imports from `@excalidraw/utils/export`\n3. **`packages/utils/tests/export.test.ts`** — via `import * as utils from \"../src\"`\n4. **`packages/utils/tests/utils.unmocked.test.ts`** — via `import * as utils from \"../src\"`\n5. **`packages/element/tests/cropElement.test.tsx`** — imports from `@excalidraw/excalidraw` (which re-exports the wrapper from `@excalidraw/utils/export`)\n6. **`examples/with-script-in-browser/components/ExampleApp.tsx`** — calls `excalidrawLib.exportToSvg`, where `excalidrawLib` is `window.ExcalidrawLib`, the UMD build of `packages/excalidraw`, which re-exports the same wrapper\n\nNote: `packages/excalidraw/index.tsx` re-exports the wrapper (`export { ... exportToSvg ... } from \"@excalidraw/utils/export\"`) but doesn't itself call it, so it's not included above. Files like `packages/excalidraw/data/index.ts`, `packages/excalidraw/components/PasteChartDialog.tsx`, and `packages/excalidraw/tests/export.test.tsx` import the *internal* `exportToSvg` from `../scene/export` instead, so they're excluded too.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 26,
+    "outputTokens": 4195,
+    "cacheReadTokens": 240324,
+    "cacheCreationTokens": 11185,
+    "numTurns": 13,
+    "searchToolCalls": 12,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 275
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 13232,
+        "cacheCreationTokens": 751
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13983,
+        "cacheCreationTokens": 1833
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 15816,
+        "cacheCreationTokens": 2722
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 18538,
+        "cacheCreationTokens": 1370
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19908,
+        "cacheCreationTokens": 926
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 20834,
+        "cacheCreationTokens": 622
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 20,
+        "cacheReadTokens": 21456,
+        "cacheCreationTokens": 403
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21859,
+        "cacheCreationTokens": 504
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22363,
+        "cacheCreationTokens": 526
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 22889,
+        "cacheCreationTokens": 643
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 23532,
+        "cacheCreationTokens": 610
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 146
+      },
+      {
+        "name": "Read",
+        "chars": 1111
+      },
+      {
+        "name": "Grep",
+        "chars": 3301
+      },
+      {
+        "name": "Grep",
+        "chars": 5418
+      },
+      {
+        "name": "Read",
+        "chars": 1130
+      },
+      {
+        "name": "Read",
+        "chars": 1508
+      },
+      {
+        "name": "Read",
+        "chars": 374
+      },
+      {
+        "name": "Grep",
+        "chars": 43
+      },
+      {
+        "name": "Read",
+        "chars": 609
+      },
+      {
+        "name": "Read",
+        "chars": 354
+      },
+      {
+        "name": "Grep",
+        "chars": 347
+      },
+      {
+        "name": "Read",
+        "chars": 674
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 51213,
+    "costUsd": 0.20324319999999998,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed — `utils.exportToSvg` calls the wrapper.\n\nNow the definitive list of files (excluding `packages/utils/src/export.ts` itself, where the wrapper is defined) that call the public-API wrapper `exportToSvg`:\n\n1. **`packages/excalidraw/hooks/useLibraryItemSvg.ts`** — imports directly from `@excalidraw/utils/export`\n2. **`packages/excalidraw/components/PublishLibrary.tsx`** — imports directly from `@excalidraw/utils/export`\n3. **`packages/excalidraw/index.tsx`** — re-exports it from `@excalidraw/utils/export` as part of the public library API\n4. **`packages/excalidraw/tests/scene/export.test.ts`** — imports `exportToSvg` from `@excalidraw/utils` (separately from `exportUtils.exportToSvg`, the internal one, which it also tests in the same file)\n5. **`packages/element/tests/cropElement.test.tsx`** — imports it via `@excalidraw/excalidraw`, which re-exports the wrapper\n6. **`examples/with-script-in-browser/components/ExampleApp.tsx`** — destructures `exportToSvg` from the excalidraw library bundle (which re-exports the wrapper)\n7. **`packages/utils/tests/utils.unmocked.test.ts`** — calls `utils.exportToSvg` from `../src` (the wrapper's own package)\n8. **`packages/utils/tests/export.test.ts`** — calls `utils.exportToSvg` from `../src`, while spying on the internal `exportToSvg` separately\n\nFiles that call the *internal* `exportToSvg` (from `packages/excalidraw/scene/export.ts`) instead — and are **not** included above — are `packages/excalidraw/data/index.ts`, `packages/excalidraw/components/PasteChartDialog.tsx`, and `packages/excalidraw/tests/export.test.tsx`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 8,
+    "outputTokens": 591,
+    "cacheReadTokens": 78145,
+    "cacheCreationTokens": 2131,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19169,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 27,
+        "cacheReadTokens": 19169,
+        "cacheCreationTokens": 364
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19533,
+        "cacheCreationTokens": 741
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 20274,
+        "cacheCreationTokens": 1026
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 293
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 1345
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1842
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10180,
+    "costUsd": 0.0461665,
+    "judgeCostUsd": 0,
+    "resultText": "The public-API wrapper `exportToSvg` is defined in `packages/utils/src/export.ts:168`. Every other file calling it:\n\n- `packages/utils/src/export.ts` — `exportToClipboard` (same file, internal call)\n- `packages/utils/tests/utils.unmocked.test.ts`\n- `packages/element/tests/cropElement.test.tsx`\n- `packages/excalidraw/components/PublishLibrary.tsx` — via `SingleLibraryItem`\n- `packages/excalidraw/hooks/useLibraryItemSvg.ts` — via `exportLibraryItemToSvg`\n- `packages/utils/tests/export.test.ts`\n- `packages/excalidraw/tests/scene/export.test.ts`",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 28,
+    "outputTokens": 6454,
+    "cacheReadTokens": 316316,
+    "cacheCreationTokens": 12763,
+    "numTurns": 29,
+    "searchToolCalls": 28,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16645,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16645,
+        "cacheCreationTokens": 621
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 17266,
+        "cacheCreationTokens": 622
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17888,
+        "cacheCreationTokens": 1013
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 18901,
+        "cacheCreationTokens": 1979
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20880,
+        "cacheCreationTokens": 1586
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22466,
+        "cacheCreationTokens": 1287
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 23753,
+        "cacheCreationTokens": 1101
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 24854,
+        "cacheCreationTokens": 817
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 25671,
+        "cacheCreationTokens": 1026
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 26697,
+        "cacheCreationTokens": 981
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 27678,
+        "cacheCreationTokens": 579
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 28257,
+        "cacheCreationTokens": 458
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 28715,
+        "cacheCreationTokens": 693
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Grep",
+        "chars": 82
+      },
+      {
+        "name": "Grep",
+        "chars": 192
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 1850
+      },
+      {
+        "name": "Grep",
+        "chars": 3271
+      },
+      {
+        "name": "Grep",
+        "chars": 20
+      },
+      {
+        "name": "Grep",
+        "chars": 110
+      },
+      {
+        "name": "Grep",
+        "chars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 131
+      },
+      {
+        "name": "Grep",
+        "chars": 72
+      },
+      {
+        "name": "Grep",
+        "chars": 59
+      },
+      {
+        "name": "Read",
+        "chars": 557
+      },
+      {
+        "name": "Read",
+        "chars": 354
+      },
+      {
+        "name": "Read",
+        "chars": 374
+      },
+      {
+        "name": "Grep",
+        "chars": 469
+      },
+      {
+        "name": "Grep",
+        "chars": 92
+      },
+      {
+        "name": "Grep",
+        "chars": 302
+      },
+      {
+        "name": "Grep",
+        "chars": 347
+      },
+      {
+        "name": "Grep",
+        "chars": 125
+      },
+      {
+        "name": "Grep",
+        "chars": 627
+      },
+      {
+        "name": "Grep",
+        "chars": 16
+      },
+      {
+        "name": "Read",
+        "chars": 665
+      },
+      {
+        "name": "Read",
+        "chars": 371
+      },
+      {
+        "name": "Grep",
+        "chars": 339
+      },
+      {
+        "name": "Grep",
+        "chars": 215
+      },
+      {
+        "name": "Read",
+        "chars": 181
+      },
+      {
+        "name": "Read",
+        "chars": 190
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 101999,
+    "costUsd": 0.26836679999999996,
+    "judgeCostUsd": 0,
+    "resultText": "Both confirmed as importing the wrapper. Here's the full picture.\n\nThe public-API wrapper is `exportToSvg` in `packages/utils/src/export.ts` (it calls the internal `exportToSvg` from `packages/excalidraw/scene/export.ts`, imported there as `_exportToSvg`, then does extra work). Files that call the wrapper, excluding the definition file itself:\n\n- `packages/utils/src/export.ts` — internally used within `exportToClipboard` (same file, other symbol)\n- `packages/excalidraw/hooks/useLibraryItemSvg.ts` — imports from `@excalidraw/utils/export`\n- `packages/excalidraw/components/PublishLibrary.tsx` — imports from `@excalidraw/utils/export`\n- `packages/excalidraw/tests/scene/export.test.ts` — imports from `@excalidraw/utils` (note: this test file also separately calls the *internal* `exportToSvg` via a namespaced `exportUtils` import — both exist in the same file)\n- `packages/utils/tests/export.test.ts` — calls via `utils.exportToSvg` (`import * as utils from \"../src\"`)\n- `packages/utils/tests/utils.unmocked.test.ts` — same, via `utils.exportToSvg`\n- `packages/element/tests/cropElement.test.tsx` — imports from `@excalidraw/excalidraw`, which re-exports the wrapper from `@excalidraw/utils/export` in `packages/excalidraw/index.tsx`\n- `examples/with-script-in-browser/components/ExampleApp.tsx` — destructures `exportToSvg` off the library's exposed API (same re-export chain)\n\nNote: `packages/excalidraw/index.tsx` re-exports the wrapper from `@excalidraw/utils/export` but doesn't itself call it — that's how it reaches the last two files above.\n\nExcluded (call the *internal* `exportToSvg` in `packages/excalidraw/scene/export.ts` directly, not the wrapper): `packages/excalidraw/data/index.ts`, `packages/excalidraw/components/PasteChartDialog.tsx`, `packages/excalidraw/tests/export.test.tsx`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 22,
+    "outputTokens": 9225,
+    "cacheReadTokens": 275477,
+    "cacheCreationTokens": 32040,
+    "numTurns": 31,
+    "searchToolCalls": 30,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 280
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13237,
+        "cacheCreationTokens": 4181
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 11878,
+        "cacheCreationTokens": 9060
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 20938,
+        "cacheCreationTokens": 2261
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 23199,
+        "cacheCreationTokens": 9302
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 32501,
+        "cacheCreationTokens": 2617
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 35118,
+        "cacheCreationTokens": 1589
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 36707,
+        "cacheCreationTokens": 893
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 37600,
+        "cacheCreationTokens": 785
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 38385,
+        "cacheCreationTokens": 1072
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 146
+      },
+      {
+        "name": "Grep",
+        "chars": 4644
+      },
+      {
+        "name": "Grep",
+        "chars": 3301
+      },
+      {
+        "name": "Grep",
+        "chars": 20
+      },
+      {
+        "name": "Grep",
+        "chars": 94
+      },
+      {
+        "name": "Grep",
+        "chars": 110
+      },
+      {
+        "name": "Grep",
+        "chars": 120
+      },
+      {
+        "name": "Grep",
+        "chars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 131
+      },
+      {
+        "name": "Grep",
+        "chars": 59
+      },
+      {
+        "name": "Grep",
+        "chars": 72
+      },
+      {
+        "name": "Grep",
+        "chars": 92
+      },
+      {
+        "name": "Grep",
+        "chars": 469
+      },
+      {
+        "name": "Grep",
+        "chars": 1212
+      },
+      {
+        "name": "Grep",
+        "chars": 125
+      },
+      {
+        "name": "Read",
+        "chars": 741
+      },
+      {
+        "name": "Grep",
+        "chars": 656
+      },
+      {
+        "name": "Grep",
+        "chars": 347
+      },
+      {
+        "name": "Grep",
+        "chars": 385
+      },
+      {
+        "name": "Read",
+        "chars": 22031
+      },
+      {
+        "name": "Read",
+        "chars": 1157
+      },
+      {
+        "name": "Grep",
+        "chars": 647
+      },
+      {
+        "name": "Grep",
+        "chars": 347
+      },
+      {
+        "name": "Grep",
+        "chars": 446
+      },
+      {
+        "name": "Grep",
+        "chars": 360
+      },
+      {
+        "name": "Grep",
+        "chars": 581
+      },
+      {
+        "name": "Grep",
+        "chars": 188
+      },
+      {
+        "name": "Glob",
+        "chars": 122
+      },
+      {
+        "name": "Grep",
+        "chars": 31
+      },
+      {
+        "name": "Read",
+        "chars": 1213
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 91530,
+    "costUsd": 0.4143721,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed — this file also calls `utils.exportToSvg` (the wrapper), while spying on the internal one to verify the wrapper delegates correctly. Now I have a complete picture. Let me verify `packages/excalidraw/components/PublishLibrary.tsx` and `useLibraryItemSvg.ts` calls are indeed direct wrapper calls (already confirmed via import path `@excalidraw/utils/export`).\n\nBased on this investigation, here's the full list of callers of the public-API wrapper `exportToSvg` (`packages/utils/src/export.ts:169`), excluding its own definition file:\n\n**Library source (calls via `@excalidraw/utils/export` or `@excalidraw/excalidraw`, which re-exports it):**\n- `packages/excalidraw/hooks/useLibraryItemSvg.ts`\n- `packages/excalidraw/components/PublishLibrary.tsx`\n\n**Tests:**\n- `packages/utils/tests/export.test.ts` — tests the wrapper itself, spying on the internal `exportToSvg` to verify delegation\n- `packages/utils/tests/utils.unmocked.test.ts` — via `* as utils from \"../src\"`\n- `packages/excalidraw/tests/export.test.tsx` — via `import { exportToCanvas, exportToSvg } from \"@excalidraw/utils\"`\n- `packages/excalidraw/tests/scene/export.test.ts` — mixed file: most tests call the internal one via `exportUtils.exportToSvg`, but the `\"exporting frames\"` describe block (lines 410, 454, 522, 567, 626) calls the bare `exportToSvg` imported from `@excalidraw/utils` on line 1 — the wrapper\n- `packages/element/tests/cropElement.test.tsx` — via `import { ..., exportToSvg } from \"@excalidraw/excalidraw\"`\n\n**Examples:**\n- `examples/with-script-in-browser/components/ExampleApp.tsx` — receives it as a prop (ultimately sourced from `@excalidraw/excalidraw`, which re-exports the wrapper) and calls it directly\n\n**Not a caller, but worth noting:**\n- `packages/excalidraw/index.tsx` re-exports `exportToSvg` from `@excalidraw/utils/export` — it doesn't call it, just passes it through, making it the conduit by which `@excalidraw/excalidraw` consumers (like the two test/example files above) reach the wrapper.\n\nEverything else that matched `exportToSvg` either imports from `../scene/export` directly (the internal function — e.g. `packages/excalidraw/data/index.ts`, `packages/excalidraw/components/PasteChartDialog.tsx`, `packages/excalidraw/components/ImageExportDialog.tsx`) or is unrelated (locale strings, snapshots, docs/changelogs).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 6,
+    "outputTokens": 496,
+    "cacheReadTokens": 58262,
+    "cacheCreationTokens": 1778,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 19169,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 19169,
+        "cacheCreationTokens": 755
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19924,
+        "cacheCreationTokens": 1023
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 1345
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1842
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 8025,
+    "costUsd": 0.0366526,
+    "judgeCostUsd": 0,
+    "resultText": "The public-API wrapper `exportToSvg` is defined in `packages/utils/src/export.ts:168`. Every other file that calls it:\n\n1. **`packages/utils/src/export.ts`** — called internally by `exportToClipboard` (same file)\n2. **`packages/excalidraw/components/PublishLibrary.tsx`** — called in `SingleLibraryItem`\n3. **`packages/excalidraw/hooks/useLibraryItemSvg.ts`** — called in `exportLibraryItemToSvg`\n4. **`packages/utils/tests/utils.unmocked.test.ts`**\n5. **`packages/element/tests/cropElement.test.tsx`**\n6. **`packages/utils/tests/export.test.ts`**\n7. **`packages/excalidraw/tests/scene/export.test.ts`**",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 26,
+    "outputTokens": 8139,
+    "cacheReadTokens": 292524,
+    "cacheCreationTokens": 14126,
+    "numTurns": 32,
+    "searchToolCalls": 31,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16645,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16645,
+        "cacheCreationTokens": 619
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17264,
+        "cacheCreationTokens": 592
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17856,
+        "cacheCreationTokens": 1010
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 18866,
+        "cacheCreationTokens": 646
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19512,
+        "cacheCreationTokens": 1877
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 21389,
+        "cacheCreationTokens": 2929
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 24318,
+        "cacheCreationTokens": 1552
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 25870,
+        "cacheCreationTokens": 779
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 26649,
+        "cacheCreationTokens": 2094
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 28743,
+        "cacheCreationTokens": 323
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 29066,
+        "cacheCreationTokens": 635
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 29701,
+        "cacheCreationTokens": 1070
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Grep",
+        "chars": 82
+      },
+      {
+        "name": "Grep",
+        "chars": 192
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 1850
+      },
+      {
+        "name": "Grep",
+        "chars": 632
+      },
+      {
+        "name": "Grep",
+        "chars": 20
+      },
+      {
+        "name": "Grep",
+        "chars": 110
+      },
+      {
+        "name": "Grep",
+        "chars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 131
+      },
+      {
+        "name": "Grep",
+        "chars": 59
+      },
+      {
+        "name": "Grep",
+        "chars": 72
+      },
+      {
+        "name": "Grep",
+        "chars": 92
+      },
+      {
+        "name": "Grep",
+        "chars": 469
+      },
+      {
+        "name": "Grep",
+        "chars": 258
+      },
+      {
+        "name": "Grep",
+        "chars": 647
+      },
+      {
+        "name": "Grep",
+        "chars": 656
+      },
+      {
+        "name": "Grep",
+        "chars": 347
+      },
+      {
+        "name": "Grep",
+        "chars": 302
+      },
+      {
+        "name": "Grep",
+        "chars": 504
+      },
+      {
+        "name": "Grep",
+        "chars": 544
+      },
+      {
+        "name": "Read",
+        "chars": 895
+      },
+      {
+        "name": "Read",
+        "chars": 264
+      },
+      {
+        "name": "Grep",
+        "chars": 18
+      },
+      {
+        "name": "Read",
+        "chars": 275
+      },
+      {
+        "name": "Grep",
+        "chars": 324
+      },
+      {
+        "name": "Read",
+        "chars": 1130
+      },
+      {
+        "name": "Grep",
+        "chars": 18
+      },
+      {
+        "name": "Read",
+        "chars": 167
+      },
+      {
+        "name": "Grep",
+        "chars": 744
+      },
+      {
+        "name": "Grep",
+        "chars": 499
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 111178,
+    "costUsd": 0.2946762,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed — those are just translation string keys, not the function itself. Here's the full picture:\n\n## The public-API wrapper\n\n`exportToSvg` in **`packages/utils/src/export.ts:169`** — this is the one exported as part of `@excalidraw/utils`'s public API (and re-exported from `@excalidraw/excalidraw`'s main entry). It wraps the internal `exportToSvg` from `packages/excalidraw/scene/export.ts` (imported there as `_exportToSvg`).\n\n## Files that call it (excluding `packages/utils/src/export.ts` itself)\n\n- `packages/excalidraw/hooks/useLibraryItemSvg.ts` — imports directly from `@excalidraw/utils/export`\n- `packages/excalidraw/components/PublishLibrary.tsx` — imports directly from `@excalidraw/utils/export`\n- `packages/element/tests/cropElement.test.tsx` — imports from `@excalidraw/excalidraw`, which re-exports the wrapper\n- `examples/with-script-in-browser/components/ExampleApp.tsx` — uses `excalidrawLib.exportToSvg`, sourced from the `@excalidraw/excalidraw` package entry\n- `packages/utils/tests/utils.unmocked.test.ts` — imports `* as utils from \"../src\"` and calls `utils.exportToSvg`\n- `packages/utils/tests/export.test.ts` — same, imports `* as utils from \"../src\"` and calls `utils.exportToSvg` (while mocking the internal `scene/export` implementation)\n- `packages/excalidraw/tests/scene/export.test.ts` — imports the internal one as `exportUtils.exportToSvg` for most tests, but *also* imports plain `exportToSvg` from `@excalidraw/utils` (root package, which re-exports `./export`) and calls that wrapper directly in several test cases (lines 410, 454, 522, 567, 626)\n\nAdditionally, `packages/excalidraw/index.tsx` re-exports `exportToSvg` from `@excalidraw/utils/export` (not a call itself, but the reason the wrapper reaches `@excalidraw/excalidraw` consumers like the two files above).\n\n**Not callers of the wrapper** (they use the internal `scene/export` version instead): `packages/excalidraw/data/index.ts`, `packages/excalidraw/components/PasteChartDialog.tsx`, `packages/excalidraw/tests/export.test.tsx`, and `packages/excalidraw/components/ImageExportDialog.tsx` (only has unrelated i18n string keys).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-ambiguous-exporttosvg-public-api",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "00c24694576a",
+    "inputTokens": 20,
+    "outputTokens": 5666,
+    "cacheReadTokens": 169987,
+    "cacheCreationTokens": 10570,
+    "numTurns": 21,
+    "searchToolCalls": 20,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 12957,
+        "cacheCreationTokens": 306
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 13263,
+        "cacheCreationTokens": 764
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 14027,
+        "cacheCreationTokens": 1838
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15865,
+        "cacheCreationTokens": 750
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 16615,
+        "cacheCreationTokens": 2407
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19022,
+        "cacheCreationTokens": 2044
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 21066,
+        "cacheCreationTokens": 688
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21754,
+        "cacheCreationTokens": 707
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 22461,
+        "cacheCreationTokens": 1066
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 146
+      },
+      {
+        "name": "Read",
+        "chars": 1111
+      },
+      {
+        "name": "Grep",
+        "chars": 3301
+      },
+      {
+        "name": "Grep",
+        "chars": 741
+      },
+      {
+        "name": "Grep",
+        "chars": 92
+      },
+      {
+        "name": "Grep",
+        "chars": 469
+      },
+      {
+        "name": "Grep",
+        "chars": 125
+      },
+      {
+        "name": "Grep",
+        "chars": 59
+      },
+      {
+        "name": "Grep",
+        "chars": 72
+      },
+      {
+        "name": "Grep",
+        "chars": 131
+      },
+      {
+        "name": "Grep",
+        "chars": 20
+      },
+      {
+        "name": "Read",
+        "chars": 743
+      },
+      {
+        "name": "Read",
+        "chars": 583
+      },
+      {
+        "name": "Read",
+        "chars": 410
+      },
+      {
+        "name": "Read",
+        "chars": 557
+      },
+      {
+        "name": "Grep",
+        "chars": 324
+      },
+      {
+        "name": "Read",
+        "chars": 674
+      },
+      {
+        "name": "Grep",
+        "chars": 33
+      },
+      {
+        "name": "Grep",
+        "chars": 43
+      },
+      {
+        "name": "Read",
+        "chars": 273
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 59285,
+    "costUsd": 0.2005091,
+    "judgeCostUsd": 0,
+    "resultText": "All confirmed as real calls. Here's the full picture.\n\n## Public-API wrapper\n`exportToSvg` in `packages/utils/src/export.ts:169` — restores elements/app state, then delegates to the internal `_exportToSvg` from `packages/excalidraw/scene/export.ts`.\n\nIt's also re-exported unchanged from `packages/excalidraw/index.tsx:415` as part of the `@excalidraw/excalidraw` public API, so consumers importing from either `@excalidraw/utils` or `@excalidraw/excalidraw` are calling this same wrapper.\n\n## Callers (excluding `packages/utils/src/export.ts` itself)\n\n| File | Import path used |\n|---|---|\n| `packages/excalidraw/hooks/useLibraryItemSvg.ts` | `@excalidraw/utils/export` |\n| `packages/excalidraw/components/PublishLibrary.tsx` | `@excalidraw/utils/export` |\n| `packages/excalidraw/tests/scene/export.test.ts` | `@excalidraw/utils` |\n| `packages/excalidraw/tests/export.test.tsx` | `@excalidraw/excalidraw` (re-exported wrapper) |\n| `packages/element/tests/cropElement.test.tsx` | `@excalidraw/excalidraw` (re-exported wrapper) |\n| `examples/with-script-in-browser/components/ExampleApp.tsx` | destructured from the loaded `excalidrawLib` (the public API bundle) |\n| `packages/utils/tests/utils.unmocked.test.ts` | `../src` (the utils package's own test) |\n| `packages/utils/tests/export.test.ts` | `../src` (the utils package's own test) |\n\nNote: `packages/excalidraw/data/index.ts` and `packages/excalidraw/components/PasteChartDialog.tsx` also reference `exportToSvg`, but they import it from `../scene/export` — that's the **internal** function, not this wrapper, so they're excluded.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 10,
+    "outputTokens": 680,
+    "cacheReadTokens": 94048,
+    "cacheCreationTokens": 5097,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 15564,
+        "cacheCreationTokens": 3625
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 19189,
+        "cacheCreationTokens": 254
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 19443,
+        "cacheCreationTokens": 288
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 19731,
+        "cacheCreationTokens": 390
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20121,
+        "cacheCreationTokens": 540
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Glob",
+        "chars": 186
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 335
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 540
+      },
+      {
+        "name": "Grep",
+        "chars": 115
+      },
+      {
+        "name": "Grep",
+        "chars": 126
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 11836,
+    "costUsd": 0.07008740000000001,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `packages/laser-pointer/src/state.ts` imports the module as a namespace (`import * as m from \"./math\"`) and calls `plerp` via `m.plerp(...)` at line 78, rather than importing `plerp` by name (note the g-mesh call-graph only resolved the other, direct call at line 61 in the same file; the namespaced call at line 78 didn't produce a `CALLS` edge, confirming the property-access-through-namespace gap).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 8,
+    "outputTokens": 820,
+    "cacheReadTokens": 67310,
+    "cacheCreationTokens": 2924,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15342,
+        "cacheCreationTokens": 1323
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16665,
+        "cacheCreationTokens": 663
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 17328,
+        "cacheCreationTokens": 647
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 17975,
+        "cacheCreationTokens": 291
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Grep",
+        "chars": 88
+      },
+      {
+        "name": "Grep",
+        "chars": 216
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "Grep",
+        "chars": 126
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 18291,
+    "costUsd": 0.050060999999999994,
+    "judgeCostUsd": 0,
+    "resultText": "`plerp` is defined in `packages/laser-pointer/src/math.ts:27`. Yes — `packages/laser-pointer/src/state.ts` imports the whole module as `import * as m from \"./math\"` (line 1) and calls it namespace-style as `m.plerp(...)` (line 78), rather than a plain named import.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 8,
+    "outputTokens": 499,
+    "cacheReadTokens": 52680,
+    "cacheCreationTokens": 803,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 231
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13208,
+        "cacheCreationTokens": 310
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13518,
+        "cacheCreationTokens": 262
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 88
+      },
+      {
+        "name": "Grep",
+        "chars": 216
+      },
+      {
+        "name": "Grep",
+        "chars": 76
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 9118,
+    "costUsd": 0.029182,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `plerp` is defined in `packages/laser-pointer/src/math.ts:27`, and it's called via a namespace import in **`packages/laser-pointer/src/state.ts`**, which does `import * as m from \"./math\"` (line 1) and calls it as `m.plerp(...)` (line 78) rather than importing `plerp` directly.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 10,
+    "outputTokens": 640,
+    "cacheReadTokens": 98739,
+    "cacheCreationTokens": 1566,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19189,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 19189,
+        "cacheCreationTokens": 578
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 19767,
+        "cacheCreationTokens": 393
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20160,
+        "cacheCreationTokens": 274
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 20434,
+        "cacheCreationTokens": 321
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Glob",
+        "chars": 327
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 335
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 540
+      },
+      {
+        "name": "Grep",
+        "chars": 51
+      },
+      {
+        "name": "Grep",
+        "chars": 155
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 11060,
+    "costUsd": 0.049708699999999995,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `packages/laser-pointer/src/state.ts` imports the math module namespace-style (`import * as m from \"./math\"`) and calls it as `m.plerp(...)` at `state.ts:78`, rather than using a named `plerp` import.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 6,
+    "outputTokens": 667,
+    "cacheReadTokens": 50690,
+    "cacheCreationTokens": 1313,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16665,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 16665,
+        "cacheCreationTokens": 695
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 17360,
+        "cacheCreationTokens": 618
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Grep",
+        "chars": 50
+      },
+      {
+        "name": "Grep",
+        "chars": 70
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 402
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 15083,
+    "costUsd": 0.033108,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `packages/laser-pointer/src/state.ts` imports the math module via `import * as m from \"./math\"` and calls `m.plerp(...)` (in `LaserPointer.addPoint`, line 77), rather than importing `plerp` directly by name.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 8,
+    "outputTokens": 500,
+    "cacheReadTokens": 52751,
+    "cacheCreationTokens": 845,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 20,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 265
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 13242,
+        "cacheCreationTokens": 313
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 13555,
+        "cacheCreationTokens": 267
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 88
+      },
+      {
+        "name": "Grep",
+        "chars": 216
+      },
+      {
+        "name": "Grep",
+        "chars": 76
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 8539,
+    "costUsd": 0.0294703,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `packages/laser-pointer/src/state.ts` imports `math.ts` via a namespace import (`import * as m from \"./math\"`) and calls `m.plerp(...)` on line 78, rather than importing `plerp` directly.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 12,
+    "outputTokens": 814,
+    "cacheReadTokens": 118813,
+    "cacheCreationTokens": 1756,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19189,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 19189,
+        "cacheCreationTokens": 316
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 19505,
+        "cacheCreationTokens": 563
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 20068,
+        "cacheCreationTokens": 253
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 20321,
+        "cacheCreationTokens": 220
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 20541,
+        "cacheCreationTokens": 404
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Glob",
+        "chars": 327
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 335
+      },
+      {
+        "name": "Grep",
+        "chars": 216
+      },
+      {
+        "name": "Grep",
+        "chars": 51
+      },
+      {
+        "name": "Grep",
+        "chars": 51
+      },
+      {
+        "name": "Read",
+        "chars": 287
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 15261,
+    "costUsd": 0.0594819,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed: `packages/laser-pointer/src/state.ts` imports the math module with a namespace import (`import * as m from \"./math\"`) and calls `m.plerp(this.lastPoint, point, 1 - this.options.streamline)` at line 78, rather than importing `plerp` by name.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "serena-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 14,
+    "outputTokens": 1343,
+    "cacheReadTokens": 141155,
+    "cacheCreationTokens": 6677,
+    "numTurns": 10,
+    "searchToolCalls": 9,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16665,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16665,
+        "cacheCreationTokens": 3241
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 19906,
+        "cacheCreationTokens": 369
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 20275,
+        "cacheCreationTokens": 1864
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 30,
+        "cacheReadTokens": 22139,
+        "cacheCreationTokens": 432
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 22571,
+        "cacheCreationTokens": 363
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 22934,
+        "cacheCreationTokens": 408
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7896
+      },
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 454
+      },
+      {
+        "name": "Glob",
+        "chars": 78
+      },
+      {
+        "name": "Grep",
+        "chars": 50
+      },
+      {
+        "name": "Grep",
+        "chars": 88
+      },
+      {
+        "name": "Read",
+        "chars": 2919
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "mcp__serena__find_referencing_symbols",
+        "chars": 402
+      },
+      {
+        "name": "Read",
+        "chars": 287
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 32937,
+    "costUsd": 0.10259549999999999,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed. `plerp` is defined in `packages/laser-pointer/src/math.ts:27`, and it's called via a namespace import in **`packages/laser-pointer/src/state.ts`**, which does `import * as m from \"./math\"` and invokes it as `m.plerp(this.lastPoint, point, 1 - this.options.streamline)` (line 77, inside `LaserPointer.addPoint`) — no plain named import of `plerp` exists anywhere in the codebase.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-namespace-import-laserpointer-plerp",
+    "corpusId": "excalidraw",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-08-20T17:23:05.779Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "b092696172b2",
+    "inputTokens": 10,
+    "outputTokens": 591,
+    "cacheReadTokens": 66433,
+    "cacheCreationTokens": 1031,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 12977,
+        "cacheCreationTokens": 226
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13203,
+        "cacheCreationTokens": 313
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 17,
+        "cacheReadTokens": 13516,
+        "cacheCreationTokens": 244
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 13760,
+        "cacheCreationTokens": 248
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 88
+      },
+      {
+        "name": "Grep",
+        "chars": 216
+      },
+      {
+        "name": "Grep",
+        "chars": 51
+      },
+      {
+        "name": "Grep",
+        "chars": 76
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 11625,
+    "costUsd": 0.0360569,
+    "judgeCostUsd": 0,
+    "resultText": "Yes — `plerp` is defined in `packages/laser-pointer/src/math.ts:27`, and it's called via a namespace-style import in `packages/laser-pointer/src/state.ts`, which does `import * as m from \"./math\"` and calls `m.plerp(...)` at line 78.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]
