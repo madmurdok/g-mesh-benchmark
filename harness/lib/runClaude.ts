@@ -228,6 +228,46 @@ export interface TurnUsage {
 export interface ToolResultSize {
   name: string | null;
   chars: number;
+  /**
+   * What the call asked for, serialized and truncated - a `Read`'s path, a
+   * `Grep`'s pattern, a `find_references`' symbol.
+   *
+   * Truncated because an `Edit` carries a whole file and nothing this measures
+   * needs that; `argsChars` keeps the untruncated length so a truncated value
+   * is never mistaken for a short one.
+   */
+  args?: string;
+  argsChars?: number;
+  /**
+   * The file paths this result named, deduplicated.
+   *
+   * Recorded instead of the result body, which would balloon every result file
+   * to answer one question: whether the `Read` after a `find_references`
+   * opened a file that `find_references` had just returned. Paths are the part
+   * that answers it.
+   */
+  paths?: string[];
+}
+
+/** Bounds on what one tool call may contribute, so a pathological result cannot dominate a result file. */
+const MAX_ARGS_CHARS = 200;
+const MAX_PATHS = 40;
+
+/**
+ * Source-file paths mentioned anywhere in a serialized tool result.
+ *
+ * Deliberately extension-driven rather than structural: `find_references`
+ * returns `filePath` fields, `Grep` returns `path:line:` prefixes and `Glob` a
+ * bare list, and one regex covers all three without teaching this parser the
+ * shape of every tool it might meet.
+ */
+function pathsIn(serialized: string): string[] {
+  const found = new Set<string>();
+  for (const m of serialized.matchAll(/[\w./@-]+\.(?:ts|tsx|js|jsx|mts|cts|mjs|cjs|json|rs|py)\b/g)) {
+    found.add(m[0].replace(/^\.\//, ""));
+    if (found.size >= MAX_PATHS) break;
+  }
+  return [...found];
 }
 
 export interface ParsedStream {
@@ -299,9 +339,10 @@ export function parseStreamJson(stdout: string): ParsedStream {
   const perTurnUsage: TurnUsage[] = [];
   const seenUsageMessageIds = new Set<string>();
   const toolResults: ToolResultSize[] = [];
-  // tool_use id -> the tool that was asked for, so a tool_result arriving on a
-  // later `user` event can be attributed to something more useful than "a tool".
-  const toolNameByUseId = new Map<string, string>();
+  // tool_use id -> the tool that was asked for and what it was asked for, so a
+  // tool_result arriving on a later `user` event can be attributed to
+  // something more useful than "a tool".
+  const toolCallByUseId = new Map<string, { name: string; args: string }>();
 
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
@@ -333,7 +374,7 @@ export function parseStreamJson(stdout: string): ParsedStream {
     // returned, and therefore what enters the conversation and gets re-read on
     // every later turn. Skipped entirely before this field existed.
     if (record.type === "user") {
-      readToolResults(record.message?.content, toolNameByUseId, toolResults);
+      readToolResults(record.message?.content, toolCallByUseId, toolResults);
       continue;
     }
     if (record.type !== "assistant") continue;
@@ -344,12 +385,12 @@ export function parseStreamJson(stdout: string): ParsedStream {
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       if (typeof block !== "object" || block === null) continue;
-      const b = block as { type?: unknown; name?: unknown; id?: unknown };
+      const b = block as { type?: unknown; name?: unknown; id?: unknown; input?: unknown };
       if (b.type !== "tool_use" || typeof b.name !== "string") continue;
       if (typeof b.id === "string") {
         if (seenToolUseIds.has(b.id)) continue;
         seenToolUseIds.add(b.id);
-        toolNameByUseId.set(b.id, b.name);
+        toolCallByUseId.set(b.id, { name: b.name, args: JSON.stringify(b.input ?? {}) });
       }
       toolCalls[classifyToolCall(b.name)]++;
       if (b.name.startsWith("mcp__")) mcpToolCalls++;
@@ -401,7 +442,7 @@ function readTurnUsage(
  */
 function readToolResults(
   content: unknown,
-  toolNameByUseId: Map<string, string>,
+  toolCallByUseId: Map<string, { name: string; args: string }>,
   into: ToolResultSize[],
 ): void {
   if (!Array.isArray(content)) return;
@@ -409,8 +450,16 @@ function readToolResults(
     if (typeof block !== "object" || block === null) continue;
     const b = block as { type?: unknown; tool_use_id?: unknown; content?: unknown };
     if (b.type !== "tool_result") continue;
-    const name = typeof b.tool_use_id === "string" ? toolNameByUseId.get(b.tool_use_id) ?? null : null;
-    into.push({ name, chars: JSON.stringify(b.content ?? "").length });
+    const call = typeof b.tool_use_id === "string" ? toolCallByUseId.get(b.tool_use_id) : undefined;
+    const serialized = JSON.stringify(b.content ?? "");
+    const entry: ToolResultSize = { name: call?.name ?? null, chars: serialized.length };
+    if (call !== undefined) {
+      entry.args = call.args.slice(0, MAX_ARGS_CHARS);
+      entry.argsChars = call.args.length;
+    }
+    const paths = pathsIn(serialized);
+    if (paths.length > 0) entry.paths = paths;
+    into.push(entry);
   }
 }
 
