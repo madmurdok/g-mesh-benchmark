@@ -402,6 +402,13 @@ async function runSessionChain(
       // not a per-chain one.
       mcpServers: result.mcp.servers ?? undefined,
       mcpToolCalls: result.mcp.toolCalls,
+      // Same shape as token-economy's records, and worth more here: a chain is
+      // where the prefix grows turn after turn, so a per-turn series is the
+      // direct measurement of the amortisation curve this experiment exists to
+      // draw (see docs/results/v0.20.0-gmesh-2.8.1-session-economy-findings.md,
+      // which had to draw it from per-call aggregates).
+      perTurnUsage: result.perTurnUsage.length > 0 ? result.perTurnUsage : undefined,
+      toolResults: result.toolResults.length > 0 ? result.toolResults : undefined,
       durationMs: result.durationMs,
       costUsd: result.costUsd,
       judgeCostUsd,

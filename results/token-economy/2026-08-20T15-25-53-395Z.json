@@ -1,0 +1,224 @@
+[
+  {
+    "taskId": "tt-outline-lifecycle-vs-small",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T15:25:53.395Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "taskDefHash": "b3cc8ffea9ed",
+    "inputTokens": 6,
+    "outputTokens": 1314,
+    "cacheReadTokens": 46139,
+    "cacheCreationTokens": 25710,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 21395
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21395,
+        "cacheCreationTokens": 3349
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24744,
+        "cacheCreationTokens": 966
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 5794
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 1169
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 1404
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 23224,
+    "costUsd": 0.1888477,
+    "judgeCostUsd": 0,
+    "resultText": "## `src/domain/lifecycle.ts` exports (20 total)\n\n**Error classes (interfaces/types):**\n- `TaskConflictError`\n- `TaskNotClaimableError`\n- `TaskBlockedError`\n- `CompletionVerificationError`\n- `ReleaseNotAllDoneError`\n\n**Input/Result types:**\n- `ReleaseTaskInput`\n- `CompleteTaskResult`\n- `CompleteTaskInput`\n- `ReleaseItInput`\n- `ReleaseItResult`\n- `CancelReleaseInput`\n- `CancelTaskInput`\n- `CancelTaskResult`\n\n**Functions:**\n- `claimTask(db, taskId, sessionId): void`\n- `releaseTask(db, input): void`\n- `completeTask(db, verifier, input): CompleteTaskResult`\n- `releaseIt(db, verifier, input): ReleaseItResult`\n- `cancelRelease(db, input): void`\n- `cancelTask(db, input): CancelTaskResult`\n\n(Note: `isLockActive` is a non-exported helper function.)\n\n## `src/domain/handoffNotes.ts` exports (4 total)\n\n**Types:**\n- `HandoffNote`\n- `AddHandoffNoteInput`\n\n**Functions:**\n- `addHandoffNote(db, input): HandoffNote`\n- `listHandoffNotes(db, taskId): HandoffNote[]`\n\n## Contrast\n\n- **Scale**: `lifecycle.ts` exports 5x as many symbols (20 vs 4) and spans 458 lines vs `handoffNotes.ts`'s ~44 lines.\n- **Error surface**: `lifecycle.ts` defines 5 custom error classes (conflict, not-claimable, blocked, verification failure, not-all-done) to model the many ways a task-status transition can fail; `handoffNotes.ts` defines none — it's a simple, mostly non-failing CRUD-style module (add/list notes).\n- **Operation count**: `lifecycle.ts` implements 6 distinct state-transition operations (claim, release, complete, releaseIt, cancelRelease, cancelTask), each with its own input/result type pair; `handoffNotes.ts` implements just 2 straightforward operations (add, list) sharing a single input type and one data type.\n- **Shape**: `handoffNotes.ts` exports are purely data-in/data-out with no domain-specific error types, reflecting that it's an auxiliary, low-complexity module compared to `lifecycle.ts`'s central, invariant-heavy task-status state machine.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-outline-lifecycle-vs-small",
+    "corpusId": "task-tracker-mcp",
+    "arm": "serena-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-20T15:25:53.395Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "taskDefHash": "b3cc8ffea9ed",
+    "inputTokens": 12,
+    "outputTokens": 1621,
+    "cacheReadTokens": 105757,
+    "cacheCreationTokens": 11597,
+    "numTurns": 9,
+    "searchToolCalls": 8,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "serena",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 5,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 9723,
+        "cacheCreationTokens": 6238
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15961,
+        "cacheCreationTokens": 2999
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 18960,
+        "cacheCreationTokens": 666
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 19626,
+        "cacheCreationTokens": 920
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 26,
+        "cacheReadTokens": 20546,
+        "cacheCreationTokens": 395
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 20941,
+        "cacheCreationTokens": 379
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__serena__activate_project",
+        "chars": 477
+      },
+      {
+        "name": "mcp__serena__initial_instructions",
+        "chars": 7520
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 585
+      },
+      {
+        "name": "mcp__serena__get_symbols_overview",
+        "chars": 160
+      },
+      {
+        "name": "Grep",
+        "chars": 1044
+      },
+      {
+        "name": "Grep",
+        "chars": 269
+      },
+      {
+        "name": "Grep",
+        "chars": 129
+      },
+      {
+        "name": "mcp__serena__find_symbol",
+        "chars": 393
+      }
+    ],
+    "serenaRevision": "7fcbca7e62555ec2287ddb2f083caee805848ea6",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 34444,
+    "costUsd": 0.1256601,
+    "judgeCostUsd": 0,
+    "resultText": "Confirmed: `isLockActive` is not exported (internal helper only).\n\n## `src/domain/lifecycle.ts` exports\n\n**Functions (6):**\n- `claimTask`\n- `releaseTask`\n- `completeTask`\n- `releaseIt`\n- `cancelRelease`\n- `cancelTask`\n\n**Interfaces (8):**\n- `ReleaseTaskInput`\n- `CompleteTaskResult`, `CompleteTaskInput`\n- `ReleaseItInput`, `ReleaseItResult`\n- `CancelReleaseInput`\n- `CancelTaskInput`, `CancelTaskResult`\n\n**Classes (5, error types):**\n- `TaskConflictError`, `TaskNotClaimableError`, `TaskBlockedError`, `CompletionVerificationError`, `ReleaseNotAllDoneError`\n\n*(Note: `isLockActive` is a module-private helper — not exported, despite showing up in the file's symbol list.)*\n\n## `src/domain/handoffNotes.ts` exports\n\n**Functions (2):**\n- `addHandoffNote`\n- `listHandoffNotes`\n\n**Interfaces (2):**\n- `HandoffNote`\n- `AddHandoffNoteInput`\n\n## Contrast\n\n`lifecycle.ts` has a much larger public surface: 6 functions vs. 2, and it also exports 5 custom `Error` subclasses to let callers distinguish failure modes (conflict, not-claimable, blocked, verification failure, not-all-done) — `handoffNotes.ts` has none, presumably throwing generic errors or none at all. `lifecycle.ts` also pairs nearly every function with dedicated `*Input`/`*Result` interfaces (8 total), reflecting more complex, multi-field operations, whereas `handoffNotes.ts` gets by with a single input interface (`AddHandoffNoteInput`) plus the `HandoffNote` data shape itself. Overall, `lifecycle.ts` models a richer state machine (claim/release/complete/cancel flows with locking), while `handoffNotes.ts` is a simple CRUD-style add/list module.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-outline-lifecycle-vs-small",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-08-20T15:25:53.395Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "taskDefHash": "b3cc8ffea9ed",
+    "inputTokens": 4,
+    "outputTokens": 1080,
+    "cacheReadTokens": 18551,
+    "cacheCreationTokens": 14534,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6009
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 12280,
+        "cacheCreationTokens": 8525
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 19197
+      },
+      {
+        "name": "Read",
+        "chars": 1538
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 12712,
+    "costUsd": 0.1100043,
+    "judgeCostUsd": 0,
+    "resultText": "## `src/domain/lifecycle.ts` exports\n\n**Error classes**\n- `TaskConflictError`\n- `TaskNotClaimableError`\n- `TaskBlockedError`\n- `CompletionVerificationError`\n- `ReleaseNotAllDoneError`\n\n**Interfaces**\n- `ReleaseTaskInput`\n- `CompleteTaskResult`\n- `CompleteTaskInput`\n- `ReleaseItInput`\n- `ReleaseItResult`\n- `CancelReleaseInput`\n- `CancelTaskInput`\n- `CancelTaskResult`\n\n**Functions**\n- `claimTask`\n- `releaseTask`\n- `completeTask`\n- `releaseIt`\n- `cancelRelease`\n- `cancelTask`\n\nTotal: 5 error classes, 8 interfaces, 6 functions (19 exports).\n\n## `src/domain/handoffNotes.ts` exports\n\n**Interfaces**\n- `HandoffNote`\n- `AddHandoffNoteInput`\n\n**Functions**\n- `addHandoffNote`\n- `listHandoffNotes`\n\nTotal: 2 interfaces, 2 functions (4 exports).\n\n## Contrast\n\n- **Scale**: `lifecycle.ts` exports ~19 symbols vs. `handoffNotes.ts`'s 4 — reflecting that lifecycle.ts models the full task/release state machine (claim → complete/cancel, release → ship/cancel) while handoffNotes.ts is a simple append/list log.\n- **Error handling**: `lifecycle.ts` defines 5 dedicated error classes carrying structured data (e.g., `currentOwnerSessionId`, `pendingTaskIds`) for callers to branch on. `handoffNotes.ts` defines none — it throws no domain-specific errors, since there's no state machine to violate.\n- **Input/output shape variety**: `lifecycle.ts` has 8 interfaces because each of its 6 functions has distinct, often multi-field inputs/results (locking, force flags, verification). `handoffNotes.ts` has just 2 interfaces (`HandoffNote` the record shape, `AddHandoffNoteInput` its creation input); `listHandoffNotes` needs no dedicated input type — it just takes a `taskId`.\n- **Function complexity**: lifecycle functions wrap transactions, verifiers, and dependency/lock checks; handoffNotes functions are a straight insert and a straight select.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

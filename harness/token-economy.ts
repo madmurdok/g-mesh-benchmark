@@ -121,6 +121,25 @@ export interface TokenEconomyRun {
   mcpServers?: { name: string; status: string }[];
   mcpToolCalls?: number;
   /**
+   * Per-assistant-message token usage, in stream order, and the sizes of what
+   * the tools returned.
+   *
+   * Both absent on runs recorded before these fields existed, which is every
+   * result file up to and including the 2026-08-20 sweep. That sweep is the
+   * reason they exist: it established that 93% of g-mesh's token premium on
+   * the tasks it loses is cache-read rather than schema tax, but could only
+   * separate "a fixed prefix re-read every turn" from "a payload that entered
+   * the conversation" by comparing three arms, because a run record carried
+   * one aggregate and `cacheRead / numTurns` was the best available proxy.
+   * With these two, that split is arithmetic on a single run.
+   *
+   * `toolResultChars` rather than tokens because this harness has no
+   * tokenizer; see lib/runClaude.ts's ToolResultSize for why an estimate is
+   * not offered in its place.
+   */
+  perTurnUsage?: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number }[];
+  toolResults?: { name: string | null; chars: number }[];
+  /**
    * Set only by scripts/annotateMcpDeadRuns.ts, never by a live run: it records
    * that the two fields above were established *after the fact* (from saved
    * transcripts of an identically-configured re-run) rather than observed by
@@ -486,6 +505,11 @@ async function runArm(
     // told us, which is not the same claim as "this arm declared no servers".
     mcpServers: result.mcp.servers ?? undefined,
     mcpToolCalls: result.mcp.toolCalls,
+    // `?? undefined` on empty, matching mcpServers above: a run whose stream
+    // carried no usable events should read as "unknown", not as "this run had
+    // zero turns and received nothing".
+    perTurnUsage: result.perTurnUsage.length > 0 ? result.perTurnUsage : undefined,
+    toolResults: result.toolResults.length > 0 ? result.toolResults : undefined,
     serenaRevision: arm === "serena" || arm === "serena-configured" ? revisions.serena : undefined,
     // Unconditional, unlike serenaRevision's arm gate: every arm reads the
     // corpus, so every arm has to state which revision of it it read.

@@ -199,6 +199,37 @@ export function classifyToolCall(name: string): keyof ToolCallCounts {
   return "other";
 }
 
+/**
+ * One assistant message's own token usage, in stream order.
+ *
+ * The aggregate on the `result` event answers "what did this run cost"; this
+ * answers "when". They are different questions and only the second can say
+ * whether a cost is a fixed prefix paid every turn or a payload that entered
+ * the conversation at a particular moment — which is exactly what the
+ * 2026-08-20 sweep had to infer from three arms because the harness threw this
+ * away (see docs/results/v0.20.0-gmesh-2.8.1-token-economy-findings.md).
+ */
+export interface TurnUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+/**
+ * What one tool call returned, sized.
+ *
+ * `chars` rather than tokens on purpose: the harness has no tokenizer, and a
+ * `chars / 4` estimate dressed up as a token count would be a fabricated
+ * number sitting next to measured ones. Attribution to a tool comes from the
+ * `tool_use` block that requested it; `name` is null when a `tool_result`
+ * arrives whose `tool_use_id` was never seen (a stream that lost lines).
+ */
+export interface ToolResultSize {
+  name: string | null;
+  chars: number;
+}
+
 export interface ParsedStream {
   /** The stream's last `type: "result"` event — the aggregate the single-blob `--output-format json` used to be. null when the stream carried none (crash, killed process, garbage output). */
   result: ClaudeJsonResult | null;
@@ -215,6 +246,25 @@ export interface ParsedStream {
   mcpToolCalls: number;
   /** What the `type: "system", subtype: "init"` event said about this run's MCP wiring; both fields null when the stream carried no init event (see McpInitState). */
   init: McpInitState;
+  /**
+   * Per-assistant-message usage, in stream order — see [`TurnUsage`].
+   *
+   * De-duplicated by `message.id`, because the CLI splits one assistant
+   * message across several lines (one content block each) and repeats the same
+   * `usage` on every one of them. Counting lines instead of messages would
+   * multiply a turn's cost by however many blocks it happened to contain.
+   *
+   * **This is not the same count as `numTurns`.** Observed on a real run
+   * (2026-08-20T15-25-53): a g-mesh call the CLI reported as 4 turns carried 3
+   * usage-bearing assistant messages, and a baseline call reported as 3 carried
+   * 2. Whatever `num_turns` counts, it is not "messages that were billed", so
+   * `cacheRead / numTurns` — the proxy the 2026-08-20 report had to use — was
+   * dividing by the wrong denominator on top of averaging away the shape. Use
+   * this array's length when a per-turn figure is wanted.
+   */
+  perTurnUsage: TurnUsage[];
+  /** Every `tool_result` the stream carried, sized and attributed — see [`ToolResultSize`]. */
+  toolResults: ToolResultSize[];
 }
 
 /**
@@ -246,6 +296,12 @@ export function parseStreamJson(stdout: string): ParsedStream {
   let result: ClaudeJsonResult | null = null;
   let mcpToolCalls = 0;
   const init: McpInitState = { servers: null, tools: null };
+  const perTurnUsage: TurnUsage[] = [];
+  const seenUsageMessageIds = new Set<string>();
+  const toolResults: ToolResultSize[] = [];
+  // tool_use id -> the tool that was asked for, so a tool_result arriving on a
+  // later `user` event can be attributed to something more useful than "a tool".
+  const toolNameByUseId = new Map<string, string>();
 
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
@@ -273,7 +329,16 @@ export function parseStreamJson(stdout: string): ParsedStream {
       readInitEvent(event, init);
       continue;
     }
+    // `user` events carry the tool_result blocks - what a tool actually
+    // returned, and therefore what enters the conversation and gets re-read on
+    // every later turn. Skipped entirely before this field existed.
+    if (record.type === "user") {
+      readToolResults(record.message?.content, toolNameByUseId, toolResults);
+      continue;
+    }
     if (record.type !== "assistant") continue;
+
+    readTurnUsage(record.message, seenUsageMessageIds, perTurnUsage);
 
     const content = record.message?.content;
     if (!Array.isArray(content)) continue;
@@ -284,13 +349,69 @@ export function parseStreamJson(stdout: string): ParsedStream {
       if (typeof b.id === "string") {
         if (seenToolUseIds.has(b.id)) continue;
         seenToolUseIds.add(b.id);
+        toolNameByUseId.set(b.id, b.name);
       }
       toolCalls[classifyToolCall(b.name)]++;
       if (b.name.startsWith("mcp__")) mcpToolCalls++;
     }
   }
 
-  return { result, toolCalls, mcpToolCalls, init };
+  return { result, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults };
+}
+
+/**
+ * Appends one assistant message's `usage`, unless a line for that same message
+ * has already contributed one.
+ *
+ * A message with no `id` is counted anyway rather than dropped: the id is what
+ * makes de-duplication possible, not what makes the usage real, and a stream
+ * that omits it would otherwise record no turns at all.
+ */
+function readTurnUsage(
+  message: unknown,
+  seenIds: Set<string>,
+  into: TurnUsage[],
+): void {
+  if (typeof message !== "object" || message === null) return;
+  const m = message as { id?: unknown; usage?: unknown };
+  if (typeof m.id === "string") {
+    if (seenIds.has(m.id)) return;
+    seenIds.add(m.id);
+  }
+  if (typeof m.usage !== "object" || m.usage === null) return;
+  const u = m.usage as Record<string, unknown>;
+  const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+  into.push({
+    inputTokens: num(u.input_tokens),
+    outputTokens: num(u.output_tokens),
+    cacheReadTokens: num(u.cache_read_input_tokens),
+    cacheCreationTokens: num(u.cache_creation_input_tokens),
+  });
+}
+
+/**
+ * Sizes every `tool_result` block on one `user` event and attributes it to the
+ * tool that was asked for.
+ *
+ * The block's `content` is whatever the tool returned - a string for most
+ * tools, an array of blocks for some - so it is serialized before measuring
+ * rather than assumed to be a string. That overstates a string result by the
+ * two quote characters JSON adds, which is not worth a special case when the
+ * numbers being compared are in the thousands.
+ */
+function readToolResults(
+  content: unknown,
+  toolNameByUseId: Map<string, string>,
+  into: ToolResultSize[],
+): void {
+  if (!Array.isArray(content)) return;
+  for (const block of content) {
+    if (typeof block !== "object" || block === null) continue;
+    const b = block as { type?: unknown; tool_use_id?: unknown; content?: unknown };
+    if (b.type !== "tool_result") continue;
+    const name = typeof b.tool_use_id === "string" ? toolNameByUseId.get(b.tool_use_id) ?? null : null;
+    into.push({ name, chars: JSON.stringify(b.content ?? "").length });
+  }
 }
 
 /**
@@ -352,6 +473,17 @@ export interface RunClaudeResult {
    * came up.
    */
   mcp: RunMcpState;
+  /**
+   * Per-turn usage and the sizes of what the tools returned - see
+   * [`TurnUsage`] and [`ToolResultSize`].
+   *
+   * Kept on the error and budget_exceeded paths for the same reason toolCalls
+   * is: a run that was cut off still really read those prefixes and really
+   * received those payloads, and a run that spent its way to a cap is exactly
+   * the one worth decomposing.
+   */
+  perTurnUsage: TurnUsage[];
+  toolResults: ToolResultSize[];
   resultText: string;
   /**
    * The CLI's `session_id` for this call — pass it back as `resumeSessionId`
@@ -552,7 +684,7 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
       await saveTranscript(opts.transcriptLabel, stdout);
     }
 
-    const { result: parsed, toolCalls, mcpToolCalls, init } = parseStreamJson(stdout);
+    const { result: parsed, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults } = parseStreamJson(stdout);
     const mcp: RunMcpState = { servers: init.servers, tools: init.tools, toolCalls: mcpToolCalls };
     // Only for the calls bucketed as `agent.call`, so the two rows stay
     // count-for-count comparable and their difference is exactly the startup
@@ -586,14 +718,14 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
     // No result event anywhere in the stream — same failure as an unparseable
     // single blob used to be, just detected per-stream instead of per-blob.
     if (parsed === null) {
-      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, mcp, resultText: "" };
+      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, mcp, perTurnUsage, toolResults, resultText: "" };
     }
 
     if (parsed.subtype === "error_max_budget_usd") {
-      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, resultText: "", sessionId: parsed.session_id };
+      return { status: "budget_exceeded", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, perTurnUsage, toolResults, resultText: "", sessionId: parsed.session_id };
     }
     if (parsed.is_error || parsed.subtype !== "success") {
-      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, resultText: "", sessionId: parsed.session_id };
+      return { status: "error", usage: emptyUsage(), numTurns: parsed.num_turns ?? 0, durationMs: parsed.duration_ms ?? 0, costUsd: parsed.total_cost_usd ?? 0, toolCalls, mcp, perTurnUsage, toolResults, resultText: "", sessionId: parsed.session_id };
     }
 
     return {
@@ -609,6 +741,8 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
       costUsd: parsed.total_cost_usd,
       toolCalls,
       mcp,
+      perTurnUsage,
+      toolResults,
       resultText: parsed.result ?? "",
       sessionId: parsed.session_id,
     };

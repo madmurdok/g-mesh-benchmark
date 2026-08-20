@@ -28,6 +28,21 @@ function toolUse(name: string, id: string): unknown {
   return { type: "tool_use", id, name, input: {} };
 }
 
+function assistantLineWithUsage(
+  blocks: unknown[],
+  messageId: string,
+  usage: Record<string, number>,
+): string {
+  return JSON.stringify({ type: "assistant", message: { id: messageId, content: blocks, usage } });
+}
+
+function toolResultLine(toolUseId: string, content: unknown): string {
+  return JSON.stringify({
+    type: "user",
+    message: { content: [{ type: "tool_result", tool_use_id: toolUseId, content }] },
+  });
+}
+
 function resultLine(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
     type: "result",
@@ -139,7 +154,17 @@ test("returns no result and a zero tally for empty or wholly unparseable stdout"
   // `init` stays all-null rather than empty arrays: no init event means the CLI
   // never told us what connected, which mcpHealth.ts must not read as "nothing
   // was declared" (see McpInitState).
-  const empty = { result: null, toolCalls: { search: 0, edit: 0, other: 0 }, mcpToolCalls: 0, init: { servers: null, tools: null } };
+  // The two empty arrays carry the same distinction on the record side: a run
+  // whose stream carried nothing is written with these fields absent, not with
+  // "zero turns, nothing returned" (see token-economy.ts's TokenEconomyRun).
+  const empty = {
+    result: null,
+    toolCalls: { search: 0, edit: 0, other: 0 },
+    mcpToolCalls: 0,
+    init: { servers: null, tools: null },
+    perTurnUsage: [],
+    toolResults: [],
+  };
   assert.deepEqual(parseStreamJson(""), empty);
   assert.deepEqual(parseStreamJson("not json at all\n<html>error</html>"), empty);
 });
@@ -317,4 +342,110 @@ test("shouldSaveTranscripts throws on an unrecognized value instead of silently 
     if (prior === undefined) delete process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS;
     else process.env.G_MESH_BENCH_SAVE_TRANSCRIPTS = prior;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Per-turn usage and tool-result sizes
+//
+// The 2026-08-20 sweep could not say whether g-mesh's cache-read premium was
+// its schema riding in every prefix or the payloads its tools returned, because
+// a run record carried one aggregate. These two fields are what settle it, so
+// what they must not do is quietly mis-count.
+
+test("records each assistant message's usage once, in stream order", () => {
+  const stdout = [
+    assistantLineWithUsage([{ type: "text", text: "hi" }], "msg_1", {
+      input_tokens: 2,
+      output_tokens: 17,
+      cache_creation_input_tokens: 6541,
+      cache_read_input_tokens: 6271,
+    }),
+    assistantLineWithUsage([{ type: "text", text: "more" }], "msg_2", {
+      input_tokens: 2,
+      output_tokens: 16,
+      cache_creation_input_tokens: 154,
+      cache_read_input_tokens: 12812,
+    }),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.deepEqual(parsed.perTurnUsage, [
+    { inputTokens: 2, outputTokens: 17, cacheReadTokens: 6271, cacheCreationTokens: 6541 },
+    { inputTokens: 2, outputTokens: 16, cacheReadTokens: 12812, cacheCreationTokens: 154 },
+  ]);
+});
+
+test("counts one usage per message when the CLI splits it across lines", () => {
+  // The whole point of de-duplicating by message.id: a real stream repeats the
+  // same `usage` on every line of a split message, and counting lines would
+  // multiply that turn's cost by however many blocks it happened to carry.
+  const usage = {
+    input_tokens: 2,
+    output_tokens: 2,
+    cache_creation_input_tokens: 6541,
+    cache_read_input_tokens: 6271,
+  };
+  const stdout = [
+    assistantLineWithUsage([{ type: "thinking", thinking: "..." }], "msg_1", usage),
+    assistantLineWithUsage([toolUse("Grep", "toolu_1")], "msg_1", usage),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.perTurnUsage.length, 1);
+  assert.equal(parsed.perTurnUsage[0]?.cacheReadTokens, 6271);
+});
+
+test("sizes each tool_result and attributes it to the tool that was called", () => {
+  const stdout = [
+    assistantLine([toolUse("mcp__g-mesh__search_code", "toolu_1")]),
+    toolResultLine("toolu_1", "a".repeat(2000)),
+    assistantLine([toolUse("Grep", "toolu_2")], "msg_2"),
+    toolResultLine("toolu_2", "src/a.ts:1"),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults.length, 2);
+  assert.equal(parsed.toolResults[0]?.name, "mcp__g-mesh__search_code");
+  assert.equal(parsed.toolResults[0]?.chars, 2002); // the two quotes JSON adds
+  assert.equal(parsed.toolResults[1]?.name, "Grep");
+  assert.ok((parsed.toolResults[1]?.chars ?? 0) < 20);
+});
+
+test("sizes a tool_result whose content is blocks rather than a string", () => {
+  const stdout = [
+    assistantLine([toolUse("mcp__g-mesh__find_references", "toolu_1")]),
+    toolResultLine("toolu_1", [{ type: "text", text: "row one" }, { type: "text", text: "row two" }]),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults.length, 1);
+  assert.equal(parsed.toolResults[0]?.name, "mcp__g-mesh__find_references");
+  assert.ok((parsed.toolResults[0]?.chars ?? 0) > 30);
+});
+
+test("records a tool_result it cannot attribute rather than dropping it", () => {
+  // A stream that lost the assistant line still says something true: a payload
+  // of this size entered the conversation. Dropping it would understate the
+  // very total this field exists to measure.
+  const stdout = [toolResultLine("toolu_missing", "orphaned payload"), resultLine()].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults.length, 1);
+  assert.equal(parsed.toolResults[0]?.name, null);
+});
+
+test("reports no turns and no tool results for a stream that carried neither", () => {
+  const parsed = parseStreamJson(resultLine());
+
+  assert.deepEqual(parsed.perTurnUsage, []);
+  assert.deepEqual(parsed.toolResults, []);
 });
