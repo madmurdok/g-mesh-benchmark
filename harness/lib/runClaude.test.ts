@@ -36,6 +36,10 @@ function assistantLineWithUsage(
   return JSON.stringify({ type: "assistant", message: { id: messageId, content: blocks, usage } });
 }
 
+function toolUseWithInput(name: string, id: string, input: unknown): unknown {
+  return { type: "tool_use", id, name, input };
+}
+
 function toolResultLine(toolUseId: string, content: unknown): string {
   return JSON.stringify({
     type: "user",
@@ -448,4 +452,89 @@ test("reports no turns and no tool results for a stream that carried neither", (
 
   assert.deepEqual(parsed.perTurnUsage, []);
   assert.deepEqual(parsed.toolResults, []);
+});
+
+// ---------------------------------------------------------------------------
+// Call arguments and the paths a result names
+//
+// Both exist to answer one question the earlier fields could not: whether the
+// Grep or Read that follows a g-mesh call opens a file that call had just
+// returned. Without arguments the follow-up is anonymous; without paths there
+// is nothing to match it against.
+
+test("records what a tool call asked for, alongside what it returned", () => {
+  const stdout = [
+    assistantLine([toolUseWithInput("Read", "toolu_1", { file_path: "src/math/point.ts" })]),
+    toolResultLine("toolu_1", "export const x = 1;"),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults[0]?.args, JSON.stringify({ file_path: "src/math/point.ts" }));
+  assert.equal(parsed.toolResults[0]?.argsChars, JSON.stringify({ file_path: "src/math/point.ts" }).length);
+});
+
+test("truncates long arguments but keeps their real length", () => {
+  // An Edit carries a whole file. Nothing measured here needs it, and a
+  // truncated value must not read as a short one.
+  const big = { file_path: "a.ts", new_string: "x".repeat(5000) };
+  const stdout = [
+    assistantLine([toolUseWithInput("Edit", "toolu_1", big)]),
+    toolResultLine("toolu_1", "ok"),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults[0]?.args?.length, 200);
+  assert.ok((parsed.toolResults[0]?.argsChars ?? 0) > 5000);
+});
+
+test("extracts the source paths a result names, deduplicated", () => {
+  const stdout = [
+    assistantLine([toolUseWithInput("mcp__g-mesh__find_references", "toolu_1", { symbol_name: "pointFrom" })]),
+    toolResultLine("toolu_1", JSON.stringify({
+      results: [
+        { filePath: "packages/math/src/point.ts", startLine: 4 },
+        { filePath: "packages/math/src/point.ts", startLine: 9 },
+        { filePath: "packages/element/src/bounds.ts", startLine: 2 },
+      ],
+    })),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.deepEqual(parsed.toolResults[0]?.paths, [
+    "packages/math/src/point.ts",
+    "packages/element/src/bounds.ts",
+  ]);
+});
+
+test("finds paths in a grep-shaped result too, not just a JSON one", () => {
+  // One extension-driven regex has to cover find_references' filePath fields,
+  // Grep's path:line: prefixes and Glob's bare list, or the match between a
+  // g-mesh answer and the follow-up read only works for some tools.
+  const stdout = [
+    assistantLine([toolUseWithInput("Grep", "toolu_1", { pattern: "pointFrom" })]),
+    toolResultLine("toolu_1", "packages/math/src/point.ts:4:export const pointFrom = ..."),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.deepEqual(parsed.toolResults[0]?.paths, ["packages/math/src/point.ts"]);
+});
+
+test("omits args and paths rather than inventing them", () => {
+  // An unattributable result has no call to read arguments off, and a result
+  // naming no file must not carry an empty array that reads as "searched and
+  // found nothing".
+  const stdout = [toolResultLine("toolu_missing", "no files here"), resultLine()].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.equal(parsed.toolResults[0]?.args, undefined);
+  assert.equal(parsed.toolResults[0]?.paths, undefined);
 });

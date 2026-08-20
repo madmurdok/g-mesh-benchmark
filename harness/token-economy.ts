@@ -138,7 +138,7 @@ export interface TokenEconomyRun {
    * not offered in its place.
    */
   perTurnUsage?: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number }[];
-  toolResults?: { name: string | null; chars: number }[];
+  toolResults?: { name: string | null; chars: number; args?: string; argsChars?: number; paths?: string[] }[];
   /**
    * Set only by scripts/annotateMcpDeadRuns.ts, never by a live run: it records
    * that the two fields above were established *after the fact* (from saved
