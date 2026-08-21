@@ -261,23 +261,23 @@
     }
   },
   {
-    "id": "tt-stale-name-completion-check",
+    "id": "tt-stale-name-doc-sync-check",
     "kind": "find_definition",
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
-      "symbol": "completeTask",
-      "file": "src/domain/lifecycle.ts"
+      "symbol": "checkDocSync",
+      "file": "src/domain/projects.ts"
     },
-    "prompt": "A design note in our own docs calls the routine that marks a task done and reports which dependent tasks become unblocked \"TaskCompletionCheck\". Find that routine in the code and report the name it is actually declared under and the file it lives in.",
+    "prompt": "Our documentation refers to the routine that reports whether a project's docs have drifted out of sync by the name `DocSyncCheck`. Find where it is declared in the code and report the name it is actually declared under, plus the file it lives in.",
     "oracle": {
       "mode": "substring",
       "mustMentionFiles": [
-        "src/domain/lifecycle.ts"
+        "src/domain/projects.ts"
       ],
       "mustMentionSymbols": [
-        "completeTask"
+        "checkDocSync"
       ]
     }
   }

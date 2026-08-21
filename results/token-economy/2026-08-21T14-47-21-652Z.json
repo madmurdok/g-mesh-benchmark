@@ -1,0 +1,579 @@
+[
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "d9021c41aa29",
+    "inputTokens": 6,
+    "outputTokens": 558,
+    "cacheReadTokens": 55089,
+    "cacheCreationTokens": 15068,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 10108,
+        "cacheCreationTokens": 11107
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21215,
+        "cacheCreationTokens": 2551
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23766,
+        "cacheCreationTokens": 1410
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 491,
+        "args": "{\"symbol_name\":\"TaskCompletionCheck\"}",
+        "argsChars": 37,
+        "paths": [
+          "src/domain/lifecycle.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4447,
+        "args": "{\"query\":\"check whether a task is complete / done\"}",
+        "argsChars": 51,
+        "paths": [
+          "src/domain/verification.ts",
+          "src/domain/lifecycle.ts",
+          "src/db/schema.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/board.ts",
+          "src/domain/status.ts",
+          "src/domain/tasks.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2999,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-oWt0Lj/src/domain/verification.ts\"}",
+        "argsChars": 135,
+        "paths": [
+          "budget.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 13113,
+    "costUsd": 0.1163347,
+    "judgeCostUsd": 0,
+    "resultText": "The routine now lives as `GitDiffCompletionVerifier.verify()` (implementing the `CompletionVerifier` interface), in `src/domain/verification.ts:26`. This is the code that checks a task's completion — it verifies the declared files actually changed (via `git status --porcelain`) and that an optional test command exits zero, before `complete_task` accepts a claimed completion. No symbol named `TaskCompletionCheck` exists today; that's the older/design-doc name for what's now `GitDiffCompletionVerifier`.",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "d9021c41aa29",
+    "inputTokens": 6,
+    "outputTokens": 501,
+    "cacheReadTokens": 65895,
+    "cacheCreationTokens": 3684,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21215,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21215,
+        "cacheCreationTokens": 2250
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23465,
+        "cacheCreationTokens": 1434
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4468,
+        "args": "{\"query\":\"check whether a task is complete / task completion check\"}",
+        "argsChars": 68,
+        "paths": [
+          "src/domain/verification.ts",
+          "src/domain/lifecycle.ts",
+          "src/db/schema.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/board.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/status.ts",
+          "src/domain/tasks.ts",
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2999,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-oWt0Lj/src/domain/verification.ts\"}",
+        "argsChars": 135,
+        "paths": [
+          "budget.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 10059,
+    "costUsd": 0.0504275,
+    "judgeCostUsd": 0,
+    "resultText": "The doc comment confirms this is exactly the routine the design note calls `TaskCompletionCheck` — it verifies a task's declared files actually changed (and optionally that tests pass) before `complete_task` accepts the completion.\n\nIt's now declared as the `verify` method on the `CompletionVerifier` interface (implemented by `GitDiffCompletionVerifier`), in `src/domain/verification.ts:14-15` (implementation at line 27).",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "d9021c41aa29",
+    "inputTokens": 6,
+    "outputTokens": 537,
+    "cacheReadTokens": 66033,
+    "cacheCreationTokens": 3786,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21215,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21215,
+        "cacheCreationTokens": 2388
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23603,
+        "cacheCreationTokens": 1398
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4449,
+        "args": "{\"query\":\"check if a task is complete / task completion check routine\"}",
+        "argsChars": 71,
+        "paths": [
+          "src/domain/verification.ts",
+          "src/domain/lifecycle.ts",
+          "src/db/schema.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/board.ts",
+          "src/domain/status.ts",
+          "src/domain/tasks.ts",
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 16,
+        "args": "{\"pattern\":\"TaskCompletionCheck\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 68
+      },
+      {
+        "name": "Read",
+        "chars": 2999,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-oWt0Lj/src/domain/verification.ts\"}",
+        "argsChars": 135,
+        "paths": [
+          "budget.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 10462,
+    "costUsd": 0.0516059,
+    "judgeCostUsd": 0,
+    "resultText": "This confirms it — the doc comment explicitly references \"gap #6\" verification design, matching an older design note's `TaskCompletionCheck` routine.\n\n**Today it's declared as:** `CompletionVerifier.verify` (interface method), implemented concretely by the `GitDiffCompletionVerifier` class — file `src/domain/verification.ts:14` (interface) and `src/domain/verification.ts:26` (implementation, `verify` method at line 27).",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "73d7995bdf6d",
+    "inputTokens": 8,
+    "outputTokens": 796,
+    "cacheReadTokens": 81981,
+    "cacheCreationTokens": 16045,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 10108,
+        "cacheCreationTokens": 11585
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21693,
+        "cacheCreationTokens": 2705
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 24398,
+        "cacheCreationTokens": 1384
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 25782,
+        "cacheCreationTokens": 371
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4939,
+        "args": "{\"query\":\"export image dialog component for exporting canvas as image\"}",
+        "argsChars": 71,
+        "paths": [
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/excalidraw/components/JSONExportDialog.tsx",
+          "packages/excalidraw/scene/export.ts",
+          "excalidraw-app/ExcalidrawPlusIframeExport.tsx",
+          "packages/excalidraw/global.d.ts",
+          "packages/excalidraw/errors.ts",
+          "packages/element/src/renderElement.ts",
+          "packages/excalidraw/components/App.cursor.ts",
+          "excalidraw-app/share/ShareDialog.tsx",
+          "excalidraw-app/components/ExportToExcalidrawPlus.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 346,
+        "args": "{\"pattern\":\"ImageExport\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 60,
+        "paths": [
+          "npackages/excalidraw/tests/interactivity.test.tsx",
+          "npackages/excalidraw/tests/excalidraw.test.tsx",
+          "npackages/excalidraw/components/MobileMenu.tsx",
+          "npackages/excalidraw/components/LayerUI.tsx",
+          "npackages/excalidraw/components/ImageExportDialog.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 58,
+        "args": "{\"pattern\":\"ImageExport\",\"path\":\"packages/excalidraw/components/LayerUI.tsx\",\"-n\":true}",
+        "argsChars": 87,
+        "paths": [
+          "npackages/excalidraw/components/LayerUI.tsx"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__get_file_outline",
+        "chars": 2100,
+        "args": "{\"file_path\":\"packages/excalidraw/components/ImageExportDialog.tsx\"}",
+        "argsChars": 68
+      },
+      {
+        "name": "Grep",
+        "chars": 244,
+        "args": "{\"pattern\":\"ImageExport\",\"path\":\"packages/excalidraw/components/LayerUI.tsx\",\"-n\":true,\"output_mode\":\"content\"}",
+        "argsChars": 111
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 25378,
+    "costUsd": 0.1338283,
+    "judgeCostUsd": 0,
+    "resultText": "The component today is declared as **`ImageExportDialog`** in `packages/excalidraw/components/ImageExportDialog.tsx:386`. It's an exported function component (used by `LayerUI.tsx`), which internally renders a `ImageExportModal` (unexported, same file, line 64). So the older doc's \"ImageExport\" now maps to `ImageExportDialog`.",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "73d7995bdf6d",
+    "inputTokens": 6,
+    "outputTokens": 526,
+    "cacheReadTokens": 67796,
+    "cacheCreationTokens": 3024,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21693,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21693,
+        "cacheCreationTokens": 2717
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24410,
+        "cacheCreationTokens": 307
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4936,
+        "args": "{\"query\":\"component that renders export preview / image export dialog\"}",
+        "argsChars": 71,
+        "paths": [
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/components/JSONExportDialog.tsx",
+          "excalidraw-app/ExcalidrawPlusIframeExport.tsx",
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "excalidraw-app/components/ExportToExcalidrawPlus.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/components/App.tsx",
+          "excalidraw-app/share/ShareDialog.tsx",
+          "packages/excalidraw/scene/export.ts",
+          "packages/excalidraw/components/TTDDialog/TTDDialogOutput.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/excalidraw/actions/actionExport.tsx",
+          "packages/common/src/constants.ts",
+          "packages/excalidraw/components/TTDDialog/TTDPreviewPanel.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 346,
+        "args": "{\"pattern\":\"ImageExport\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 60,
+        "paths": [
+          "npackages/excalidraw/tests/interactivity.test.tsx",
+          "npackages/excalidraw/tests/excalidraw.test.tsx",
+          "npackages/excalidraw/components/MobileMenu.tsx",
+          "npackages/excalidraw/components/LayerUI.tsx",
+          "npackages/excalidraw/components/ImageExportDialog.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 18,
+        "args": "{\"pattern\":\"ImageExport\\\\b\",\"path\":\"packages/excalidraw/components/ImageExportDialog.tsx\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 124
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 9279,
+    "costUsd": 0.0473908,
+    "judgeCostUsd": 0,
+    "resultText": "The design doc's `ImageExport` component doesn't exist verbatim today — it's now split into two components in `packages/excalidraw/components/ImageExportDialog.tsx`:\n\n- `ImageExportModal` (line 64)\n- `ImageExportDialog` (line 386, the outer exported wrapper)\n\nIf you need the one that's actually rendered/exported from elsewhere in the app, that's `ImageExportDialog`.",
+    "oraclePassed": false,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T14:47:21.652Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "73d7995bdf6d",
+    "inputTokens": 6,
+    "outputTokens": 700,
+    "cacheReadTokens": 67819,
+    "cacheCreationTokens": 3404,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21693,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 21693,
+        "cacheCreationTokens": 2740
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24433,
+        "cacheCreationTokens": 664
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4969,
+        "args": "{\"query\":\"component that renders/exports canvas as image (image export dialog/preview)\"}",
+        "argsChars": 88,
+        "paths": [
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/scene/export.ts",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/global.d.ts",
+          "packages/excalidraw/components/App.cursor.ts",
+          "packages/element/src/renderElement.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/components/canvases/InteractiveCanvas.tsx",
+          "packages/excalidraw/data/blob.ts",
+          "packages/excalidraw/renderer/helpers.ts",
+          "packages/excalidraw/errors.ts",
+          "packages/excalidraw/components/canvases/StaticCanvas.tsx",
+          "packages/excalidraw/components/canvases/NewElementCanvas.tsx",
+          "packages/excalidraw/renderer/interactiveScene.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 346,
+        "args": "{\"pattern\":\"ImageExport\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 60,
+        "paths": [
+          "npackages/excalidraw/tests/interactivity.test.tsx",
+          "npackages/excalidraw/tests/excalidraw.test.tsx",
+          "npackages/excalidraw/components/MobileMenu.tsx",
+          "npackages/excalidraw/components/LayerUI.tsx",
+          "npackages/excalidraw/components/ImageExportDialog.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 200,
+        "args": "{\"pattern\":\"ImageExport\",\"path\":\"packages/excalidraw/CHANGELOG.md\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 101
+      },
+      {
+        "name": "Grep",
+        "chars": 244,
+        "args": "{\"pattern\":\"ImageExport\",\"path\":\"packages/excalidraw/components/LayerUI.tsx\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 111
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10405,
+    "costUsd": 0.0522877,
+    "judgeCostUsd": 0,
+    "resultText": "The component historically called `ImageExport` is now declared as **`ImageExportDialog`** (a `React.forwardRef` component) in `packages/excalidraw/components/ImageExportDialog.tsx:386`, and is imported/used as `ImageExportDialog` throughout (e.g. `LayerUI.tsx`). The CHANGELOG's older entries even reference this same component by that current name (`ImageExportDialog`), confirming no separate `ImageExport` symbol exists in the current codebase.",
+    "oraclePassed": false,
+    "status": "ok"
+  }
+]

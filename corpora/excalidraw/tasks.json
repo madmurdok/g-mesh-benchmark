@@ -901,23 +901,23 @@
     }
   },
   {
-    "id": "ex-stale-name-image-export",
+    "id": "ex-stale-name-canvas-search",
     "kind": "find_definition",
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
-      "symbol": "SaveAsImage",
-      "file": "packages/excalidraw/components/main-menu/DefaultItems.tsx"
+      "symbol": "SearchMenu",
+      "file": "packages/excalidraw/components/SearchMenu.tsx"
     },
-    "prompt": "Our release notes refer to the main-menu entry that saves the current canvas as an image file as \"ImageExport\". Find the component that actually implements that menu item in the code today, and report its declared name and the file it lives in.",
+    "prompt": "Our documentation refers to this editor's canvas text-search panel by the name `CanvasSearch`. Find where that component is declared in the code and report the name it is actually declared under, plus the file it lives in.",
     "oracle": {
       "mode": "substring",
       "mustMentionFiles": [
-        "packages/excalidraw/components/main-menu/DefaultItems.tsx"
+        "packages/excalidraw/components/SearchMenu.tsx"
       ],
       "mustMentionSymbols": [
-        "SaveAsImage"
+        "SearchMenu"
       ]
     }
   }
