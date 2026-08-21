@@ -5,12 +5,22 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
+    "target": {
+      "symbol": "Trail",
+      "file": "packages/excalidraw/animatedTrail.ts"
+    },
     "prompt": "In this repository, find every class that implements the Trail interface. Report the class name(s) and the file(s) they live in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/excalidraw/laserTrails.ts", "packages/excalidraw/drawShapeTrail.ts"],
-      "mustMentionSymbols": ["AnimatedTrail", "LaserTrails", "DrawShapeTrail"]
+      "mustMentionFiles": [
+        "packages/excalidraw/laserTrails.ts",
+        "packages/excalidraw/drawShapeTrail.ts"
+      ],
+      "mustMentionSymbols": [
+        "AnimatedTrail",
+        "LaserTrails",
+        "DrawShapeTrail"
+      ]
     }
   },
   {
@@ -19,11 +29,17 @@
     "category": "lookup",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "DeltaContainer", "file": "packages/element/src/delta.ts" },
+    "target": {
+      "symbol": "DeltaContainer",
+      "file": "packages/element/src/delta.ts"
+    },
     "prompt": "In this repository, find every class that implements the generic DeltaContainer<T> interface. Report the class name(s).",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["AppStateDelta", "ElementsDelta"]
+      "mustMentionSymbols": [
+        "AppStateDelta",
+        "ElementsDelta"
+      ]
     }
   },
   {
@@ -32,7 +48,10 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "pointFrom", "file": "packages/math/src/point.ts" },
+    "target": {
+      "symbol": "pointFrom",
+      "file": "packages/math/src/point.ts"
+    },
     "prompt": "In this repository, find the pointFrom function (the helper that constructs a 2D point value) and list at least 10 distinct files that call it, not counting the file where it's defined or any test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
@@ -98,8 +117,11 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" },
-    "prompt": "In this repository, find the standalone getNonDeletedElements helper function — not the same-named method on the Scene class — and list at least 5 distinct files that call it. Give each file's full repo-relative path.",
+    "target": {
+      "symbol": "getNonDeletedElements",
+      "file": "packages/element/src/index.ts"
+    },
+    "prompt": "In this repository, find the standalone getNonDeletedElements helper function \u2014 not the same-named method on the Scene class \u2014 and list at least 5 distinct files that call it. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -138,7 +160,10 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+    "target": {
+      "symbol": "mutateElement",
+      "file": "packages/element/src/mutateElement.ts"
+    },
     "prompt": "In this repository, find the mutateElement function and list at least 8 distinct files that call it. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
@@ -166,7 +191,10 @@
     "category": "lookup",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
+    "target": {
+      "symbol": "mutateElement",
+      "file": "packages/element/src/mutateElement.ts"
+    },
     "prompt": "In this repository, what other functions does the mutateElement function call internally? Name at least two.",
     "oracle": {
       "mode": "pool",
@@ -187,7 +215,10 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "", "file": "packages/math/src/index.ts" },
+    "target": {
+      "symbol": "",
+      "file": "packages/math/src/index.ts"
+    },
     "prompt": "In this repository, which files import from the @excalidraw/math package? List at least 10 of them across different packages, not counting test files. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
@@ -272,12 +303,22 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": true,
-    "target": { "symbol": "", "file": "packages/excalidraw/types.ts" },
+    "target": {
+      "symbol": "",
+      "file": "packages/excalidraw/types.ts"
+    },
     "prompt": "In this repository, list the exported interfaces from packages/excalidraw/types.ts, then contrast it with the exports of packages/excalidraw/i18n.ts (a much smaller file). Report both lists.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/excalidraw/types.ts", "packages/excalidraw/i18n.ts"],
-      "mustMentionSymbols": ["AppState", "ExcalidrawImperativeAPI", "Language"]
+      "mustMentionFiles": [
+        "packages/excalidraw/types.ts",
+        "packages/excalidraw/i18n.ts"
+      ],
+      "mustMentionSymbols": [
+        "AppState",
+        "ExcalidrawImperativeAPI",
+        "Language"
+      ]
     }
   },
   {
@@ -286,11 +327,17 @@
     "category": "control",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "trackEvent", "file": "packages/excalidraw/analytics.ts" },
+    "target": {
+      "symbol": "trackEvent",
+      "file": "packages/excalidraw/analytics.ts"
+    },
     "prompt": "In this repository, find the small analytics-tracking helper function named trackEvent. Which event categories does it actually forward to tracking, and name at least two separate conditions under which it returns early without sending anything (i.e., silently no-ops)?",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["command_palette", "export"]
+      "mustMentionSymbols": [
+        "command_palette",
+        "export"
+      ]
     }
   },
   {
@@ -299,11 +346,26 @@
     "category": "control",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "getShortcutKey", "file": "packages/excalidraw/shortcut.ts" },
+    "target": {
+      "symbol": "getShortcutKey",
+      "file": "packages/excalidraw/shortcut.ts"
+    },
     "prompt": "In this repository, find the small helper function getShortcutKey that converts a shortcut-key description string into its translated display form. List at least 4 of the distinct keyword tokens (modifier or special key names) it recognizes and replaces.",
     "oracle": {
       "mode": "pool",
-      "candidatePool": ["Alt", "Option", "Shift", "Enter", "Return", "Ctrl", "Cmd", "Command", "Escape", "Spacebar", "Delete"],
+      "candidatePool": [
+        "Alt",
+        "Option",
+        "Shift",
+        "Enter",
+        "Return",
+        "Ctrl",
+        "Cmd",
+        "Command",
+        "Escape",
+        "Spacebar",
+        "Delete"
+      ],
       "minMatches": 4
     }
   },
@@ -313,8 +375,11 @@
     "category": "ambiguous-name",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "clamp", "file": "packages/math/src/utils.ts" },
-    "prompt": "In this repository, there is more than one function named clamp. Find the general-purpose numeric clamp(value, min, max) helper that the main math package exports for general use — not any package-local copy meant only for that package's own internal use — and list at least 6 distinct files elsewhere in the codebase that call it.",
+    "target": {
+      "symbol": "clamp",
+      "file": "packages/math/src/utils.ts"
+    },
+    "prompt": "In this repository, there is more than one function named clamp. Find the general-purpose numeric clamp(value, min, max) helper that the main math package exports for general use \u2014 not any package-local copy meant only for that package's own internal use \u2014 and list at least 6 distinct files elsewhere in the codebase that call it.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -343,7 +408,10 @@
     "category": "ambiguous-name",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "exportToSvg", "file": "packages/utils/src/export.ts" },
+    "target": {
+      "symbol": "exportToSvg",
+      "file": "packages/utils/src/export.ts"
+    },
     "prompt": "In this repository, there are two different functions named exportToSvg: an internal one, and a public-API wrapper (in the utils package) that calls the internal one and does its own extra work. Find the public-API wrapper specifically and list every file that calls it, other than where it's defined.",
     "oracle": {
       "mode": "pool",
@@ -363,14 +431,20 @@
     "revealsLocation": false,
     "target": {
       "steps": [
-        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-        { "symbol": "getNonDeletedElements", "file": "packages/element/src/index.ts" }
+        {
+          "symbol": "mutateElement",
+          "file": "packages/element/src/mutateElement.ts"
+        },
+        {
+          "symbol": "getNonDeletedElements",
+          "file": "packages/element/src/index.ts"
+        }
       ]
     },
-    "prompt": "In this repository, first find every file that calls the standalone mutateElement function exported by the element package — the helper that applies an in-place update to a single element and bumps its version — as opposed to the same-named method on the Scene class. Then, considering only those files, report which of them also call the standalone getNonDeletedElements helper exported by that same package, as opposed to the same-named Scene method or a module-local helper of the same name. A file that only re-exports one of these symbols without calling it does not count. Your final answer must list only the files that satisfy both conditions, each as a full repo-relative path.",
+    "prompt": "In this repository, first find every file that calls the standalone mutateElement function exported by the element package \u2014 the helper that applies an in-place update to a single element and bumps its version \u2014 as opposed to the same-named method on the Scene class. Then, considering only those files, report which of them also call the standalone getNonDeletedElements helper exported by that same package, as opposed to the same-named Scene method or a module-local helper of the same name. A file that only re-exports one of these symbols without calling it does not count. Your final answer must list only the files that satisfy both conditions, each as a full repo-relative path.",
     "oracle": {
       "mode": "judge",
-      "rubric": "The question: which files in the Excalidraw repo call BOTH the standalone mutateElement function exported by the element package AND the standalone getNonDeletedElements function exported by that same package. Ground truth: exactly two files — packages/element/src/frame.ts and packages/excalidraw/actions/actionFrame.ts. PASS only if the answer's final list of files is exactly those two. FAIL if either is missing from the final list, or if the final list contains any other file. Files that the answer explicitly rules out or presents as excluded do not count as part of its final list. Wrong entries that must FAIL if presented as part of the answer: packages/excalidraw/clipboard.ts, packages/element/src/Scene.ts, packages/element/src/binding.ts, packages/element/src/linearElementEditor.ts and packages/excalidraw/components/App.tsx (these call mutateElement, but reach getNonDeletedElements only as the Scene class method or a module-local helper of the same name, or not at all); packages/excalidraw/index.tsx (it re-exports both symbols and calls neither); and files such as packages/excalidraw/actions/actionProperties.tsx, actionFlip.ts, actionDeleteSelected.tsx or anything under packages/excalidraw/components/Stats/ (these call getNonDeletedElements but not the standalone mutateElement). Formatting, ordering, prose and extra correct commentary do not matter."
+      "rubric": "The question: which files in the Excalidraw repo call BOTH the standalone mutateElement function exported by the element package AND the standalone getNonDeletedElements function exported by that same package. Ground truth: exactly two files \u2014 packages/element/src/frame.ts and packages/excalidraw/actions/actionFrame.ts. PASS only if the answer's final list of files is exactly those two. FAIL if either is missing from the final list, or if the final list contains any other file. Files that the answer explicitly rules out or presents as excluded do not count as part of its final list. Wrong entries that must FAIL if presented as part of the answer: packages/excalidraw/clipboard.ts, packages/element/src/Scene.ts, packages/element/src/binding.ts, packages/element/src/linearElementEditor.ts and packages/excalidraw/components/App.tsx (these call mutateElement, but reach getNonDeletedElements only as the Scene class method or a module-local helper of the same name, or not at all); packages/excalidraw/index.tsx (it re-exports both symbols and calls neither); and files such as packages/excalidraw/actions/actionProperties.tsx, actionFlip.ts, actionDeleteSelected.tsx or anything under packages/excalidraw/components/Stats/ (these call getNonDeletedElements but not the standalone mutateElement). Formatting, ordering, prose and extra correct commentary do not matter."
     }
   },
   {
@@ -381,14 +455,20 @@
     "revealsLocation": false,
     "target": {
       "steps": [
-        { "symbol": "Trail", "file": "packages/excalidraw/animatedTrail.ts" },
-        { "symbol": "pointFrom", "file": "packages/math/src/point.ts" }
+        {
+          "symbol": "Trail",
+          "file": "packages/excalidraw/animatedTrail.ts"
+        },
+        {
+          "symbol": "pointFrom",
+          "file": "packages/math/src/point.ts"
+        }
       ]
     },
     "prompt": "In this repository, first find every class that implements the Trail interface, including classes that only get it indirectly by extending another Trail implementation. Then, of those classes, report which ones are defined in a file that also calls pointFrom (the helper that constructs a 2D point value) and which ones are not. Name the classes on both sides of that split.",
     "oracle": {
       "mode": "judge",
-      "rubric": "The answer is about classes implementing the Trail interface in the Excalidraw repo, split by whether the class's own file calls pointFrom. Ground truth: exactly five classes implement Trail — AnimatedTrail, LaserTrails, DrawShapeTrail (all three declare `implements Trail`), plus EraserTrail and LassoTrail (which implement it indirectly by extending AnimatedTrail). Of these, the files defining DrawShapeTrail, EraserTrail and LassoTrail call pointFrom; the files defining AnimatedTrail and LaserTrails do not. PASS only if the answer names DrawShapeTrail, EraserTrail and LassoTrail as the ones whose files call pointFrom AND states that AnimatedTrail and LaserTrails do not. FAIL if it omits any of DrawShapeTrail/EraserTrail/LassoTrail from the calling side, if it claims AnimatedTrail or LaserTrails calls pointFrom, or if it presents some class other than these five as a Trail implementation. Wording, ordering, and extra correct detail such as file paths or line numbers do not matter."
+      "rubric": "The answer is about classes implementing the Trail interface in the Excalidraw repo, split by whether the class's own file calls pointFrom. Ground truth: exactly five classes implement Trail \u2014 AnimatedTrail, LaserTrails, DrawShapeTrail (all three declare `implements Trail`), plus EraserTrail and LassoTrail (which implement it indirectly by extending AnimatedTrail). Of these, the files defining DrawShapeTrail, EraserTrail and LassoTrail call pointFrom; the files defining AnimatedTrail and LaserTrails do not. PASS only if the answer names DrawShapeTrail, EraserTrail and LassoTrail as the ones whose files call pointFrom AND states that AnimatedTrail and LaserTrails do not. FAIL if it omits any of DrawShapeTrail/EraserTrail/LassoTrail from the calling side, if it claims AnimatedTrail or LaserTrails calls pointFrom, or if it presents some class other than these five as a Trail implementation. Wording, ordering, and extra correct detail such as file paths or line numbers do not matter."
     }
   },
   {
@@ -399,11 +479,17 @@
     "revealsLocation": false,
     "target": {
       "steps": [
-        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-        { "symbol": "getSizeFromPoints", "file": "packages/common/src/points.ts" }
+        {
+          "symbol": "mutateElement",
+          "file": "packages/element/src/mutateElement.ts"
+        },
+        {
+          "symbol": "getSizeFromPoints",
+          "file": "packages/common/src/points.ts"
+        }
       ]
     },
-    "prompt": "In this repository, start from mutateElement — the helper that applies an in-place update to a single element and bumps its version. When the update changes an element's points, it delegates to a small helper imported from another workspace package to derive the element's width and height from that points array. Name that helper, then list every other file in the repository that calls the same helper, excluding the file that defines it and excluding mutateElement's own file. Give full repo-relative paths.",
+    "prompt": "In this repository, start from mutateElement \u2014 the helper that applies an in-place update to a single element and bumps its version. When the update changes an element's points, it delegates to a small helper imported from another workspace package to derive the element's width and height from that points array. Name that helper, then list every other file in the repository that calls the same helper, excluding the file that defines it and excluding mutateElement's own file. Give full repo-relative paths.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -421,8 +507,11 @@
     "category": "scenario",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "getElementAbsoluteCoords", "file": "packages/element/src/bounds.ts" },
-    "prompt": "In this repository, I'm about to change the signature of the getElementAbsoluteCoords function (the helper that computes an element's absolute bounding coordinates, accounting for rotation) — for example, adding a new required parameter. Before making the change, list at least 10 distinct files elsewhere in the codebase that call it and would need their call sites updated. Give each file's full repo-relative path.",
+    "target": {
+      "symbol": "getElementAbsoluteCoords",
+      "file": "packages/element/src/bounds.ts"
+    },
+    "prompt": "In this repository, I'm about to change the signature of the getElementAbsoluteCoords function (the helper that computes an element's absolute bounding coordinates, accounting for rotation) \u2014 for example, adding a new required parameter. Before making the change, list at least 10 distinct files elsewhere in the codebase that call it and would need their call sites updated. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -458,11 +547,14 @@
     "category": "scenario",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "getRectangleBoxAbsoluteCoords", "file": "packages/element/src/bounds.ts" },
-    "prompt": "In this repository, there is an exported helper function named getRectangleBoxAbsoluteCoords. Before removing it as apparent dead code, check thoroughly: does anything anywhere in the repository — production code, tests, or any other package — actually call it? State your conclusion (safe to delete, or not) and, if it is called anywhere, name every file that calls it.",
+    "target": {
+      "symbol": "getRectangleBoxAbsoluteCoords",
+      "file": "packages/element/src/bounds.ts"
+    },
+    "prompt": "In this repository, there is an exported helper function named getRectangleBoxAbsoluteCoords. Before removing it as apparent dead code, check thoroughly: does anything anywhere in the repository \u2014 production code, tests, or any other package \u2014 actually call it? State your conclusion (safe to delete, or not) and, if it is called anywhere, name every file that calls it.",
     "oracle": {
       "mode": "judge",
-      "rubric": "The question is whether getRectangleBoxAbsoluteCoords (exported from packages/element/src/bounds.ts) has any real caller anywhere in the Excalidraw repository, including tests. Ground truth, independently verified with the TypeScript language service (project-wide reference search, tests included): it has ZERO references anywhere outside its own declaration — it is genuinely unused, dead code, and safe to delete. PASS only if the answer's final conclusion states it is unused/has no callers and that it is safe to delete (or clearly equivalent wording), and does not claim any real caller/file for it. FAIL if the answer claims any file (other than its own defining file, if mentioned only as the declaration site) calls it, if it concludes it is NOT safe to delete, or if it hedges to an unclear/uncertain conclusion instead of stating it is unused and safe to delete. Wording, ordering, and extra correct commentary do not matter."
+      "rubric": "The question is whether getRectangleBoxAbsoluteCoords (exported from packages/element/src/bounds.ts) has any real caller anywhere in the Excalidraw repository, including tests. Ground truth, independently verified with the TypeScript language service (project-wide reference search, tests included): it has ZERO references anywhere outside its own declaration \u2014 it is genuinely unused, dead code, and safe to delete. PASS only if the answer's final conclusion states it is unused/has no callers and that it is safe to delete (or clearly equivalent wording), and does not claim any real caller/file for it. FAIL if the answer claims any file (other than its own defining file, if mentioned only as the declaration site) calls it, if it concludes it is NOT safe to delete, or if it hedges to an unclear/uncertain conclusion instead of stating it is unused and safe to delete. Wording, ordering, and extra correct commentary do not matter."
     }
   },
   {
@@ -471,8 +563,11 @@
     "category": "implementation",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "isUniqueItem", "file": "packages/excalidraw/data/library.ts" },
-    "prompt": "Users report that adding the same shape library twice — clicking \"Add to Excalidraw\" on a library they already have, or opening the same .excalidrawlib file again — ends up with every item in it duplicated in their library, instead of the editor recognising that those items are already there. The same thing happens to items that reached the user by some other route (another document, another session, a library someone else re-exported): they are indistinguishable on canvas from shapes already in the library, and they still get added again. There is de-duplication logic already, and it catches none of this. Find the root cause and fix it in the actual code, so that an item indistinguishable from one already in the library is recognised as a duplicate no matter where it came from, while genuinely different items are still added and items that differ only in how many shapes they contain, or in what order those shapes are stacked, are still treated as different.",
+    "target": {
+      "symbol": "isUniqueItem",
+      "file": "packages/excalidraw/data/library.ts"
+    },
+    "prompt": "Users report that adding the same shape library twice \u2014 clicking \"Add to Excalidraw\" on a library they already have, or opening the same .excalidrawlib file again \u2014 ends up with every item in it duplicated in their library, instead of the editor recognising that those items are already there. The same thing happens to items that reached the user by some other route (another document, another session, a library someone else re-exported): they are indistinguishable on canvas from shapes already in the library, and they still get added again. There is de-duplication logic already, and it catches none of this. Find the root cause and fix it in the actual code, so that an item indistinguishable from one already in the library is recognised as a duplicate no matter where it came from, while genuinely different items are still added and items that differ only in how many shapes they contain, or in what order those shapes are stacked, are still treated as different.",
     "oracle": {
       "mode": "test",
       "holdoutFiles": {
@@ -487,8 +582,11 @@
     "category": "implementation",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-    "prompt": "Moving an elbow arrow so that it lands exactly on x = 0 (or exactly on y = 0) silently leaves it at its old position instead — the identical move to any non-zero coordinate works fine, nothing throws, and no error is logged. Find the root cause and fix it in the actual code, without changing how elbow arrows behave for any non-zero destination.",
+    "target": {
+      "symbol": "mutateElement",
+      "file": "packages/element/src/mutateElement.ts"
+    },
+    "prompt": "Moving an elbow arrow so that it lands exactly on x = 0 (or exactly on y = 0) silently leaves it at its old position instead \u2014 the identical move to any non-zero coordinate works fine, nothing throws, and no error is logged. Find the root cause and fix it in the actual code, without changing how elbow arrows behave for any non-zero destination.",
     "oracle": {
       "mode": "test",
       "holdoutFiles": {
@@ -503,8 +601,11 @@
     "category": "implementation",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "actionToggleLinearEditor", "file": "packages/excalidraw/actions/actionLinearEditor.tsx" },
-    "prompt": "A user with a labelled arrow — an arrow that has bound text on it — reports that entering line-editing mode on it (the \"Edit arrow\" / \"Edit line\" action) sometimes crashes the editor with an internal assertion instead of opening the editor. The same action on the same kind of arrow works fine in other documents, so it depends on the document rather than on the arrow. Find the root cause and fix it in the actual code, without changing when the action is offered or how line editing behaves for the arrows it already works on.",
+    "target": {
+      "symbol": "actionToggleLinearEditor",
+      "file": "packages/excalidraw/actions/actionLinearEditor.tsx"
+    },
+    "prompt": "A user with a labelled arrow \u2014 an arrow that has bound text on it \u2014 reports that entering line-editing mode on it (the \"Edit arrow\" / \"Edit line\" action) sometimes crashes the editor with an internal assertion instead of opening the editor. The same action on the same kind of arrow works fine in other documents, so it depends on the document rather than on the arrow. Find the root cause and fix it in the actual code, without changing when the action is offered or how line editing behaves for the arrows it already works on.",
     "oracle": {
       "mode": "test",
       "holdoutFiles": {
@@ -519,12 +620,19 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "DropdownMenuGroup", "file": "packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx" },
-    "prompt": "In this repository, there's a component used throughout the dropdown-menu UI that consumers import as DropdownMenuGroup. Find where it's actually declared — including what it's really named inside its own source file, since the value it wraps is default-exported under a different local name than the one it's imported under — and report the file it lives in plus that real internal name.",
+    "target": {
+      "symbol": "DropdownMenuGroup",
+      "file": "packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx"
+    },
+    "prompt": "In this repository, there's a component used throughout the dropdown-menu UI that consumers import as DropdownMenuGroup. Find where it's actually declared \u2014 including what it's really named inside its own source file, since the value it wraps is default-exported under a different local name than the one it's imported under \u2014 and report the file it lives in plus that real internal name.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx"],
-      "mustMentionSymbols": ["MenuGroup"]
+      "mustMentionFiles": [
+        "packages/excalidraw/components/dropdownMenu/DropdownMenuGroup.tsx"
+      ],
+      "mustMentionSymbols": [
+        "MenuGroup"
+      ]
     }
   },
   {
@@ -533,12 +641,19 @@
     "category": "lookup",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "plerp", "file": "packages/laser-pointer/src/math.ts" },
+    "target": {
+      "symbol": "plerp",
+      "file": "packages/laser-pointer/src/math.ts"
+    },
     "prompt": "In this repository's laser-pointer package, find the plerp function (a point-interpolation helper) and determine whether any file calls it through a namespace-style import (e.g. `import * as x from \"...\"` followed by `x.plerp(...)`) rather than a plain named import of plerp itself. If such a call exists, name the calling file.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["packages/laser-pointer/src/state.ts"],
-      "mustMentionSymbols": ["plerp"]
+      "mustMentionFiles": [
+        "packages/laser-pointer/src/state.ts"
+      ],
+      "mustMentionSymbols": [
+        "plerp"
+      ]
     }
   },
   {
@@ -547,7 +662,10 @@
     "category": "control",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "setLanguage", "file": "packages/excalidraw/i18n.ts" },
+    "target": {
+      "symbol": "setLanguage",
+      "file": "packages/excalidraw/i18n.ts"
+    },
     "prompt": "In this repository, find the setLanguage function in the i18n module. It dynamically imports a locale data file using a computed path. Can the exact locale file it will load be determined statically just by reading the code, or does it depend on a runtime value? Explain which, and if it depends on a runtime value, say what that value is.",
     "oracle": {
       "mode": "judge",
@@ -560,8 +678,11 @@
     "category": "lookup",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "updateElbowArrowPoints", "file": "packages/element/src/elbowArrow.ts" },
-    "prompt": "In this repository, find the updateElbowArrowPoints function — the helper that recomputes an elbow arrow's points whenever the arrow is updated — and list the functions it calls directly from its own body. Name at least 9 of them. Array and object built-ins (.map, .slice, .every, .find, Object.keys and the like) do not count.",
+    "target": {
+      "symbol": "updateElbowArrowPoints",
+      "file": "packages/element/src/elbowArrow.ts"
+    },
+    "prompt": "In this repository, find the updateElbowArrowPoints function \u2014 the helper that recomputes an elbow arrow's points whenever the arrow is updated \u2014 and list the functions it calls directly from its own body. Name at least 9 of them. Array and object built-ins (.map, .slice, .every, .find, Object.keys and the like) do not count.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -591,15 +712,24 @@
     "revealsLocation": false,
     "target": {
       "steps": [
-        { "symbol": "mutateElement", "file": "packages/element/src/mutateElement.ts" },
-        { "symbol": "updateElbowArrowPoints", "file": "packages/element/src/elbowArrow.ts" },
-        { "symbol": "routeElbowArrow", "file": "packages/element/src/elbowArrow.ts" }
+        {
+          "symbol": "mutateElement",
+          "file": "packages/element/src/mutateElement.ts"
+        },
+        {
+          "symbol": "updateElbowArrowPoints",
+          "file": "packages/element/src/elbowArrow.ts"
+        },
+        {
+          "symbol": "routeElbowArrow",
+          "file": "packages/element/src/elbowArrow.ts"
+        }
       ]
     },
-    "prompt": "In this repository, the standalone mutateElement helper — the one that applies an in-place update to a single element and bumps its version — delegates elbow-arrow updates to one helper exported by another module of the element package. That helper, in the case where the arrow has no fixed segments at all, delegates the actual path routing to a further, non-exported helper defined in the same module as itself. Name that routing helper, then list every function it calls directly in its own body, and for each of those say whether it is defined in that same file or imported from a different module — giving the full repo-relative defining file for any that are imported. Array and object built-ins (.map, .push, .unshift and the like) do not count as calls.",
+    "prompt": "In this repository, the standalone mutateElement helper \u2014 the one that applies an in-place update to a single element and bumps its version \u2014 delegates elbow-arrow updates to one helper exported by another module of the element package. That helper, in the case where the arrow has no fixed segments at all, delegates the actual path routing to a further, non-exported helper defined in the same module as itself. Name that routing helper, then list every function it calls directly in its own body, and for each of those say whether it is defined in that same file or imported from a different module \u2014 giving the full repo-relative defining file for any that are imported. Array and object built-ins (.map, .push, .unshift and the like) do not count as calls.",
     "oracle": {
       "mode": "judge",
-      "rubric": "The chain is: mutateElement (packages/element/src/mutateElement.ts) calls updateElbowArrowPoints (packages/element/src/elbowArrow.ts), which — when `fixedSegments.length === 0` — calls the module-local routing helper. Ground truth: the routing helper is routeElbowArrow, defined in packages/element/src/elbowArrow.ts, and it calls exactly four functions directly: calculateGrid, pointToGridNode and astar (all three defined in that same file, packages/element/src/elbowArrow.ts) and pointInsideBounds (imported, defined in packages/element/src/bounds.ts). PASS only if the answer (a) names routeElbowArrow as the routing helper, (b) lists all four of calculateGrid, pointToGridNode, astar and pointInsideBounds as the functions it calls, and (c) identifies pointInsideBounds as the imported one, defined in another file (packages/element/src/bounds.ts or './bounds'), while not claiming that calculateGrid, pointToGridNode or astar come from another file. FAIL if any of the four is missing from the final list, if a different function is given as the routing helper (e.g. handleSegmentMove, handleEndpointDrag, handleSegmentRelease, handleSegmentRenormalization, getElbowArrowData, normalizeArrowElementUpdate, getElbowArrowCornerPoints or removeElbowArrowShortSegments — these are all called by updateElbowArrowPoints but none of them is the no-fixed-segments routing step), or if the answer presents further functions as direct callees of routeElbowArrow that it does not actually call (mentions of built-in array/object methods such as .map/.push/.unshift do not count against it, and neither does correct extra commentary about the surrounding chain). Formatting and ordering do not matter."
+      "rubric": "The chain is: mutateElement (packages/element/src/mutateElement.ts) calls updateElbowArrowPoints (packages/element/src/elbowArrow.ts), which \u2014 when `fixedSegments.length === 0` \u2014 calls the module-local routing helper. Ground truth: the routing helper is routeElbowArrow, defined in packages/element/src/elbowArrow.ts, and it calls exactly four functions directly: calculateGrid, pointToGridNode and astar (all three defined in that same file, packages/element/src/elbowArrow.ts) and pointInsideBounds (imported, defined in packages/element/src/bounds.ts). PASS only if the answer (a) names routeElbowArrow as the routing helper, (b) lists all four of calculateGrid, pointToGridNode, astar and pointInsideBounds as the functions it calls, and (c) identifies pointInsideBounds as the imported one, defined in another file (packages/element/src/bounds.ts or './bounds'), while not claiming that calculateGrid, pointToGridNode or astar come from another file. FAIL if any of the four is missing from the final list, if a different function is given as the routing helper (e.g. handleSegmentMove, handleEndpointDrag, handleSegmentRelease, handleSegmentRenormalization, getElbowArrowData, normalizeArrowElementUpdate, getElbowArrowCornerPoints or removeElbowArrowShortSegments \u2014 these are all called by updateElbowArrowPoints but none of them is the no-fixed-segments routing step), or if the answer presents further functions as direct callees of routeElbowArrow that it does not actually call (mentions of built-in array/object methods such as .map/.push/.unshift do not count against it, and neither does correct extra commentary about the surrounding chain). Formatting and ordering do not matter."
     }
   },
   {
@@ -608,12 +738,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "constrainScrollState", "file": "packages/excalidraw/viewport.ts" },
+    "target": {
+      "symbol": "constrainScrollState",
+      "file": "packages/excalidraw/viewport.ts"
+    },
     "prompt": "In this repository, find the function that takes a proposed scroll or zoom change and, if the view is currently locked to a restricted area, adjusts that change so the result stays within the lock - but allows a little bit of give past the boundary (in screen pixels) before snapping back, and leaves the input untouched entirely when nothing is locked. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["constrainScrollState"],
-      "mustMentionFiles": ["packages/excalidraw/viewport.ts"]
+      "mustMentionSymbols": [
+        "constrainScrollState"
+      ],
+      "mustMentionFiles": [
+        "packages/excalidraw/viewport.ts"
+      ]
     }
   },
   {
@@ -622,12 +759,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "createLibraryUpdate", "file": "packages/excalidraw/data/library.ts" },
+    "target": {
+      "symbol": "createLibraryUpdate",
+      "file": "packages/excalidraw/data/library.ts"
+    },
     "prompt": "In this repository, find the function that compares the current state of the shape library against what it was the last time the app notified anyone of a change, and reports which items were newly added and which were removed since then - intended for the embedding application to diff against its own last-known copy. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["createLibraryUpdate"],
-      "mustMentionFiles": ["packages/excalidraw/data/library.ts"]
+      "mustMentionSymbols": [
+        "createLibraryUpdate"
+      ],
+      "mustMentionFiles": [
+        "packages/excalidraw/data/library.ts"
+      ]
     }
   },
   {
@@ -636,12 +780,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "dragNewTextElement", "file": "packages/element/src/dragElements.ts" },
+    "target": {
+      "symbol": "dragNewTextElement",
+      "file": "packages/element/src/dragElements.ts"
+    },
     "prompt": "In this repository, find the function that determines the size of a text box while it's being dragged out on the canvas. It figures out which point on the box stays fixed and which direction the box grows from there - free-floating text pins wherever the drag began and grows based on which way the pointer moved, while text attached to the end of an arrow instead pins against whatever the arrow's binding placed it at, so dragging the 'wrong' way just makes no progress instead of flipping the box around. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["dragNewTextElement"],
-      "mustMentionFiles": ["packages/element/src/dragElements.ts"]
+      "mustMentionSymbols": [
+        "dragNewTextElement"
+      ],
+      "mustMentionFiles": [
+        "packages/element/src/dragElements.ts"
+      ]
     }
   },
   {
@@ -650,12 +801,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "containsCJK", "file": "packages/element/src/textWrapping.ts" },
+    "target": {
+      "symbol": "containsCJK",
+      "file": "packages/element/src/textWrapping.ts"
+    },
     "prompt": "In this repository, find the function that checks whether a piece of text contains any characters from East Asian scripts that don't rely on spaces to mark word boundaries - used so word wrapping can fall back to breaking between individual characters instead of only at whitespace. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["containsCJK"],
-      "mustMentionFiles": ["packages/element/src/textWrapping.ts"]
+      "mustMentionSymbols": [
+        "containsCJK"
+      ],
+      "mustMentionFiles": [
+        "packages/element/src/textWrapping.ts"
+      ]
     }
   },
   {
@@ -664,12 +822,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "syncInvalidIndices", "file": "packages/element/src/fractionalIndex.ts" },
+    "target": {
+      "symbol": "syncInvalidIndices",
+      "file": "packages/element/src/fractionalIndex.ts"
+    },
     "prompt": "In this repository, elements carry a fractional ordering marker that can occasionally end up invalid or out of sequence. Find the function that repairs every such marker across a set of elements by changing the existing element objects directly, as opposed to the sibling function that fixes the same problem but returns new element instances instead of touching the ones it was given. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["syncInvalidIndices"],
-      "mustMentionFiles": ["packages/element/src/fractionalIndex.ts"]
+      "mustMentionSymbols": [
+        "syncInvalidIndices"
+      ],
+      "mustMentionFiles": [
+        "packages/element/src/fractionalIndex.ts"
+      ]
     }
   },
   {
@@ -678,12 +843,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "snapBoundPointToGrid", "file": "packages/element/src/binding.ts" },
+    "target": {
+      "symbol": "snapBoundPointToGrid",
+      "file": "packages/element/src/binding.ts"
+    },
     "prompt": "In this repository, find the function that adjusts where a connected line's endpoint lands on the shape it's attached to, so that it lines up with the layout grid along one direction while holding the gap between the line and the shape steady along the other direction - it decides which direction to align by comparing against the perpendicular of whichever side of the shape the point sits nearest to. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["snapBoundPointToGrid"],
-      "mustMentionFiles": ["packages/element/src/binding.ts"]
+      "mustMentionSymbols": [
+        "snapBoundPointToGrid"
+      ],
+      "mustMentionFiles": [
+        "packages/element/src/binding.ts"
+      ]
     }
   },
   {
@@ -692,12 +864,19 @@
     "category": "semantic-search",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "shouldDiscardRemoteElement", "file": "packages/excalidraw/data/reconcile.ts" },
+    "target": {
+      "symbol": "shouldDiscardRemoteElement",
+      "file": "packages/excalidraw/data/reconcile.ts"
+    },
     "prompt": "In this repository, find the function that, given two versions of the same shape - one already present locally and one just received from elsewhere - decides whether to keep the local one instead of switching to the received one. It keeps the local one when that shape is currently being interacted with (mid-edit, mid-resize, or freshly created) or when the local one is already the newer of the two. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["shouldDiscardRemoteElement"],
-      "mustMentionFiles": ["packages/excalidraw/data/reconcile.ts"]
+      "mustMentionSymbols": [
+        "shouldDiscardRemoteElement"
+      ],
+      "mustMentionFiles": [
+        "packages/excalidraw/data/reconcile.ts"
+      ]
     }
   },
   {
@@ -706,12 +885,40 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "moveArrowAboveBindable", "file": "packages/element/src/zindex.ts" },
+    "target": {
+      "symbol": "moveArrowAboveBindable",
+      "file": "packages/element/src/zindex.ts"
+    },
     "prompt": "In this repository, find the function that reorders a connector so that it's drawn above every shape it's currently touching or that the pointer is currently over. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["moveArrowAboveBindable"],
-      "mustMentionFiles": ["packages/element/src/zindex.ts"]
+      "mustMentionSymbols": [
+        "moveArrowAboveBindable"
+      ],
+      "mustMentionFiles": [
+        "packages/element/src/zindex.ts"
+      ]
+    }
+  },
+  {
+    "id": "ex-stale-name-image-export",
+    "kind": "find_definition",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "SaveAsImage",
+      "file": "packages/excalidraw/components/main-menu/DefaultItems.tsx"
+    },
+    "prompt": "Our release notes refer to the main-menu entry that saves the current canvas as an image file as \"ImageExport\". Find the component that actually implements that menu item in the code today, and report its declared name and the file it lives in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": [
+        "packages/excalidraw/components/main-menu/DefaultItems.tsx"
+      ],
+      "mustMentionSymbols": [
+        "SaveAsImage"
+      ]
     }
   }
 ]
