@@ -4,12 +4,19 @@
     "kind": "find_implementations",
     "category": "lookup",
     "revealsLocation": false,
-    "target": { "symbol": "CompletionVerifier", "file": "src/domain/verification.ts" },
+    "target": {
+      "symbol": "CompletionVerifier",
+      "file": "src/domain/verification.ts"
+    },
     "prompt": "In this repository, find every class that implements the CompletionVerifier interface. Report the class name(s) and the file(s) they live in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["src/domain/verification.ts"],
-      "mustMentionSymbols": ["GitDiffCompletionVerifier"]
+      "mustMentionFiles": [
+        "src/domain/verification.ts"
+      ],
+      "mustMentionSymbols": [
+        "GitDiffCompletionVerifier"
+      ]
     }
   },
   {
@@ -17,7 +24,10 @@
     "kind": "get_dependencies",
     "category": "lookup",
     "revealsLocation": false,
-    "target": { "symbol": "", "file": "src/db/connection.ts" },
+    "target": {
+      "symbol": "",
+      "file": "src/db/connection.ts"
+    },
     "prompt": "In this repository, find the module that sets up the database connection (the central sqlite db-open/init code), then list every file under src/ (not test files) that imports from it — both direct value imports and type-only imports (`import type`) count as importing it.",
     "oracle": {
       "mode": "pool",
@@ -52,11 +62,17 @@
     "kind": "find_references",
     "category": "lookup",
     "revealsLocation": false,
-    "target": { "symbol": "requireTask", "file": "src/domain/tasks.ts" },
+    "target": {
+      "symbol": "requireTask",
+      "file": "src/domain/tasks.ts"
+    },
     "prompt": "In this repository, find the requireTask function (a lookup helper that throws if a given task id doesn't exist), then list every file — other than where it's defined — that actually calls it. Watch out for other, similarly-named helpers that are not the same function.",
     "oracle": {
       "mode": "pool",
-      "candidatePool": ["src/domain/status.ts", "tests/tasks.test.ts"],
+      "candidatePool": [
+        "src/domain/status.ts",
+        "tests/tasks.test.ts"
+      ],
       "minMatches": 1
     }
   },
@@ -65,12 +81,21 @@
     "kind": "get_file_outline",
     "category": "lookup",
     "revealsLocation": true,
-    "target": { "symbol": "", "file": "src/domain/lifecycle.ts" },
+    "target": {
+      "symbol": "",
+      "file": "src/domain/lifecycle.ts"
+    },
     "prompt": "In this repository, list the exported functions and interfaces from src/domain/lifecycle.ts, then contrast it with the exports of src/domain/handoffNotes.ts (a much smaller file). Report both lists.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": ["src/domain/lifecycle.ts", "src/domain/handoffNotes.ts"],
-      "mustMentionSymbols": ["ReleaseTaskInput", "HandoffNote"]
+      "mustMentionFiles": [
+        "src/domain/lifecycle.ts",
+        "src/domain/handoffNotes.ts"
+      ],
+      "mustMentionSymbols": [
+        "ReleaseTaskInput",
+        "HandoffNote"
+      ]
     }
   },
   {
@@ -79,7 +104,10 @@
     "category": "scenario",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "requireProject", "file": "src/domain/projects.ts" },
+    "target": {
+      "symbol": "requireProject",
+      "file": "src/domain/projects.ts"
+    },
     "prompt": "In this repository, I'm about to change the signature of the requireProject function (the lookup helper that resolves a project reference and throws if it doesn't exist) — for example, adding a new required parameter. Before making the change, list every file elsewhere in the codebase that calls it and would need its call site updated. Give each file's full repo-relative path.",
     "oracle": {
       "mode": "pool",
@@ -100,7 +128,10 @@
     "category": "scenario",
     "expectedWinner": "parity",
     "revealsLocation": false,
-    "target": { "symbol": "taskCode", "file": "src/domain/tasks.ts" },
+    "target": {
+      "symbol": "taskCode",
+      "file": "src/domain/tasks.ts"
+    },
     "prompt": "In this repository, there's a small exported helper function named taskCode that formats a project prefix and a task number into the human-facing 'PREFIX-N' display code. Investigate: is this function actually called anywhere in the application's own source code (not just exercised by a test)? Report your finding precisely — is it used in production code paths, only in a test, or neither — and name every file (test or otherwise) that references it.",
     "oracle": {
       "mode": "judge",
@@ -115,8 +146,14 @@
     "revealsLocation": false,
     "target": {
       "steps": [
-        { "symbol": "addDependency", "file": "src/domain/dependencies.ts" },
-        { "symbol": "createTasks", "file": "src/domain/tasks.ts" }
+        {
+          "symbol": "addDependency",
+          "file": "src/domain/dependencies.ts"
+        },
+        {
+          "symbol": "createTasks",
+          "file": "src/domain/tasks.ts"
+        }
       ]
     },
     "prompt": "In this repository, the addDependency function throws \"A task cannot depend on itself\" whenever it's called with the same task id for both its task_id and depends_on_task_id arguments. One of addDependency's callers builds a whole batch of new tasks from a single client-supplied list of task specs, where each spec may carry its own temporary client-chosen id and a depends_on list of references — each reference resolving either to another spec in the same batch (by that spec's temporary id) or to an already-existing task id. Trace forward from that batch-creating caller and explain precisely what shape of client input triggers addDependency's self-dependency error through this path, even though no single spec in the batch ever literally repeats its own real task id as its own dependency. Name the function where this happens, and describe the exact input shape that triggers the bug.",
@@ -131,7 +168,10 @@
     "category": "feature-request",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "cancelTask", "file": "src/domain/lifecycle.ts" },
+    "target": {
+      "symbol": "cancelTask",
+      "file": "src/domain/lifecycle.ts"
+    },
     "prompt": "Product wants a 'bulk-close-out' operation for epics: when an epic is abandoned, mark every one of its tasks that isn't already done or cancelled as cancelled, in one call. Investigate this codebase and describe exactly how you'd implement it — which existing function handles cancelling a single task (and what it already guards against), how you'd get the list of tasks in an epic, and what has to be handled correctly so the bulk operation doesn't just crash on the first already-finished task or blow up on a task someone else is actively working on.",
     "oracle": {
       "mode": "judge",
@@ -144,7 +184,10 @@
     "category": "implementation",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "releaseTask", "file": "src/domain/lifecycle.ts" },
+    "target": {
+      "symbol": "releaseTask",
+      "file": "src/domain/lifecycle.ts"
+    },
     "prompt": "Users report that a task they explicitly cancelled sometimes reappears as pending and actionable again, days later, with no error message and nothing in the logs — the cancellation reason is still recorded on it, but its cancelled state is gone and get_next_task hands it out again. Find out how this can happen and fix it in the actual code, without changing how releasing a normal (non-cancelled) task works, or how claiming and cancelling tasks already work.",
     "oracle": {
       "mode": "test",
@@ -160,12 +203,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "dedupePrefix", "file": "src/domain/projects.ts" },
+    "target": {
+      "symbol": "dedupePrefix",
+      "file": "src/domain/projects.ts"
+    },
     "prompt": "In this repository, find the function that resolves a naming collision when two different project names would derive to the same short project-code prefix - it makes the result unique by appending 2, 3, and so on until it finds one that isn't already taken. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["dedupePrefix"],
-      "mustMentionFiles": ["src/domain/projects.ts"]
+      "mustMentionSymbols": [
+        "dedupePrefix"
+      ],
+      "mustMentionFiles": [
+        "src/domain/projects.ts"
+      ]
     }
   },
   {
@@ -174,12 +224,19 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "isStale", "file": "src/domain/board.ts" },
+    "target": {
+      "symbol": "isStale",
+      "file": "src/domain/board.ts"
+    },
     "prompt": "In this repository, find the function used by the dashboard board view that flags a task whose work lock has outlived its lease because the session that claimed it never came back to complete, split, or release it. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["isStale"],
-      "mustMentionFiles": ["src/domain/board.ts"]
+      "mustMentionSymbols": [
+        "isStale"
+      ],
+      "mustMentionFiles": [
+        "src/domain/board.ts"
+      ]
     }
   },
   {
@@ -188,12 +245,59 @@
     "category": "semantic-search",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
-    "target": { "symbol": "isDocDrifted", "file": "src/domain/projects.ts" },
+    "target": {
+      "symbol": "isDocDrifted",
+      "file": "src/domain/projects.ts"
+    },
     "prompt": "In this repository, find the function that cheaply checks whether a project's tracked design document has drifted since the task graph was last generated from it - reused on every routine status check so drift is caught automatically rather than only when explicitly asked about. Report the function name and the file it's defined in.",
     "oracle": {
       "mode": "substring",
-      "mustMentionSymbols": ["isDocDrifted"],
-      "mustMentionFiles": ["src/domain/projects.ts"]
+      "mustMentionSymbols": [
+        "isDocDrifted"
+      ],
+      "mustMentionFiles": [
+        "src/domain/projects.ts"
+      ]
+    }
+  },
+  {
+    "id": "tt-stale-name-doc-sync-check",
+    "kind": "find_definition",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "checkDocSync",
+      "file": "src/domain/projects.ts"
+    },
+    "prompt": "Our documentation refers to the routine that reports whether a project's docs have drifted out of sync by the name `DocSyncCheck`. Find where it is declared in the code and report the name it is actually declared under, plus the file it lives in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionFiles": [
+        "src/domain/projects.ts"
+      ],
+      "mustMentionSymbols": [
+        "checkDocSync"
+      ]
+    }
+  },
+  {
+    "id": "tt-implement-split-task-cancelled-release",
+    "kind": "implement",
+    "category": "implementation",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "splitTask",
+      "file": "src/domain/tasks.ts"
+    },
+    "prompt": "A release was cancelled — the batch was built but deliberately not shipped — and its tasks were left in place, because cancelling a release is meant to leave them alone and keep the still-open ones workable so anything salvageable can be rescued into a later release. One of those tasks then turned out to be too big, and splitting it into smaller pieces fails outright, complaining that new tasks cannot be assigned to a cancelled release. Nothing is being newly assigned — that work is already in that release. Find out why this happens and fix it in the actual code, without changing which releases a new or moved task may be assigned into, and without making a task splittable once its release has actually shipped.",
+    "oracle": {
+      "mode": "test",
+      "holdoutFiles": {
+        "tests/__bench_holdout__/split-cancelled-release.test.ts": "corpora/task-tracker-mcp/fixtures/tt-implement-split-task-cancelled-release/split-cancelled-release.test.ts"
+      },
+      "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/lifecycle.test.ts tests/releases.test.ts tests/tasks.test.ts tests/split.test.ts tests/__bench_holdout__/split-cancelled-release.test.ts"
     }
   }
 ]

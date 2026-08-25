@@ -168,6 +168,11 @@ test("returns no result and a zero tally for empty or wholly unparseable stdout"
     init: { servers: null, tools: null },
     perTurnUsage: [],
     toolResults: [],
+    // Present-and-undefined rather than absent, matching perTurnUsage/toolResults
+    // above: a stream that carried nothing has no boundary to report. On the
+    // record side JSON.stringify drops it, so such runs are written without the
+    // key at all.
+    editBoundaryTurn: undefined,
   };
   assert.deepEqual(parseStreamJson(""), empty);
   assert.deepEqual(parseStreamJson("not json at all\n<html>error</html>"), empty);
@@ -537,4 +542,51 @@ test("omits args and paths rather than inventing them", () => {
 
   assert.equal(parsed.toolResults[0]?.args, undefined);
   assert.equal(parsed.toolResults[0]?.paths, undefined);
+});
+
+const usage = (n: number): Record<string, number> => ({
+  input_tokens: 2,
+  output_tokens: 2,
+  cache_read_input_tokens: n,
+  cache_creation_input_tokens: 0,
+});
+
+test("records the perTurnUsage index where the first edit landed", () => {
+  const { editBoundaryTurn, perTurnUsage } = parseStreamJson(
+    [
+      assistantLineWithUsage([toolUse("mcp__g-mesh__find_references", "t1")], "msg_a", usage(10)),
+      assistantLineWithUsage([toolUse("Read", "t2")], "msg_b", usage(20)),
+      // Two usage-bearing turns precede this one, so the boundary is 2.
+      assistantLineWithUsage([toolUse("Edit", "t3")], "msg_c", usage(30)),
+      assistantLineWithUsage([toolUse("Grep", "t4")], "msg_d", usage(40)),
+      assistantLineWithUsage([toolUse("Edit", "t5")], "msg_e", usage(50)),
+    ].join("\n"),
+  );
+
+  assert.equal(perTurnUsage.length, 5);
+  assert.equal(editBoundaryTurn, 2, "the boundary is where editing began, not where it last happened");
+  // The split the field exists to enable, computed the way a consumer would.
+  const pre = perTurnUsage.slice(0, editBoundaryTurn);
+  const post = perTurnUsage.slice(editBoundaryTurn);
+  assert.equal(pre.reduce((a, u) => a + u.cacheReadTokens, 0), 30);
+  assert.equal(post.reduce((a, u) => a + u.cacheReadTokens, 0), 120);
+});
+
+test("leaves the edit boundary undefined for a run that never edited", () => {
+  const { editBoundaryTurn } = parseStreamJson(
+    [
+      assistantLineWithUsage([toolUse("mcp__g-mesh__find_callers", "t1")], "msg_a", usage(10)),
+      assistantLineWithUsage([toolUse("Grep", "t2")], "msg_b", usage(20)),
+    ].join("\n"),
+  );
+
+  assert.equal(editBoundaryTurn, undefined, "absent, not 0 - 0 is a real boundary meaning 'edited first'");
+});
+
+test("treats an edit in the very first turn as boundary 0, not as absent", () => {
+  const { editBoundaryTurn } = parseStreamJson(
+    assistantLineWithUsage([toolUse("Write", "t1")], "msg_a", usage(10)),
+  );
+
+  assert.equal(editBoundaryTurn, 0);
 });

@@ -1,0 +1,474 @@
+[
+  {
+    "taskId": "tt-stale-name-doc-sync-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e0e14544b232",
+    "inputTokens": 6,
+    "outputTokens": 452,
+    "cacheReadTokens": 54798,
+    "cacheCreationTokens": 14400,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 10108,
+        "cacheCreationTokens": 11119
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21227,
+        "cacheCreationTokens": 2236
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23463,
+        "cacheCreationTokens": 1045
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4497,
+        "args": "{\"query\":\"check whether project documentation is out of sync / drifted\"}",
+        "argsChars": 72,
+        "paths": [
+          "src/domain/projects.ts",
+          "src/domain/status.ts",
+          "src/domain/lifecycle.ts",
+          "src/db/schema.ts",
+          "src/domain/board.ts",
+          "src/dashboard/public/board.js",
+          "src/domain/releases.ts",
+          "src/domain/verification.ts",
+          "src/domain/epics.ts",
+          "src/mcp/toolResult.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1916,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-HAD9aL/src/domain/projects.ts\",\"offset\":150,\"limit\":40}",
+        "argsChars": 155,
+        "paths": [
+          "verification.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 13561,
+    "costUsd": 0.1106484,
+    "judgeCostUsd": 0,
+    "resultText": "`DocSyncCheck` is actually declared as **`checkDocSync`**, a function in `src/domain/projects.ts:175`. It computes and returns a `DocSyncResult` for whether a project's design doc has drifted from its tracked hash.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-doc-sync-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e0e14544b232",
+    "inputTokens": 6,
+    "outputTokens": 497,
+    "cacheReadTokens": 65984,
+    "cacheCreationTokens": 2977,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21227,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21227,
+        "cacheCreationTokens": 2303
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23530,
+        "cacheCreationTokens": 674
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4515,
+        "args": "{\"query\":\"check whether documentation is out of sync / drifted from code\"}",
+        "argsChars": 74,
+        "paths": [
+          "src/domain/projects.ts",
+          "src/domain/board.ts",
+          "src/domain/status.ts",
+          "src/domain/lifecycle.ts",
+          "src/db/schema.ts",
+          "src/mcp/toolResult.ts",
+          "src/dashboard/public/board.js",
+          "src/domain/verification.ts",
+          "src/domain/budget.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1029,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-HAD9aL/src/domain/projects.ts\",\"offset\":165,\"limit\":25}",
+        "argsChars": 155,
+        "paths": [
+          "verification.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 9944,
+    "costUsd": 0.0461462,
+    "judgeCostUsd": 0,
+    "resultText": "The routine your docs call `DocSyncCheck` is actually declared as **`checkDocSync`**, a function in `src/domain/projects.ts:175`. It checks whether a project's design doc hash matches the stored baseline (with an `acknowledge` option to accept new drift as the new baseline), returning a `DocSyncResult`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-doc-sync-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e0e14544b232",
+    "inputTokens": 6,
+    "outputTokens": 331,
+    "cacheReadTokens": 65887,
+    "cacheCreationTokens": 3189,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21227,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21227,
+        "cacheCreationTokens": 2206
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23433,
+        "cacheCreationTokens": 983
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4502,
+        "args": "{\"query\":\"check whether project documentation is out of sync / stale\"}",
+        "argsChars": 70,
+        "paths": [
+          "src/domain/projects.ts",
+          "src/domain/status.ts",
+          "src/domain/board.ts",
+          "src/domain/lifecycle.ts",
+          "src/domain/releases.ts",
+          "src/db/schema.ts",
+          "src/dashboard/public/board.js",
+          "src/domain/epics.ts",
+          "src/domain/verification.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1916,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-HAD9aL/src/domain/projects.ts\",\"offset\":150,\"limit\":40}",
+        "argsChars": 155,
+        "paths": [
+          "verification.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 8331,
+    "costUsd": 0.0449041,
+    "judgeCostUsd": 0,
+    "resultText": "`DocSyncCheck` is actually declared as the function `checkDocSync`, in `src/domain/projects.ts:175`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-canvas-search",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "c4dad4734d61",
+    "inputTokens": 4,
+    "outputTokens": 258,
+    "cacheReadTokens": 31813,
+    "cacheCreationTokens": 14166,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 10108,
+        "cacheCreationTokens": 11597
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21705,
+        "cacheCreationTokens": 2569
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 5001,
+        "args": "{\"query\":\"canvas text search panel component\"}",
+        "argsChars": 46,
+        "paths": [
+          "packages/excalidraw/renderer/interactiveScene.ts",
+          "packages/excalidraw/components/SearchMenu.tsx",
+          "packages/element/src/transform.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/tests/helpers/api.ts",
+          "packages/excalidraw/wysiwyg/textWysiwyg.tsx",
+          "packages/element/src/textElement.ts",
+          "packages/excalidraw/tests/arrowEndpointTextBinding.test.tsx",
+          "packages/excalidraw/hooks/useTextEditorFocus.ts",
+          "packages/excalidraw/actions/actionBoundText.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/element/src/renderElement.ts",
+          "packages/element/src/collision.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 16,
+        "args": "{\"pattern\":\"CanvasSearch\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 61
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 9336,
+    "costUsd": 0.0994309,
+    "judgeCostUsd": 0,
+    "resultText": "No literal `CanvasSearch` name exists in the code. The component is actually declared as **`SearchMenu`**, in `packages/excalidraw/components/SearchMenu.tsx:81`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-canvas-search",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "c4dad4734d61",
+    "inputTokens": 4,
+    "outputTokens": 273,
+    "cacheReadTokens": 43410,
+    "cacheCreationTokens": 2573,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21705,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21705,
+        "cacheCreationTokens": 2573
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 5001,
+        "args": "{\"query\":\"canvas text search panel component\"}",
+        "argsChars": 46,
+        "paths": [
+          "packages/excalidraw/renderer/interactiveScene.ts",
+          "packages/excalidraw/components/SearchMenu.tsx",
+          "packages/element/src/transform.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/tests/helpers/api.ts",
+          "packages/excalidraw/wysiwyg/textWysiwyg.tsx",
+          "packages/element/src/textElement.ts",
+          "packages/excalidraw/tests/arrowEndpointTextBinding.test.tsx",
+          "packages/excalidraw/hooks/useTextEditorFocus.ts",
+          "packages/excalidraw/actions/actionBoundText.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/element/src/renderElement.ts",
+          "packages/element/src/collision.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 16,
+        "args": "{\"pattern\":\"CanvasSearch\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 61
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 5679,
+    "costUsd": 0.033576999999999996,
+    "judgeCostUsd": 0,
+    "resultText": "The component is actually declared as `SearchMenu`, in `packages/excalidraw/components/SearchMenu.tsx:81`. No component named `CanvasSearch` exists in the codebase — that's just documentation using a different name for the same panel.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-canvas-search",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T15:16:53.173Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "c4dad4734d61",
+    "inputTokens": 4,
+    "outputTokens": 275,
+    "cacheReadTokens": 43410,
+    "cacheCreationTokens": 2564,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21705,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21705,
+        "cacheCreationTokens": 2564
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 5001,
+        "args": "{\"query\":\"canvas text search panel component\"}",
+        "argsChars": 46,
+        "paths": [
+          "packages/excalidraw/renderer/interactiveScene.ts",
+          "packages/excalidraw/components/SearchMenu.tsx",
+          "packages/element/src/transform.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/tests/helpers/api.ts",
+          "packages/excalidraw/wysiwyg/textWysiwyg.tsx",
+          "packages/element/src/textElement.ts",
+          "packages/excalidraw/tests/arrowEndpointTextBinding.test.tsx",
+          "packages/excalidraw/hooks/useTextEditorFocus.ts",
+          "packages/excalidraw/actions/actionBoundText.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/element/src/renderElement.ts",
+          "packages/element/src/collision.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 16,
+        "args": "{\"pattern\":\"CanvasSearch\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 61
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 5249,
+    "costUsd": 0.033553,
+    "judgeCostUsd": 0,
+    "resultText": "The component is actually declared as `SearchMenu`, not `CanvasSearch` — in `packages/excalidraw/components/SearchMenu.tsx:81`. No `CanvasSearch` symbol exists in the codebase; the docs are using a different name than what's in the source.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

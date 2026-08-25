@@ -1,0 +1,506 @@
+[
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "245a7a2e5fe4",
+    "inputTokens": 6,
+    "outputTokens": 547,
+    "cacheReadTokens": 44861,
+    "cacheCreationTokens": 24949,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 21226
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21226,
+        "cacheCreationTokens": 2409
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23635,
+        "cacheCreationTokens": 1314
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 18,
+        "args": "{\"pattern\":\"TaskCompletionCheck\",\"output_mode\":\"content\"}",
+        "argsChars": 57
+      },
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4493,
+        "args": "{\"query\":\"mark task done and report which dependent tasks become unblocked\"}",
+        "argsChars": 76,
+        "paths": [
+          "src/domain/lifecycle.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/status.ts",
+          "src/domain/verification.ts",
+          "src/db/schema.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/releases.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2469,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-2qOGJI/src/domain/lifecycle.ts\",\"offset\":180,\"limit\":70}",
+        "argsChars": 156
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 12911,
+    "costUsd": 0.17239529999999997,
+    "judgeCostUsd": 0,
+    "resultText": "The routine your docs call \"TaskCompletionCheck\" is actually declared as `completeTask`, in `src/domain/lifecycle.ts:191`. It updates the task's status to `'done'` and returns `unblocked_task_ids` from `findUnblockedDependents` (src/domain/status.ts:90).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "245a7a2e5fe4",
+    "inputTokens": 6,
+    "outputTokens": 568,
+    "cacheReadTokens": 66099,
+    "cacheCreationTokens": 3622,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 21226,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21226,
+        "cacheCreationTokens": 2421
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23647,
+        "cacheCreationTokens": 1201
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 18,
+        "args": "{\"pattern\":\"TaskCompletionCheck\",\"output_mode\":\"content\"}",
+        "argsChars": 57
+      },
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4468,
+        "args": "{\"query\":\"mark task as done and report which dependent tasks become unblocked\"}",
+        "argsChars": 79,
+        "paths": [
+          "src/domain/lifecycle.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/status.ts",
+          "src/domain/verification.ts",
+          "src/db/schema.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/releases.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2195,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-2qOGJI/src/domain/lifecycle.ts\",\"offset\":180,\"limit\":60}",
+        "argsChars": 156
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 10047,
+    "costUsd": 0.0511197,
+    "judgeCostUsd": 0,
+    "resultText": "The routine is declared as **`completeTask`**, in `src/domain/lifecycle.ts:191`. It sets a task's status to `'done'` and returns `unblocked_task_ids` via `findUnblockedDependents` — the \"TaskCompletionCheck\" name from the design note doesn't appear anywhere in the code.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-stale-name-completion-check",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "245a7a2e5fe4",
+    "inputTokens": 6,
+    "outputTokens": 537,
+    "cacheReadTokens": 66090,
+    "cacheCreationTokens": 3708,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21226,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21226,
+        "cacheCreationTokens": 2412
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 23638,
+        "cacheCreationTokens": 1296
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 18,
+        "args": "{\"pattern\":\"TaskCompletionCheck\",\"output_mode\":\"content\"}",
+        "argsChars": 57
+      },
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4493,
+        "args": "{\"query\":\"mark task done and report which dependent tasks become unblocked\"}",
+        "argsChars": 76,
+        "paths": [
+          "src/domain/lifecycle.ts",
+          "src/mcp/toolResult.ts",
+          "src/domain/status.ts",
+          "src/domain/verification.ts",
+          "src/db/schema.ts",
+          "src/domain/dependencies.ts",
+          "src/domain/releases.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2469,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-2qOGJI/src/domain/lifecycle.ts\",\"offset\":180,\"limit\":70}",
+        "argsChars": 156
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 9674,
+    "costUsd": 0.051168,
+    "judgeCostUsd": 0,
+    "resultText": "This is the routine: it sets a task's status to `'done'` and returns `unblocked_task_ids` via `findUnblockedDependents`.\n\nIt's declared as **`completeTask`**, in **`src/domain/lifecycle.ts`** (line 191) — not under the name \"TaskCompletionCheck\" used in the docs.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e445d28bfd45",
+    "inputTokens": 6,
+    "outputTokens": 558,
+    "cacheReadTokens": 56271,
+    "cacheCreationTokens": 15262,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 10108,
+        "cacheCreationTokens": 11599
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21707,
+        "cacheCreationTokens": 2749
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24456,
+        "cacheCreationTokens": 914
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4947,
+        "args": "{\"query\":\"main menu item to save the canvas as an image file\"}",
+        "argsChars": 62,
+        "paths": [
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/excalidraw/tests/interactivity.test.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/scene/export.ts",
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/components/App.cursor.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/data/resave.ts",
+          "packages/excalidraw/components/ExcalidrawLogo.tsx",
+          "packages/excalidraw/components/JSONExportDialog.tsx",
+          "excalidraw-app/components/EncryptedIcon.tsx"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 346,
+        "args": "{\"pattern\":\"ImageExport\",\"output_mode\":\"files_with_matches\"}",
+        "argsChars": 60,
+        "paths": [
+          "npackages/excalidraw/tests/interactivity.test.tsx",
+          "npackages/excalidraw/tests/excalidraw.test.tsx",
+          "npackages/excalidraw/components/MobileMenu.tsx",
+          "npackages/excalidraw/components/LayerUI.tsx",
+          "npackages/excalidraw/components/ImageExportDialog.tsx"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1410,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-excalidraw-f3Vnzs/packages/excalidraw/components/main-menu/DefaultItems.tsx\",\"offset\":115,\"limit\":40}",
+        "argsChars": 184
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 12585,
+    "costUsd": 0.11785430000000001,
+    "judgeCostUsd": 0,
+    "resultText": "The main-menu item that saves the canvas as an image is implemented by the `SaveAsImage` component (`packages/excalidraw/components/main-menu/DefaultItems.tsx:129`). It's not named \"ImageExport\" — that name only survives as the `openDialog: { name: \"imageExport\" }` state key and the `imageExport` shortcut name it triggers.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e445d28bfd45",
+    "inputTokens": 6,
+    "outputTokens": 631,
+    "cacheReadTokens": 67568,
+    "cacheCreationTokens": 3829,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21707,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 21707,
+        "cacheCreationTokens": 2447
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24154,
+        "cacheCreationTokens": 1382
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4959,
+        "args": "{\"query\":\"main menu item to save/export canvas as image file\"}",
+        "argsChars": 62,
+        "paths": [
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/excalidraw/tests/interactivity.test.tsx",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/scene/export.ts",
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/components/App.cursor.ts",
+          "packages/excalidraw/components/JSONExportDialog.tsx",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/components/ExcalidrawLogo.tsx",
+          "packages/excalidraw/data/resave.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2495,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-excalidraw-f3Vnzs/packages/excalidraw/components/main-menu/DefaultItems.tsx\",\"offset\":100,\"limit\":70}",
+        "argsChars": 184
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 11800,
+    "costUsd": 0.0537354,
+    "judgeCostUsd": 0,
+    "resultText": "This confirms it: the main-menu \"export as image\" item opens the `imageExport` dialog, aria-labeled `buttons.exportImage`, and its `data-testid` is `image-export-button` — matching \"ImageExport\" from the release notes.\n\n**Component:** `SaveAsImage` (declared name, exported const with `displayName = \"SaveAsImage\"`)\n**File:** `packages/excalidraw/components/main-menu/DefaultItems.tsx:129`\n\nNote the release notes call it \"ImageExport\" but the component itself is named `SaveAsImage` — the \"ImageExport\" name only shows up as the dialog id (`openDialog: { name: \"imageExport\" }`) and shortcut name, not as the component's declared identifier.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "ex-stale-name-image-export",
+    "corpusId": "excalidraw",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-08-21T13:53:06.857Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "e445d28bfd45",
+    "inputTokens": 6,
+    "outputTokens": 559,
+    "cacheReadTokens": 67571,
+    "cacheCreationTokens": 3667,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21707,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21707,
+        "cacheCreationTokens": 2450
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 24157,
+        "cacheCreationTokens": 1217
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__search_code",
+        "chars": 4969,
+        "args": "{\"query\":\"main menu item to save canvas as image file\"}",
+        "argsChars": 55,
+        "paths": [
+          "packages/excalidraw/components/OverwriteConfirm/OverwriteConfirmActions.tsx",
+          "packages/excalidraw/components/main-menu/DefaultItems.tsx",
+          "packages/excalidraw/tests/interactivity.test.tsx",
+          "packages/excalidraw/data/index.ts",
+          "packages/utils/src/export.ts",
+          "packages/excalidraw/components/App.tsx",
+          "packages/excalidraw/scene/export.ts",
+          "packages/excalidraw/components/App.cursor.ts",
+          "packages/excalidraw/components/ImageExportDialog.tsx",
+          "packages/excalidraw/components/ExcalidrawLogo.tsx",
+          "packages/excalidraw/data/resave.ts",
+          "packages/excalidraw/components/JSONExportDialog.tsx",
+          "packages/excalidraw/components/PublishLibrary.tsx"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2187,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-excalidraw-f3Vnzs/packages/excalidraw/components/main-menu/DefaultItems.tsx\",\"offset\":100,\"limit\":60}",
+        "argsChars": 184
+      }
+    ],
+    "corpusRevision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
+    "durationMs": 10161,
+    "costUsd": 0.0516893,
+    "judgeCostUsd": 0,
+    "resultText": "This confirms it — the main-menu item that triggers \"export as image\" (`data-testid=\"image-export-button\"`, opens the `imageExport` dialog, uses the `imageExport` shortcut and `buttons.exportImage` label) is:\n\n**`SaveAsImage`**, declared in `packages/excalidraw/components/main-menu/DefaultItems.tsx:129`.\n\nDespite the release notes' name \"ImageExport,\" the component itself is named `SaveAsImage` (it opens a separate `ImageExportDialog`/`ImageExportModal` component, defined elsewhere in `ImageExportDialog.tsx`, when selected).",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

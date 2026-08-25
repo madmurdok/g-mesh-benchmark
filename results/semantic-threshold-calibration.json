@@ -1,0 +1,567 @@
+{
+  "right": [
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "GitDiffCompletionVerifier",
+      "correctScore": 0.6015697717666626,
+      "correctRank": 1,
+      "topScore": 0.6015697717666626
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "ReleaseTaskInput",
+      "correctScore": 0.6230526268482208,
+      "correctRank": 1,
+      "topScore": 0.6230526268482208
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "HandoffNote",
+      "correctScore": 0.6829493641853333,
+      "correctRank": 1,
+      "topScore": 0.6829493641853333
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "dedupePrefix",
+      "correctScore": 0.7102891206741333,
+      "correctRank": 1,
+      "topScore": 0.7102891206741333
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "isStale",
+      "correctScore": 0.6149953901767731,
+      "correctRank": 1,
+      "topScore": 0.6149953901767731
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "isDocDrifted",
+      "correctScore": 0.7808692902326584,
+      "correctRank": 1,
+      "topScore": 0.7808692902326584
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "AnimatedTrail",
+      "correctScore": 0.7375706434249878,
+      "correctRank": 1,
+      "topScore": 0.7375706434249878
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "LaserTrails",
+      "correctScore": 0.472345769405365,
+      "correctRank": 7,
+      "topScore": 0.5748215019702911
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "DrawShapeTrail",
+      "correctScore": null,
+      "correctRank": null,
+      "topScore": 0.7791353762149811
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "AppStateDelta",
+      "correctScore": 0.831305667757988,
+      "correctRank": 1,
+      "topScore": 0.831305667757988
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "ElementsDelta",
+      "correctScore": 0.7809778302907944,
+      "correctRank": 1,
+      "topScore": 0.7809778302907944
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "AppState",
+      "correctScore": null,
+      "correctRank": null,
+      "topScore": 0.8454516381025314
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "ExcalidrawImperativeAPI",
+      "correctScore": null,
+      "correctRank": null,
+      "topScore": 0.839346393942833
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "Language",
+      "correctScore": 0.8886169865727425,
+      "correctRank": 1,
+      "topScore": 0.8886169865727425
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "command_palette",
+      "correctScore": null,
+      "correctRank": null,
+      "topScore": 0.7236060500144958
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "export",
+      "correctScore": null,
+      "correctRank": null,
+      "topScore": 0.8796819299459457
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "MenuGroup",
+      "correctScore": 0.6955757141113281,
+      "correctRank": 1,
+      "topScore": 0.6955757141113281
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "plerp",
+      "correctScore": 0.6405291259288788,
+      "correctRank": 1,
+      "topScore": 0.6405291259288788
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "constrainScrollState",
+      "correctScore": 0.6502979099750519,
+      "correctRank": 3,
+      "topScore": 0.6990033686161041
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "createLibraryUpdate",
+      "correctScore": 0.6427560746669769,
+      "correctRank": 1,
+      "topScore": 0.6427560746669769
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "dragNewTextElement",
+      "correctScore": 0.6682842671871185,
+      "correctRank": 1,
+      "topScore": 0.6682842671871185
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "containsCJK",
+      "correctScore": 0.7929920554161072,
+      "correctRank": 1,
+      "topScore": 0.7929920554161072
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "syncInvalidIndices",
+      "correctScore": 0.6453348100185394,
+      "correctRank": 1,
+      "topScore": 0.6453348100185394
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "snapBoundPointToGrid",
+      "correctScore": 0.7048541307449341,
+      "correctRank": 1,
+      "topScore": 0.7048541307449341
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "shouldDiscardRemoteElement",
+      "correctScore": 0.8924667313694954,
+      "correctRank": 1,
+      "topScore": 0.8924667313694954
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "moveArrowAboveBindable",
+      "correctScore": 0.6838651299476624,
+      "correctRank": 1,
+      "topScore": 0.6838651299476624
+    }
+  ],
+  "none": [
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "@excalidraw/math",
+      "kind": "package",
+      "topScore": 0.3154655694961548,
+      "topHit": "main"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "@excalidraw/element",
+      "kind": "package",
+      "topScore": 0.5656239986419678,
+      "topHit": "domElementStub"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "@modelcontextprotocol/sdk",
+      "kind": "package",
+      "topScore": 0.3935180902481079,
+      "topHit": "jsonResult"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "better-sqlite3",
+      "kind": "package",
+      "topScore": 0.49679845571517944,
+      "topHit": "openDatabase"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "the math package entry point",
+      "kind": "package",
+      "topScore": 0.5350866317749023,
+      "topHit": "main"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "packages/excalidraw/index.tsx",
+      "kind": "path",
+      "topScore": 0.34217149019241333,
+      "topHit": "domElementStub"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "src/db/connection.ts",
+      "kind": "path",
+      "topScore": 0.5498221516609192,
+      "topHit": "connectedClient"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "scripts/build-targets.sh",
+      "kind": "path",
+      "topScore": 0.4165603518486023,
+      "topHit": "setup"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "docs/architecture/g-mesh-v1.md",
+      "kind": "path",
+      "topScore": 0.3987439274787903,
+      "topHit": "laneTitle"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "QuantumFrobnicator",
+      "kind": "invented",
+      "topScore": 0.28172481060028076,
+      "topHit": "stubEstimator"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "resolveTelemetryBudget",
+      "kind": "invented",
+      "topScore": 0.42265772819519043,
+      "topHit": "getReleaseStatus"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "HyperbolicCacheWarden",
+      "kind": "invented",
+      "topScore": 0.3060797452926636,
+      "topHit": "setup"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "serializeGlyphAtlas",
+      "kind": "invented",
+      "topScore": 0.2809741497039795,
+      "topHit": "renderBoard"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "computeParallaxOffsets",
+      "kind": "invented",
+      "topScore": 0.21200811862945557,
+      "topHit": "setup"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "AnimatedTrail",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.28497594594955444,
+      "topHit": "renderBoard"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "LaserTrails",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.41305339336395264,
+      "topHit": "laneTitle"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "DrawShapeTrail",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.2934802174568176,
+      "topHit": "renderBoard"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "AppStateDelta",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3541722297668457,
+      "topHit": "referencesTasksOld"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "ElementsDelta",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3684625029563904,
+      "topHit": "domElementStub"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "AppState",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3561469316482544,
+      "topHit": "setup"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "ExcalidrawImperativeAPI",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.4235016703605652,
+      "topHit": "jsonResult"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "Language",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3352532386779785,
+      "topHit": "laneTitle"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "command_palette",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.37191617488861084,
+      "topHit": "laneKey"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "export",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.5063907504081726,
+      "topHit": "main"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "MenuGroup",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3577117323875427,
+      "topHit": "storeCollapse"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "plerp",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.4791375994682312,
+      "topHit": "main"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "constrainScrollState",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.26383161544799805,
+      "topHit": "tickConnectionLabel"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "createLibraryUpdate",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.4422342777252197,
+      "topHit": "createRelease"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "dragNewTextElement",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3238765597343445,
+      "topHit": "domElementStub"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "containsCJK",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.31655341386795044,
+      "topHit": "HeuristicBudgetEstimator"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "syncInvalidIndices",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.3377916216850281,
+      "topHit": "repairDanglingTasksOldReferences"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "snapBoundPointToGrid",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.32143694162368774,
+      "topHit": "renderBoard"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "shouldDiscardRemoteElement",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.35195958614349365,
+      "topHit": "taskStatusCheckAllowsCancelled"
+    },
+    {
+      "corpus": "task-tracker-mcp",
+      "query": "moveArrowAboveBindable",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.2672640085220337,
+      "topHit": "tickConnectionLabel"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "@excalidraw/math",
+      "kind": "package",
+      "topScore": 0.4683645963668823,
+      "topHit": "round"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "@excalidraw/element",
+      "kind": "package",
+      "topScore": 0.6987537443637848,
+      "topHit": "useExcalidrawElements"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "@modelcontextprotocol/sdk",
+      "kind": "package",
+      "topScore": 0.4875735640525818,
+      "topHit": "ORIG_ID"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "better-sqlite3",
+      "kind": "package",
+      "topScore": 0.49269628524780273,
+      "topHit": "mermaidLite"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "the math package entry point",
+      "kind": "package",
+      "topScore": 0.43148696422576904,
+      "topHit": "ORIG_ID"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "packages/excalidraw/index.tsx",
+      "kind": "path",
+      "topScore": 0.5222944915294647,
+      "topHit": "ExcalidrawWrapper"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "src/db/connection.ts",
+      "kind": "path",
+      "topScore": 0.47391730546951294,
+      "topHit": "LibraryItem_v1"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "scripts/build-targets.sh",
+      "kind": "path",
+      "topScore": 0.5355178117752075,
+      "topHit": "buildProd"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "docs/architecture/g-mesh-v1.md",
+      "kind": "path",
+      "topScore": 0.46128350496292114,
+      "topHit": "App#getSceneElements"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "QuantumFrobnicator",
+      "kind": "invented",
+      "topScore": 0.44864583015441895,
+      "topHit": "getFormFactor"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "resolveTelemetryBudget",
+      "kind": "invented",
+      "topScore": 0.3794298768043518,
+      "topHit": "OpenAIOutput.CompletionUsage"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "HyperbolicCacheWarden",
+      "kind": "invented",
+      "topScore": 0.5431885719299316,
+      "topHit": "useLibraryCache"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "serializeGlyphAtlas",
+      "kind": "invented",
+      "topScore": 0.44452160596847534,
+      "topHit": "load"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "computeParallaxOffsets",
+      "kind": "invented",
+      "topScore": 0.5039379596710205,
+      "topHit": "AppViewport#resolveOffsets"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "GitDiffCompletionVerifier",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.43316417932510376,
+      "topHit": "askToCommit"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "ReleaseTaskInput",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.37454456090927124,
+      "topHit": "AppViewport#destroy"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "HandoffNote",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.43867748975753784,
+      "topHit": "PlainTextPreviewBtn"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "dedupePrefix",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.42617517709732056,
+      "topHit": "stripProps"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "isStale",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.5044681429862976,
+      "topHit": "App#watchState"
+    },
+    {
+      "corpus": "excalidraw",
+      "query": "isDocDrifted",
+      "kind": "other-corpus-symbol",
+      "topScore": 0.47713518142700195,
+      "topHit": "AppDrawShape#hasPendingGesture"
+    }
+  ],
+  "limit": 10
+}

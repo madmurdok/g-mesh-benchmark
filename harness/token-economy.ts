@@ -160,6 +160,38 @@ export interface TokenEconomyRun {
    */
   serenaRevision?: string;
   /**
+   * Where this run's first `Edit`/`Write` landed, as an index into
+   * `perTurnUsage` - `undefined` for a run that never edited, which is most of
+   * this registry.
+   *
+   * Recorded because the split it enables is not recoverable afterwards:
+   * `toolResults` carries no turn index, so before this field the only way to
+   * separate a run's navigation from its verification was to re-walk a saved
+   * transcript. GMB-144 measured 67-78% of an implementation run's tokens
+   * falling after this boundary, with `baseline` - which has no index to stop
+   * using - spending the same share there, which is what bounds any navigation
+   * change. A number that reframes four results should not have to be
+   * rediscovered by hand each sweep.
+   */
+  editBoundaryTurn?: number;
+  /**
+   * The version the g-mesh binary under test reports for itself, from
+   * `<binary> --version` at the moment this invocation started.
+   *
+   * Exists because establishing "these two sweeps ran the same code" once cost
+   * a binary mtime, a commit log and a tree diff (see
+   * `docs/results/v0.22.0-gmb136-the-index-stops-at-the-first-edit.md`): the
+   * record named its corpus and serena revisions but never the version of the
+   * thing actually being measured. A result that cannot say which build
+   * produced it cannot be compared against another sweep, which is the only
+   * reason this benchmark keeps its results forever.
+   *
+   * Present only on g-mesh arms; `undefined` on every other arm, on a binary
+   * that fails to run, and on records written before this field existed —
+   * never a guessed value.
+   */
+  gmeshVersion?: string;
+  /**
    * The corpus commit this run's cwd was checked out at — the answer to "what
    * code did this measurement actually read", recorded for the same reason
    * `serenaRevision` above is: a result that can't name its inputs can't be
@@ -451,7 +483,7 @@ async function runArm(
   // both fields answer "what version of what was measured", and a positional
   // pair of same-typed optionals is exactly the shape a caller silently
   // transposes.
-  revisions: { serena?: string; corpus?: string },
+  revisions: { serena?: string; corpus?: string; gmesh?: string },
 ): Promise<TokenEconomyRun> {
   const result = await runClaude({
     cwd,
@@ -509,8 +541,12 @@ async function runArm(
     // carried no usable events should read as "unknown", not as "this run had
     // zero turns and received nothing".
     perTurnUsage: result.perTurnUsage.length > 0 ? result.perTurnUsage : undefined,
+    editBoundaryTurn: result.editBoundaryTurn,
     toolResults: result.toolResults.length > 0 ? result.toolResults : undefined,
     serenaRevision: arm === "serena" || arm === "serena-configured" ? revisions.serena : undefined,
+    // Same arm gate as serenaRevision's, for the same reason: a baseline record
+    // claiming a g-mesh version would name a tool that run never loaded.
+    gmeshVersion: arm.startsWith("gmesh") ? revisions.gmesh : undefined,
     // Unconditional, unlike serenaRevision's arm gate: every arm reads the
     // corpus, so every arm has to state which revision of it it read.
     corpusRevision: revisions.corpus,
@@ -902,6 +938,21 @@ function serenaLauncherIsAvailable(): boolean {
  * throws) on any error — the same "undefined means unknown" contract every
  * other optional TokenEconomyRun field follows.
  */
+/**
+ * What the binary under test calls itself. Mirrors resolveSerenaRevision's
+ * contract exactly: resolved once per invocation, `undefined` rather than a
+ * guess when the lookup fails, so a missing value never reads as a real one.
+ */
+function resolveGmeshVersion(): string | undefined {
+  try {
+    const output = execFileSync(gmeshBinaryPath(), ["--version"], { encoding: "utf8", timeout: 15_000 });
+    const version = output.trim();
+    return version.length > 0 ? version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function resolveSerenaRevision(): string | undefined {
   try {
     const output = execFileSync("git", ["ls-remote", "https://github.com/oraios/serena", "HEAD"], {
@@ -1053,6 +1104,11 @@ async function main() {
   const serenaRevision = serenaArms.length > 0 ? resolveSerenaRevision() : undefined;
   if (serenaArms.length > 0) {
     console.log(`Serena git revision resolved: ${serenaRevision ?? "unknown (git ls-remote failed)"}`);
+  }
+  const gmeshArms = arms.filter((a) => a.startsWith("gmesh"));
+  const gmeshVersion = gmeshArms.length > 0 ? resolveGmeshVersion() : undefined;
+  if (gmeshArms.length > 0) {
+    console.log(`g-mesh under test: ${gmeshVersion ?? "unknown (binary did not report --version)"}`);
   }
   if (arms.length > 2) {
     console.log(
@@ -1283,6 +1339,7 @@ async function main() {
               groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, arms[i] as Arm, rep, timestamp, {
                 serena: serenaRevision,
                 corpus: corpusRevision,
+                gmesh: gmeshVersion,
               });
             }
             return null;
