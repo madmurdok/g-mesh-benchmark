@@ -18,6 +18,20 @@ export interface ArmAggregate {
   /** Mean over the same ok runs as meanTokens. Context for the tool-call means below: "N turns, of which M were search calls". */
   meanNumTurns: number;
   /**
+   * Share of this group's tokens that fell *after* its first edit, or `null`
+   * for a group whose runs never edited - which is most of this registry, and
+   * where a `0%` would read as "nothing happened after the edit" rather than
+   * "there was no edit".
+   *
+   * Reported because it bounds what the tool under test can influence at all:
+   * GMB-144 measured 67-78% of an implementation run landing here with the
+   * index provably unused, and `baseline` - which has no index to stop using -
+   * spending the same share. Derived from `editBoundaryTurn` and
+   * `perTurnUsage`; `null` too for runs recorded before that field existed,
+   * which must not be guessed at.
+   */
+  postEditTokenShare: number | null;
+  /**
    * Mean tool calls per ok run, split by purpose (see runClaude.ts's
    * classifyToolCall) — how much of an arm's turn budget went on *finding*
    * things versus *doing* things, which a raw turn count can't distinguish.
@@ -106,6 +120,33 @@ function meanRecordedToolCalls(runs: TokenEconomyRun[], pick: (r: TokenEconomyRu
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+/**
+ * Fraction of tokens spent after the first edit, over the runs in this group
+ * that both edited and recorded per-turn usage.
+ *
+ * `null` when no run qualifies - the same "unknown is not zero" contract
+ * `meanRecordedToolCalls` keeps, and for a sharper reason here: a lookup task
+ * has no edit phase at all, so 0% would be a claim about its shape rather than
+ * an absence of data.
+ */
+function postEditShare(runs: TokenEconomyRun[]): number | null {
+  let post = 0;
+  let total = 0;
+  let counted = 0;
+  for (const r of runs) {
+    const boundary = r.editBoundaryTurn;
+    const turns = r.perTurnUsage;
+    if (boundary === undefined || turns === undefined || turns.length === 0) continue;
+    counted++;
+    for (const [i, u] of turns.entries()) {
+      const t = u.cacheReadTokens + u.cacheCreationTokens + u.inputTokens + u.outputTokens;
+      total += t;
+      if (i >= boundary) post += t;
+    }
+  }
+  return counted === 0 || total === 0 ? null : post / total;
+}
+
 export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[]): ArmAggregate | null {
   const ok = group.filter((r) => r.status === "ok");
   if (ok.length === 0) return null;
@@ -123,6 +164,7 @@ export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[
     meanCostUsd: ok.reduce((a, r) => a + r.costUsd, 0) / ok.length,
     meanDurationMs: ok.reduce((a, r) => a + r.durationMs, 0) / ok.length,
     meanNumTurns: ok.reduce((a, r) => a + r.numTurns, 0) / ok.length,
+    postEditTokenShare: postEditShare(ok),
     meanSearchToolCalls: meanRecordedToolCalls(ok, (r) => r.searchToolCalls),
     meanEditToolCalls: meanRecordedToolCalls(ok, (r) => r.editToolCalls),
     meanOtherToolCalls: meanRecordedToolCalls(ok, (r) => r.otherToolCalls),
@@ -589,7 +631,14 @@ export function formatTurnsWithToolCalls(agg: ArmAggregate): string {
     `${(agg.meanEditToolCalls ?? 0).toFixed(1)} edit`,
   ];
   if ((agg.meanOtherToolCalls ?? 0) > 0) parts.push(`${(agg.meanOtherToolCalls ?? 0).toFixed(1)} other`);
-  return `${turns} (${parts.join(", ")})`;
+  // The phase share rides on the turn cell rather than taking a column of its
+  // own: it is null on every task without an edit, so a column would be empty
+  // for 43 of 46 rows. Where it does appear it answers the question the turn
+  // count cannot - how much of this run happened somewhere the tool under test
+  // was not being used at all.
+  const phase =
+    agg.postEditTokenShare === null ? "" : `, ${(agg.postEditTokenShare * 100).toFixed(0)}% post-edit`;
+  return `${turns} (${parts.join(", ")}${phase})`;
 }
 
 /** Mean wall-clock duration, in seconds, one decimal place — shared by report.ts's markdown table and htmlReport.ts's HTML one so they can't drift apart on the unit. */

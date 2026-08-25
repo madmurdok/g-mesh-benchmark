@@ -305,6 +305,28 @@ export interface ParsedStream {
   perTurnUsage: TurnUsage[];
   /** Every `tool_result` the stream carried, sized and attributed — see [`ToolResultSize`]. */
   toolResults: ToolResultSize[];
+  /**
+   * How many `perTurnUsage` entries had been recorded when the run's first
+   * `Edit`/`Write` appeared, or `undefined` for a run that never edited.
+   *
+   * Exists because the phase split is otherwise unrecoverable from a run
+   * record: `toolResults` carries no turn index, so nothing connects a tool
+   * call to the turn it happened in, and the only way to split a run at its
+   * first edit was to re-walk a saved transcript by hand — which requires
+   * `G_MESH_BENCH_SAVE_TRANSCRIPTS` to have been on.
+   *
+   * Worth recording because of what the split showed: 67-78% of an
+   * implementation run's tokens fall *after* this boundary, the index is
+   * unused in that stretch, and `baseline` — which has no index — spends the
+   * same share there (see
+   * `docs/results/v0.22.0-gmb144-the-ceiling-on-navigation.md`). That bounds
+   * what any navigation change can move, so it should not have to be
+   * rediscovered.
+   *
+   * An index into `perTurnUsage`, not a `numTurns` offset — those two counts
+   * are known to disagree (see `perTurnUsage`'s own doc).
+   */
+  editBoundaryTurn?: number;
 }
 
 /**
@@ -339,6 +361,7 @@ export function parseStreamJson(stdout: string): ParsedStream {
   const perTurnUsage: TurnUsage[] = [];
   const seenUsageMessageIds = new Set<string>();
   const toolResults: ToolResultSize[] = [];
+  let editBoundaryTurn: number | undefined;
   // tool_use id -> the tool that was asked for and what it was asked for, so a
   // tool_result arriving on a later `user` event can be attributed to
   // something more useful than "a tool".
@@ -379,6 +402,12 @@ export function parseStreamJson(stdout: string): ParsedStream {
     }
     if (record.type !== "assistant") continue;
 
+    // Captured *before* readTurnUsage pushes this message's own entry: the
+    // boundary means "how many turns are wholly before the edit", so a first-turn
+    // edit must yield 0, not 1. Reading the length afterwards is off by one, and
+    // it also stays correct when this message carries no usage at all - then
+    // nothing was pushed and everything recorded so far is genuinely pre-edit.
+    const turnsBeforeThisMessage = perTurnUsage.length;
     readTurnUsage(record.message, seenUsageMessageIds, perTurnUsage);
 
     const content = record.message?.content;
@@ -392,12 +421,18 @@ export function parseStreamJson(stdout: string): ParsedStream {
         seenToolUseIds.add(b.id);
         toolCallByUseId.set(b.id, { name: b.name, args: JSON.stringify(b.input ?? {}) });
       }
-      toolCalls[classifyToolCall(b.name)]++;
+      const bucket = classifyToolCall(b.name);
+      toolCalls[bucket]++;
+      // First edit only: the boundary is where editing *began*, and a later
+      // edit does not move it.
+      if (bucket === "edit" && editBoundaryTurn === undefined) {
+        editBoundaryTurn = turnsBeforeThisMessage;
+      }
       if (b.name.startsWith("mcp__")) mcpToolCalls++;
     }
   }
 
-  return { result, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults };
+  return { result, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults, editBoundaryTurn };
 }
 
 /**
@@ -533,6 +568,8 @@ export interface RunClaudeResult {
    */
   perTurnUsage: TurnUsage[];
   toolResults: ToolResultSize[];
+  /** See `ParsedStream.editBoundaryTurn` - the perTurnUsage index where this run's first edit landed, or undefined if it never edited. */
+  editBoundaryTurn?: number;
   resultText: string;
   /**
    * The CLI's `session_id` for this call — pass it back as `resumeSessionId`
@@ -733,7 +770,7 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
       await saveTranscript(opts.transcriptLabel, stdout);
     }
 
-    const { result: parsed, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults } = parseStreamJson(stdout);
+    const { result: parsed, toolCalls, mcpToolCalls, init, perTurnUsage, toolResults, editBoundaryTurn } = parseStreamJson(stdout);
     const mcp: RunMcpState = { servers: init.servers, tools: init.tools, toolCalls: mcpToolCalls };
     // Only for the calls bucketed as `agent.call`, so the two rows stay
     // count-for-count comparable and their difference is exactly the startup
@@ -767,7 +804,7 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
     // No result event anywhere in the stream — same failure as an unparseable
     // single blob used to be, just detected per-stream instead of per-blob.
     if (parsed === null) {
-      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, mcp, perTurnUsage, toolResults, resultText: "" };
+      return { status: "error", usage: emptyUsage(), numTurns: 0, durationMs: 0, costUsd: 0, toolCalls, mcp, perTurnUsage, toolResults, editBoundaryTurn, resultText: "" };
     }
 
     if (parsed.subtype === "error_max_budget_usd") {
@@ -792,6 +829,7 @@ async function runClaudeOnce(opts: RunClaudeOptions): Promise<RunClaudeResult> {
       mcp,
       perTurnUsage,
       toolResults,
+      editBoundaryTurn,
       resultText: parsed.result ?? "",
       sessionId: parsed.session_id,
     };

@@ -160,6 +160,21 @@ export interface TokenEconomyRun {
    */
   serenaRevision?: string;
   /**
+   * Where this run's first `Edit`/`Write` landed, as an index into
+   * `perTurnUsage` - `undefined` for a run that never edited, which is most of
+   * this registry.
+   *
+   * Recorded because the split it enables is not recoverable afterwards:
+   * `toolResults` carries no turn index, so before this field the only way to
+   * separate a run's navigation from its verification was to re-walk a saved
+   * transcript. GMB-144 measured 67-78% of an implementation run's tokens
+   * falling after this boundary, with `baseline` - which has no index to stop
+   * using - spending the same share there, which is what bounds any navigation
+   * change. A number that reframes four results should not have to be
+   * rediscovered by hand each sweep.
+   */
+  editBoundaryTurn?: number;
+  /**
    * The version the g-mesh binary under test reports for itself, from
    * `<binary> --version` at the moment this invocation started.
    *
@@ -526,6 +541,7 @@ async function runArm(
     // carried no usable events should read as "unknown", not as "this run had
     // zero turns and received nothing".
     perTurnUsage: result.perTurnUsage.length > 0 ? result.perTurnUsage : undefined,
+    editBoundaryTurn: result.editBoundaryTurn,
     toolResults: result.toolResults.length > 0 ? result.toolResults : undefined,
     serenaRevision: arm === "serena" || arm === "serena-configured" ? revisions.serena : undefined,
     // Same arm gate as serenaRevision's, for the same reason: a baseline record

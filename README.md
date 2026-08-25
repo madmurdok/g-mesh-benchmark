@@ -706,6 +706,17 @@ arms, model, per-call budget cap, oracles — is identical to `token-economy`
 (both import the same `harness/lib/armConfig.ts`), so the two experiments differ
 only in isolated-vs-chained execution.
 
+**It covers no edit work at all.** Tasks whose oracle is `mode: "test"` — every
+`implementation`-category task — are **skipped** in a chain and recorded with
+`status: "skipped"`. The reason is structural rather than a gap to be fixed: such
+a task is graded on the edits it makes to the run's cwd, but a chain has one cwd
+shared by every task in it, so letting one task edit would corrupt every task
+after it. So a `session-economy` result describes navigation only. That matters
+because the phase it excludes is the larger one — `docs/results/v0.22.0-gmb144-the-ceiling-on-navigation.md`
+measured 67–78% of an implementation run's tokens landing after its first edit —
+and because a session headline is otherwise easy to read as though it covered
+implementation work.
+
 Its results live in `results/session-economy/` and get their own HTML report
 (`results/html/session-<timestamp>.html` per run, `session-cumulative.html` from
 `npm run report -- session-economy`). They are **never** blended into
