@@ -33,7 +33,7 @@ import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { generateNarrative } from "./lib/narrative.js";
-import { checkOracle } from "./lib/oracleCheck.js";
+import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
 import { formatPhaseSummary, phaseProfileJson, timePhase } from "./lib/phaseTimer.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
@@ -216,8 +216,33 @@ export interface TokenEconomyRun {
   judgeCostUsd: number;
   resultText: string;
   oraclePassed: boolean;
-  /** Judge's one-line rationale, judge mode only — kept so a judge verdict can be audited after the fact. */
+  /**
+   * Why the oracle ruled as it did, for the two modes that can say so in
+   * prose: judge mode's one-line rationale, and test mode's tail of the test
+   * command's own output. Named for the first of those and outgrown it — the
+   * name is kept because renaming it would orphan every record already
+   * written, but read it as "the oracle's reason", not "the judge's".
+   *
+   * Absent for pool and substring modes, which have no prose to give. Those
+   * report through `oracleMissed` instead.
+   */
   judgeReason?: string;
+  /**
+   * Which `candidatePool`/`mustMention*` entries the answer failed to carry —
+   * pool and substring modes only, and only when at least one was missed.
+   *
+   * `checkOracle` has always computed this (`OracleCheckResult.missed`) and
+   * both write sites used to drop it, which left a pool failure with no field
+   * at all saying what went wrong: the eight `ex-find-callers-mutateelement`
+   * failures in the 2026-08-26 five-repetition sweep could only be attributed
+   * by reopening their transcripts. Absent rather than `[]` on a pass, so a
+   * passing record does not grow bytes to say nothing was missed.
+   *
+   * A `missed` list on a *passing* pool record is not a contradiction worth
+   * storing either: `minMatches` lets a pool pass with entries outstanding,
+   * and those are the pool doing its job, not a defect to report.
+   */
+  oracleMissed?: string[];
   status: RunStatus;
 }
 
@@ -448,6 +473,14 @@ export function taskEditsCode(task: BenchTask): boolean {
 interface GradingOutcome {
   passed: boolean;
   reason?: string;
+  /**
+   * Pool/substring modes' unmatched candidates, already filtered by
+   * `reportableMissed` — so this is empty-or-absent exactly when there is
+   * nothing to report, and the two write sites can pass it through unexamined.
+   * Test mode has no candidate list and leaves it undefined; its diagnosis is
+   * in `reason`.
+   */
+  missed?: string[];
   /** Real API spend for grading: judge mode only; test mode runs a local process and spends nothing. */
   judgeCostUsd: number;
 }
@@ -469,7 +502,12 @@ async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promi
     return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
   }
   const verdict = await checkOracle(resultText, task.oracle);
-  return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: verdict.judgeCostUsd ?? 0 };
+  return {
+    passed: verdict.passed,
+    reason: verdict.reason,
+    missed: reportableMissed(verdict.passed, verdict.missed),
+    judgeCostUsd: verdict.judgeCostUsd ?? 0,
+  };
 }
 
 async function runArm(
@@ -556,6 +594,7 @@ async function runArm(
     resultText: result.resultText,
     oraclePassed: oracle?.passed ?? false,
     judgeReason: oracle?.reason,
+    oracleMissed: oracle?.missed,
     status,
   };
 }

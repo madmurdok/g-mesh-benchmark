@@ -24,7 +24,7 @@ import {
 } from "./lib/corpusResolver.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
-import { checkOracle } from "./lib/oracleCheck.js";
+import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
@@ -415,6 +415,7 @@ async function runSessionChain(
       resultText: result.resultText,
       oraclePassed: oracle?.passed ?? false,
       judgeReason: oracle?.reason,
+      oracleMissed: oracle ? reportableMissed(oracle.passed, oracle.missed) : undefined,
       status,
       sequenceIndex,
       sessionLength,
