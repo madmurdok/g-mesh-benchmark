@@ -706,6 +706,20 @@ arms, model, per-call budget cap, oracles — is identical to `token-economy`
 (both import the same `harness/lib/armConfig.ts`), so the two experiments differ
 only in isolated-vs-chained execution.
 
+> **Dated note — the guidance doc was resynced on 2026-08-26.** `GMESH_CONFIGURED_CLAUDE_MD` had
+> drifted 767 bytes behind g-mesh's shipped `AGENTS_MD_SNIPPET` since 2026-08-21, so **every
+> measurement taken between those dates ran a `gmesh-configured` arm carrying a stale guidance
+> doc** — that includes everything in `docs/results/` dated 2026-08-24 and 2026-08-25 (GMB-135
+> through GMB-147, GM-256, GM-257). Those figures are internally consistent and remain valid against
+> each other; they are **not** directly comparable to anything measured after the resync.
+>
+> What the resync cost, measured by the turn-1-of-warm-runs method on both sides: the
+> `gmesh-configured` prefix premium over `baseline` went **8,762 → 9,281 tokens per turn, +519**.
+> The raw prefix figures moved the other way (21,705 → 21,533) because the whole environment
+> shrank between the two measurements — `baseline`, which carries no g-mesh doc at all, dropped 691
+> tokens over the same interval. Reading the g-mesh number alone would have said the doc got
+> cheaper; the control says it got 519 tokens dearer.
+
 **It covers no edit work at all.** Tasks whose oracle is `mode: "test"` — every
 `implementation`-category task — are **skipped** in a chain and recorded with
 `status: "skipped"`. The reason is structural rather than a gap to be fixed: such
