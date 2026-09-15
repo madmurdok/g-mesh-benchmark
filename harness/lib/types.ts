@@ -266,4 +266,32 @@ export interface BenchTask {
   target: TaskTarget | { steps: TaskTarget[] };
   prompt: string;
   oracle: Oracle;
+  /**
+   * Files copied into the run's cwd *before* the agent's turn starts — and
+   * before any g-mesh index warm-up / repo-map generation a g-mesh arm does
+   * for that cwd — keyed by destination path relative to the cwd, valued by
+   * source path relative to this repo's root (conventionally
+   * `corpora/<corpus>/fixtures/<task-id>/...`). Same shape and convention as
+   * `oracle.holdoutFiles`, and the mirror image of it: a holdout is copied in
+   * *after* the agent's turn so the agent can't read or rewrite the acceptance
+   * criteria it's graded against; a seed is copied in *before*, so the agent —
+   * and, for a g-mesh arm, the index and repo map — sees it as part of the
+   * corpus.
+   *
+   * Exists for tasks that need the agent to react to a file that isn't part
+   * of the corpus as shipped, e.g. a "what is wrong with this file"
+   * diagnostics task needs a file with a known bug seeded in (the agent has
+   * to see it to answer), not held out (which would hide it entirely).
+   *
+   * At task level rather than inside `Oracle`, because seeding what the agent
+   * starts from is not grading what it produced.
+   *
+   * A task with `seedFiles` always gets its own throwaway clone per run
+   * instead of sharing this harness's cached/reused checkouts (see
+   * token-economy.ts's `taskNeedsOwnClone`): a seed dropped into a shared
+   * clone would leak into every later task and repetition that reuses it,
+   * since `git checkout --force` only resets tracked files and never removes
+   * untracked ones.
+   */
+  seedFiles?: Record<string, string>;
 }

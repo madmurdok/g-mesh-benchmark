@@ -242,9 +242,30 @@ async function main() {
 
   const runs: SearchLatencyRun[] = [];
   for (const corpus of registry) {
-    const tasks = await loadTasks(corpus.id);
-    if (tasks.length === 0) {
+    const allTasks = await loadTasks(corpus.id);
+    if (allTasks.length === 0) {
       console.warn(`[${corpus.id}] no tasks.json entries; skipping.`);
+      continue;
+    }
+    // This experiment picks its targets off tasks.json (buildToolTargets)
+    // and runs every tool call against `resolveWarm`'s reused checkout — the
+    // corpus exactly as it ships, never touched by a task's own setup. A
+    // `seedFiles` task's target can name a symbol/file that exists only after
+    // its seed is copied in, which never happens here, so keeping such a
+    // task would either measure a lookup against a file that isn't there or
+    // (worse) silently fall back to an unrelated target via buildToolTargets'
+    // per-kind fallback. Filtered out instead, same as token-economy.ts and
+    // session-economy.ts exclude seeded tasks from the paths that share a cwd.
+    const tasks = allTasks.filter((t) => !t.seedFiles);
+    const skipped = allTasks.length - tasks.length;
+    if (skipped > 0) {
+      console.log(
+        `[${corpus.id}] skipping ${skipped} seedFiles task(s): their seeds don't exist in the warm cache this ` +
+          `experiment measures against.`,
+      );
+    }
+    if (tasks.length === 0) {
+      console.warn(`[${corpus.id}] every task carries seedFiles; nothing left to measure, skipping.`);
       continue;
     }
     console.log(`[${corpus.id}] measuring search latency...`);
