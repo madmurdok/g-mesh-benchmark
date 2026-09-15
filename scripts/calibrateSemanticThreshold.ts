@@ -138,7 +138,13 @@ async function main(): Promise<void> {
     const client = await connectMcpClient(cwd);
 
     try {
-      const tasks = await loadTasks(entry.id);
+      // A seedFiles task's symbol can live only in its seed, which is never
+      // copied into resolveWarm's checkout - scoring it here would record a
+      // miss the index was never given a chance at, and drag the right-answer
+      // distribution (and so the cutoff) down. Same filter as
+      // probeSemanticRung.ts. The other-corpus negatives above keep every
+      // task: a seeded symbol is still absent from the other index.
+      const tasks = (await loadTasks(entry.id)).filter((t) => !t.seedFiles);
 
       // --- right answers, from the oracles ------------------------------
       const seen = new Set<string>();
