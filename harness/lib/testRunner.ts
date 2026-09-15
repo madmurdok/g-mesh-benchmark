@@ -1,11 +1,7 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { copyFixtureFiles } from "./fixtureFiles.js";
 import type { Oracle } from "./types.js";
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
  * How long `oracle.testCommand` may run before it's killed and the run graded
@@ -120,6 +116,33 @@ async function restoreRegressionFiles(cwd: string, paths: readonly string[]): Pr
 }
 
 /**
+ * The subset of `seedFiles` whose destination is itself one of the paths
+ * `testCommand` names (by the same path-shaped-token rule `regressionPathsIn`
+ * uses, via an unfiltered call to it).
+ *
+ * Exists for a seed that plays the *test's* fixture rather than the agent's
+ * source — e.g. a diagnostics task whose testCommand runs a checker directly
+ * against the seeded file. Excluding seed destinations from
+ * `restoreRegressionFiles`'s list (below) already stops them being reverted to
+ * HEAD; this is the belt to that suspenders, so such a file ends grading setup
+ * in its seeded state even if something else along the way touched it —
+ * without touching any seed the command doesn't name, which stays exactly as
+ * the agent left it.
+ */
+function seedFilesNamedInCommand(
+  testCommand: string,
+  seedFiles: Record<string, string> | undefined,
+): Record<string, string> {
+  if (!seedFiles) return {};
+  const namedPaths = new Set(regressionPathsIn(testCommand, []));
+  const named: Record<string, string> = {};
+  for (const [dest, src] of Object.entries(seedFiles)) {
+    if (namedPaths.has(dest.replace(/^\.\//, ""))) named[dest] = src;
+  }
+  return named;
+}
+
+/**
  * Grades a `mode: "test"` task: copies the oracle's held-out acceptance files
  * into the (throwaway, already-agent-edited) `cwd`, then runs the corpus's own
  * test command there and reports whether it exited 0.
@@ -131,12 +154,21 @@ async function restoreRegressionFiles(cwd: string, paths: readonly string[]): Pr
  * Sharing a signature would mean four of the six fields being dead on one side
  * or the other.
  *
- * The copy happens here rather than before the agent's turn so the acceptance
- * criteria are genuinely held out: the agent has Edit/Write on this clone and
- * would otherwise be able to read the assertions it's being graded against, or
- * rewrite them.
+ * The holdout copy happens here rather than before the agent's turn so the
+ * acceptance criteria are genuinely held out: the agent has Edit/Write on this
+ * clone and would otherwise be able to read the assertions it's being graded
+ * against, or rewrite them.
+ *
+ * `seedFiles` is the task's own `BenchTask.seedFiles` (already copied into
+ * `cwd` before the agent's turn by token-economy.ts's resolveRunCwd) — passed
+ * through here only so grading can protect it, never to copy it in for the
+ * first time.
  */
-export async function runAcceptanceTest(cwd: string, oracle: Oracle): Promise<AcceptanceTestResult> {
+export async function runAcceptanceTest(
+  cwd: string,
+  oracle: Oracle,
+  seedFiles?: Record<string, string>,
+): Promise<AcceptanceTestResult> {
   const testCommand = oracle.testCommand;
   if (!testCommand) {
     return { passed: false, reason: 'test mode requires oracle.testCommand' };
@@ -144,20 +176,23 @@ export async function runAcceptanceTest(cwd: string, oracle: Oracle): Promise<Ac
 
   return withAcceptanceLock(async () => {
     // Before the holdouts, not after: restoring a path the holdout copy also
-    // writes would undo the copy. Excluding holdout destinations from the
-    // restore list already makes that impossible, and doing it in this order
-    // means it stays impossible if that exclusion is ever loosened.
+    // writes would undo the copy. Excluding holdout *and seed* destinations
+    // from the restore list already makes that impossible for both, and doing
+    // it in this order means it stays impossible if either exclusion is ever
+    // loosened. A seed destination is excluded for the same reason a holdout
+    // one is: its content lives only in the fixture and on disk, never in
+    // this clone's HEAD, so `git checkout HEAD` on it would not "restore" it,
+    // it would erase it (or, for a seed that overwrote a tracked file, revert
+    // it to the corpus's unseeded original).
     const restoreWarning = await restoreRegressionFiles(
       cwd,
-      regressionPathsIn(testCommand, Object.keys(oracle.holdoutFiles ?? {})),
+      regressionPathsIn(testCommand, [...Object.keys(oracle.holdoutFiles ?? {}), ...Object.keys(seedFiles ?? {})]),
     );
 
-    for (const [dest, src] of Object.entries(oracle.holdoutFiles ?? {})) {
-      const contents = await readFile(path.join(ROOT, src), "utf-8");
-      const destPath = path.join(cwd, dest);
-      await mkdir(path.dirname(destPath), { recursive: true });
-      await writeFile(destPath, contents);
-    }
+    // See seedFilesNamedInCommand's doc comment for why this re-copy exists
+    // even though the exclusion above already keeps git away from these paths.
+    await copyFixtureFiles(cwd, seedFilesNamedInCommand(testCommand, seedFiles));
+    await copyFixtureFiles(cwd, oracle.holdoutFiles);
 
     const { exitCode, output } = await runCommand(testCommand, cwd);
     const reason = output.slice(-REASON_TAIL_CHARS);

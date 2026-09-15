@@ -46,7 +46,11 @@ async function main(): Promise<void> {
     await warmGmeshIndex(cwd);
     const client = await connectMcpClient(cwd);
     try {
-      const tasks = await loadTasks(entry.id);
+      // Same reason as harness/search-latency.ts: this probes find_definition
+      // against `resolveWarm`'s reused checkout, which never has a
+      // `seedFiles` task's seed copied into it, so a symbol that only exists
+      // after seeding would probe a file that isn't there.
+      const tasks = (await loadTasks(entry.id)).filter((t) => !t.seedFiles);
       const seen = new Set<string>();
       for (const task of tasks) {
         for (const symbol of task.oracle.mustMentionSymbols ?? []) {

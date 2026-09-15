@@ -833,3 +833,51 @@ corpus silently grades against a stale ground truth (a real, if less severe,
 version of the same bug the pool mode itself exists to fix). This is a
 deliberate manual step, not automated — see the architecture doc's Failure
 Modes section.
+
+## Seeding files before the agent runs (`seedFiles`)
+
+`BenchTask.seedFiles` copies files into the run's cwd *before* the agent's
+turn starts — and, for a g-mesh arm, before that cwd's index is warmed and
+before a `gmesh-configured-map` arm's repo map is generated. Same shape and
+convention as `oracle.holdoutFiles` (dest relative to the run cwd, src
+relative to this repo's root, conventionally
+`corpora/<corpus>/fixtures/<task-id>/...`), and its mirror image:
+
+| | copied | agent sees it | g-mesh sees it |
+|---|---|---|---|
+| `oracle.holdoutFiles` | after the agent's turn | never | never |
+| `seedFiles` | before the agent's turn | yes | yes (index + map) |
+
+Use `seedFiles` when the task needs the agent to react to a file that isn't
+part of the corpus as shipped — e.g. a "what is wrong with this file"
+diagnostics task needs a file with a known bug seeded in, not held out, since
+the agent has to be able to read it to answer at all. Use `holdoutFiles` for
+everything that's graded against, not read by the agent.
+
+**A seeded task always gets its own throwaway clone per run.** The shared
+clones this harness otherwise reuses — `resolveWarm`'s cache and the
+per-corpus `-configured` clones — are reused across many tasks and
+repetitions, and a seed placed there would leak into every one of them: `git
+checkout --force` (how those clones get reset between reuses) only resets
+*tracked* files, never removes untracked ones. So `seedFiles` puts a task in
+the same "needs its own clone" bucket as an `oracle.mode: "test"` task (see
+`token-economy.ts`'s `taskNeedsOwnClone`), which costs a clone per repetition
+plus, for a g-mesh arm, an index warm-up (and a map regeneration for
+`gmesh-configured-map`) every repetition too. That cost is the trade-off for
+the run being genuinely isolated.
+
+Two consumers skip a seeded task rather than pay that cost or measure
+something wrong:
+
+- **`session-economy`** chains a corpus's whole task list through one shared
+  session cwd, so a seeded task (like an edit task) is skipped and logged —
+  seeding it would leak the seed into every task after it in the chain.
+- **`search-latency`** measures tool latency against `resolveWarm`'s reused,
+  unseeded checkout, so a seeded task's target would name a file that was
+  never copied in; such tasks are filtered out up front, with the skip count
+  logged.
+
+A `seedFiles` destination and a `holdoutFiles` destination can never name the
+same path — `loadTasks` throws at load time if a task's tasks.json does, since
+one means "the agent must never see this" and the other means "the agent must
+see this before it starts," and a single path can't be both.
