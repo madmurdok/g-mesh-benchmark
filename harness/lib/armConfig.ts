@@ -2,7 +2,7 @@ import type { CustomArmDefinition } from "./benchConfig.js";
 import { loadBenchConfig } from "./benchConfig.js";
 import type { McpServerConfig } from "./mcpConfig.js";
 import { buildBaselineArmConfig, buildGmeshArmConfig, buildKungfuArmConfig, buildSerenaArmConfig } from "./mcpConfig.js";
-import type { Arm, BuiltinArm } from "./types.js";
+import type { Arm, BuiltinArm, CorpusLanguage } from "./types.js";
 
 /**
  * The `claude -p` configuration that defines an arm — model, per-call budget
@@ -230,6 +230,83 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * (turns 19.3->9.0, cost $0.196->$0.099, oracle still 3/3) plus 5 regression
  * tasks with no oracle drop — then ported to `~/.claude/CLAUDE.md` and
  * g-mesh/README.md; all three copies are back in sync as of that port.
+ *
+ * GMB-165 — WHY THIS STILL OPENS "(TypeScript/JavaScript projects)", AND WHY
+ * NON-TYPESCRIPT CORPORA NO LONGER GET IT. Read `gmeshConfiguredClaudeMd()`
+ * below before using this constant directly: from 0.23.0 on it is the
+ * TypeScript text, not "the arm's doc". Every call site goes through that
+ * function instead, which hands a Go/Rust/Python corpus the same document
+ * with its two TS/JS-scoping spans de-scoped and nothing else touched.
+ *
+ * This constant stays byte-identical because it is not really ours: the
+ * drift guard in armConfig.test.ts pins it to g-mesh's shipped
+ * `AGENTS_MD_SNIPPET`, which lives in another repo and another tracker
+ * project, and `GMESH_MAP_CONFIGURED_CLAUDE_MD` is defined as this text plus
+ * one `@AGENTS.md` line — the only reason the `gmesh-configured`/`-map` pair
+ * measures the repo map and nothing else. Every historical TypeScript
+ * comparison was run against these exact bytes and still is.
+ *
+ * The measurement that forced the split (full numbers and the raw records:
+ * docs/results/v0.23.0-gmb165-what-the-scope-line-does.md). Three arms,
+ * differing only in this document's first two lines, `gmesh-configured`
+ * throughout, g-mesh 3.7.0:
+ *
+ *   psf/requests (Python), 16 runs per arm, on the two tasks whose GMB-168
+ *   dry runs first recorded `mcpToolCalls: 0`:
+ *     this text, unchanged      5/16 runs called g-mesh   (39 greps/reads)
+ *     scoping spans removed    16/16 runs called g-mesh   (16 greps/reads)
+ *   Fisher exact, one-sided, p = 3e-05. Both arms 16/16 on the oracle; the
+ *   de-scoped arm was also slightly cheaper ($0.4462 vs $0.4957) and its tool
+ *   counts are identical run to run, where the scoped arm's are erratic.
+ *
+ * So the suppression is real and it is this text's doing, not the
+ * simple-lookup licence in the same bullet that GMB-168 could not tell it
+ * apart from: removing *only* the language clause, on the very tasks that
+ * raised the question, takes the arm from 5/16 to 16/16. One scoped-arm run
+ * said it with no second reason attached — "I used a text search because this
+ * is a Python project."
+ *
+ * Two results that keep this honest rather than tidy:
+ *
+ * - On gin (Go), 6 runs per arm on two cross-file impact tasks the first
+ *   bullet assigns to g-mesh, the two arms were identical: 6/6 and 6/6, zero
+ *   greps either way, the same tool counts run for run. The scope line is not
+ *   strong enough to suppress there. It is not inert, but it is not uniform.
+ * - The control that makes that null readable: a third arm with the scoping
+ *   *hardened* ("...projects only — these tools do not apply to any other
+ *   language") went to 0/6 on those same Go tasks, 29 greps, and said so —
+ *   "I found them with a grep ... because your `CLAUDE.md` limits g-mesh to
+ *   TS/JS projects and this is Go." The measurement moves when the scope line
+ *   moves; Go's 6/6-vs-6/6 is a real null, not a saturated one.
+ *
+ * WHAT THE OTHER TWO OPTIONS WOULD HAVE COST. Rewriting this text
+ * language-neutral and re-syncing the copies is not an edit in this repo: the
+ * drift guard pins it to g-mesh's own shipped constant, so it is a change to
+ * `g-mesh/core/src/cli/agent_instructions.rs`, its two tests and README.md —
+ * a product decision about what `g-mesh init --agent claude` writes into real
+ * users' repos, belonging to the GM project — plus the loss of byte-identity
+ * with every historical TypeScript run. Leaving it alone and merely saying so
+ * in each write-up is what the numbers above rule out: it does not describe a
+ * language it excludes, it changes what the arm does, in 11 of 16 runs.
+ *
+ * WHAT THIS CHOICE COSTS, stated rather than absorbed. On a non-TypeScript
+ * corpus the arm is no longer literally the document `g-mesh init` ships. It
+ * is a two-span derivation of it, computed here rather than hand-maintained,
+ * so the drift guard still covers every word — but any write-up of a
+ * non-TypeScript run has to say the arm ran a de-scoped derivative, not
+ * g-mesh's shipped text.
+ *
+ * AND ONE HAZARD THIS CHOICE MAKES WORSE, deliberately not fixed here.
+ * GMB-163 measured that the `get_dependencies` bullet below — "an `Incoming`
+ * walk already answers every file that imports this" — is true only on
+ * TypeScript: elsewhere a module is not a file, and a file-anchored
+ * `Incoming` walk returns a confident `results: []`. The TS/JS heading was an
+ * accidental warning about that, and de-scoping removes it. Correcting the
+ * bullet is a change to g-mesh's shipped guidance, not to this benchmark's
+ * framing, and putting the benchmark ahead of the product here would leave
+ * two documents nobody could reconcile — so it is filed upstream (see the
+ * findings note) rather than patched into the derivation, which stays
+ * strictly the one variable that was measured.
  */
 export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript projects)
 
@@ -257,6 +334,97 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
 `;
 
 /**
+ * The two spans of GMESH_CONFIGURED_CLAUDE_MD that scope it to
+ * TypeScript/JavaScript, and what a non-TypeScript corpus gets instead.
+ *
+ * Spelled out as literals rather than matched by regex on purpose: the
+ * substitution has to be exact and auditable, and a future edit to the
+ * shipped snippet that reworded either span should make this *fail*, not
+ * silently match something adjacent. `descopeGuidance` enforces exactly that.
+ *
+ * The replacements are minimal by design — the heading loses its
+ * parenthetical, the first bullet loses its first three words, and no other
+ * byte of the document changes. That is the one variable GMB-165 measured,
+ * and widening it here would ship a rewrite nobody has an A/B for.
+ */
+const TS_SCOPED_HEADING = "# Code search (TypeScript/JavaScript projects)";
+const DESCOPED_HEADING = "# Code search";
+const TS_SCOPED_BULLET_OPENER = "- In TS/JS projects, prefer g-mesh (";
+const DESCOPED_BULLET_OPENER = "- Prefer g-mesh (";
+
+/**
+ * Replaces both TS/JS-scoping spans, insisting each appears exactly once.
+ *
+ * "Exactly once" is the whole guard. A zero count means the shipped snippet
+ * reworded the span and this derivation is now silently returning the scoped
+ * text to a Go corpus — the precise failure GMB-165 exists to stop. A count
+ * above one means the replacement would hit somewhere it was never checked
+ * against. Either way this throws rather than guessing, and the drift guard
+ * in armConfig.test.ts will already have said *why* the text moved.
+ *
+ * Exported only so armConfig.test.ts can exercise that refusal directly —
+ * the arms reach it through `gmeshConfiguredClaudeMd` below, never by name.
+ */
+export function descopeGuidance(doc: string): string {
+  let out = doc;
+  for (const [scoped, descoped] of [
+    [TS_SCOPED_HEADING, DESCOPED_HEADING],
+    [TS_SCOPED_BULLET_OPENER, DESCOPED_BULLET_OPENER],
+  ] as const) {
+    const occurrences = out.split(scoped).length - 1;
+    if (occurrences !== 1) {
+      throw new Error(
+        `GMB-165's de-scoping expected exactly one occurrence of ${JSON.stringify(scoped)} in the ` +
+          `g-mesh guidance doc, found ${occurrences}. g-mesh's shipped AGENTS_MD_SNIPPET has been ` +
+          `reworded: update TS_SCOPED_HEADING/TS_SCOPED_BULLET_OPENER in harness/lib/armConfig.ts to ` +
+          `match it, or — if the scoping is gone upstream — delete this derivation and let every ` +
+          `corpus share one document again.`,
+      );
+    }
+    out = out.replace(scoped, descoped);
+  }
+  return out;
+}
+
+/**
+ * The `gmesh-configured` arm's project doc for one corpus — the TypeScript
+ * text verbatim for a `ts`/`js` corpus, and the same document de-scoped for
+ * every other language.
+ *
+ * Read GMESH_CONFIGURED_CLAUDE_MD's own comment for the decision and the
+ * numbers behind it. The short version: handing a Go/Rust/Python repository a
+ * doc whose first line excludes it suppressed the tool under test in 11 of 16
+ * psf/requests runs (5/16 called g-mesh scoped, 16/16 de-scoped, Fisher
+ * p = 3e-05), so the arm was measuring how literally an agent reads an
+ * instruction block rather than measuring g-mesh.
+ *
+ * Every caller passes its corpus's own `language` — never a default — so that
+ * adding a corpus in a new language is a `CorpusLanguage` change and nothing
+ * else. `ts` and `js` return the constant by identity, not by a no-op
+ * substitution, so "a TypeScript arm sees exactly the bytes it always saw" is
+ * true by construction rather than by inspection.
+ */
+export function gmeshConfiguredClaudeMd(language: CorpusLanguage): string {
+  if (language === "ts" || language === "js") return GMESH_CONFIGURED_CLAUDE_MD;
+  return descopeGuidance(GMESH_CONFIGURED_CLAUDE_MD);
+}
+
+/**
+ * The `gmesh-configured-map` arm's doc for one corpus: whatever
+ * `gmeshConfiguredClaudeMd` gives that corpus, plus the same eleven-byte
+ * `@AGENTS.md` bridge.
+ *
+ * The pairing property GMESH_MAP_CONFIGURED_CLAUDE_MD's comment describes now
+ * holds per language rather than once: within a corpus, the entire measured
+ * delta between `gmesh-configured` and `gmesh-configured-map` is still the
+ * repo-map block plus this one line, because both arms' docs come from the
+ * same `language` argument.
+ */
+export function gmeshMapConfiguredClaudeMd(language: CorpusLanguage): string {
+  return `${gmeshConfiguredClaudeMd(language)}\n@AGENTS.md\n`;
+}
+
+/**
  * The `gmesh-configured-map` arm's project doc: byte-for-byte
  * GMESH_CONFIGURED_CLAUDE_MD plus g-mesh's own one-line `AGENTS.md` bridge.
  *
@@ -275,8 +443,15 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript 
  * pair measure the map and nothing else: the entire measured delta between
  * `gmesh-configured` and `gmesh-configured-map` is the repo-map block plus
  * this one 11-byte line.
+ *
+ * Since GMB-165 this is the TypeScript case of `gmeshMapConfiguredClaudeMd`
+ * rather than its own concatenation — one expression, so the two cannot
+ * drift. Run-time call sites take the function and pass their corpus's
+ * `language`; this constant survives because it is what the drift-adjacent
+ * tests compare against, and because "the map arm's doc on TypeScript" is
+ * still a thing worth being able to name.
  */
-export const GMESH_MAP_CONFIGURED_CLAUDE_MD = `${GMESH_CONFIGURED_CLAUDE_MD}\n@AGENTS.md\n`;
+export const GMESH_MAP_CONFIGURED_CLAUDE_MD = gmeshMapConfiguredClaudeMd("ts");
 
 /**
  * The kungfu-side counterpart to GMESH_CONFIGURED_CLAUDE_MD: kungfu's own
