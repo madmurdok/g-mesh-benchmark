@@ -28,5 +28,12 @@
     "ref": "15.2.0",
     "revision": "e89fff89ac9af12e8d4ce9d5fd07beb408ca730f",
     "language": "rust"
+  },
+  {
+    "id": "py-requests",
+    "kind": "git",
+    "repoUrl": "https://github.com/psf/requests.git",
+    "revision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "language": "python"
   }
 ]
