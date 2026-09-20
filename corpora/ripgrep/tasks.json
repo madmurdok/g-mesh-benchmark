@@ -41,7 +41,7 @@
       "symbol": "",
       "file": "crates/printer/src/json.rs"
     },
-    "prompt": "In this repository, ripgrep's JSON output printer lives in its own module within one of this cargo workspace's crates. This workspace is made up of several separately-versioned grep-* crates (grep-searcher, grep-matcher, grep-regex, grep-printer, grep-pcre2, and more), each its own compilation unit. Find the JSON printer's source module, then find every OTHER workspace crate (not third-party crates like serde_json or std, and not this file's own crate's other submodules) that it directly depends on / pulls types from at the module level. Name each such crate.",
+    "prompt": "In this repository, ripgrep's JSON output printer lives in its own module within one of this cargo workspace's crates. This workspace is made up of several separately-versioned grep-* crates (grep-searcher, grep-matcher, grep-regex, grep-printer, grep-pcre2, and more), each its own compilation unit. Find the JSON printer's source module, then find every OTHER workspace crate (not third-party crates like serde_json or std, and not this file's own crate's other submodules) that it directly depends on / pulls types from at the module level - i.e. walk this module's OUTGOING dependency edges. Name each such crate.",
     "oracle": {
       "mode": "pool",
       "candidatePool": [
@@ -50,6 +50,29 @@
         "grep_regex"
       ],
       "minMatches": 2
+    }
+  },
+  {
+    "id": "rs-deps-sink-module-incoming",
+    "kind": "get_dependencies",
+    "category": "lookup",
+    "revealsLocation": false,
+    "expectedWinner": "baseline",
+    "target": {
+      "symbol": "",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, the searcher crate's `sink` module (crates/searcher/src/sink.rs) defines the Sink trait and the types passed to it - Sink implementors receive search results through it. Walking the INCOMING side of the dependency graph this time: find every other file within the searcher crate itself (not other crates, not sink.rs itself) that imports from this module. List each file.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "crates/searcher/src/testutil.rs",
+        "crates/searcher/src/searcher/core.rs",
+        "crates/searcher/src/searcher/glue.rs",
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/searcher/src/lib.rs"
+      ],
+      "minMatches": 3
     }
   },
   {
