@@ -1,0 +1,147 @@
+[
+  {
+    "id": "py-ambiguous-close-session",
+    "kind": "find_definition",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "close",
+      "file": "src/requests/sessions.py"
+    },
+    "prompt": "In this repository there is more than one method named close. Find the one defined directly on the Session class — not a Response's own close, and not either adapter class's own close — the one responsible for closing everything a session itself owns when the session is closed. Describe precisely what it does: what does it iterate over, and what does it call on each item?",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is about disambiguating among the 4 declarations of `close` in this repo (Session.close at src/requests/sessions.py:883, Response.close at src/requests/models.py:1169, BaseAdapter.close at src/requests/adapters.py:153, HTTPAdapter.close at src/requests/adapters.py:555) and describing what the one on Session actually does. Ground truth, read directly from the source: `def close(self) -> None: \"\"\"Closes all adapters and as such the session\"\"\" for v in self.adapters.values(): v.close()` — it iterates over every adapter mounted on the session (self.adapters, a dict of url-prefix -> adapter populated by session.mount()) and calls that adapter's own close() method on each one. It does no socket/connection work itself. PASS only if the answer (a) unambiguously identifies Session's own close method (e.g. by naming src/requests/sessions.py, or by quoting/paraphrasing its docstring 'Closes all adapters and as such the session'), and (b) correctly describes the mechanism: it loops over the adapters registered/mounted on the session (self.adapters.values(), or an equivalent description like 'every adapter mounted on the session') and calls close() on each one — not a vague 'it closes the session' with no mechanism, and not the behavior of a different close method (e.g. releasing a response's body/connection back to a pool, which is what Response.close and the adapter-level close methods actually do). FAIL if the answer describes a different close method's behavior as if it were Session's, or omits the adapters.values() iteration mechanism entirely."
+    }
+  },
+  {
+    "id": "py-find-impl-authbase-transitive",
+    "kind": "find_implementations",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "AuthBase",
+      "file": "src/requests/auth.py"
+    },
+    "prompt": "In this repository, find every class that implements the AuthBase authentication-hook base class, directly or indirectly through another class in the chain. List which classes extend AuthBase directly, and separately call out any class that only extends AuthBase indirectly (through another class that itself extends AuthBase), naming the intermediate class it goes through.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from src/requests/auth.py at the pinned revision: AuthBase (auth.py, class declared with no base) is extended DIRECTLY by exactly two classes in application/library code — HTTPBasicAuth (auth.py) and HTTPDigestAuth (auth.py) — plus one test-local class, DummyAuth, defined inside a test method in tests/test_requests.py. HTTPProxyAuth (auth.py) extends HTTPBasicAuth, NOT AuthBase directly — so it is an INDIRECT/transitive implementor of AuthBase, reachable only through HTTPBasicAuth. PASS only if the answer (a) lists HTTPBasicAuth and HTTPDigestAuth as direct extenders of AuthBase, (b) explicitly identifies HTTPProxyAuth as extending HTTPBasicAuth rather than AuthBase directly (i.e. as an indirect/transitive implementor, one level removed), and does not claim HTTPProxyAuth extends AuthBase directly. The test-local DummyAuth is a bonus, not required for a pass. FAIL if the answer lists HTTPProxyAuth as a direct extender of AuthBase, omits HTTPProxyAuth's indirect relationship to AuthBase entirely, or omits both HTTPBasicAuth and HTTPDigestAuth."
+    }
+  },
+  {
+    "id": "py-find-impl-supportsread-protocol",
+    "kind": "find_implementations",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "SupportsRead",
+      "file": "src/requests/_types.py"
+    },
+    "prompt": "In this repository, src/requests/_types.py declares a typing.Protocol named SupportsRead describing any object with a read() method. Find every class in this repository that implements this protocol — and if you find that none do, explain how objects are actually checked against it at runtime instead (i.e. how the codebase tells whether something conforms to SupportsRead if no class is ever declared to implement it).",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth: SupportsRead (src/requests/_types.py, `@runtime_checkable class SupportsRead(Protocol[_T_co])`) is one of only two real typing.Protocol declarations in this repository (the other is SupportsItems, same file) — there is no abc.ABC-based abstract class anywhere in the repo. NO class anywhere in the repository (src/ or tests/) is declared with SupportsRead as a base class / explicitly implements it — a correct find_implementations-style search over this repo returns zero results, and that is the correct answer, not a missing one. Conformance is entirely structural (duck-typed): because SupportsRead is decorated @runtime_checkable, the codebase checks arbitrary objects against it via isinstance() at exactly three call sites in src/requests/models.py (elif isinstance(data, _SupportsRead) at two points preparing the request body, and a similar check while preparing files) — any object with a compatible read() method (e.g. an open file, io.BytesIO) satisfies it without ever subclassing it. PASS only if the answer (a) states that no class explicitly implements/subclasses SupportsRead (an empty result is the correct, legitimate answer — not a failure to find something that exists), AND (b) correctly explains that conformance is checked structurally/at runtime via isinstance() against the runtime_checkable Protocol (or an equivalent description of duck-typing against a Protocol), rather than via inheritance. FAIL if the answer invents or misattributes an implementing class (e.g. claims some class explicitly implements SupportsRead), or states 'no implementors' without explaining the isinstance()-based structural conformance mechanism that replaces inheritance here."
+    }
+  },
+  {
+    "id": "py-references-httpbasicauth",
+    "kind": "find_references",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "HTTPBasicAuth",
+      "file": "src/requests/auth.py"
+    },
+    "prompt": "In this repository, find the HTTPBasicAuth class, then list every file — other than where it's defined — that references it, in application/library code under src/ (ignore test files).",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "src/requests/auth.py",
+        "src/requests/models.py"
+      ],
+      "minMatches": 2
+    }
+  },
+  {
+    "id": "py-scenario-callers-httpadapter-send",
+    "kind": "find_callers",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "HTTPAdapter.send",
+      "file": "src/requests/adapters.py"
+    },
+    "prompt": "In this repository, HTTPAdapter is the concrete transport adapter that Session mounts by default for both http:// and https:// URLs, and its send() method is what actually performs an HTTP request. Investigate every place in this codebase that calls HTTPAdapter's own send() specifically (as opposed to some other class's send method of the same name). Then answer directly: is Session's own send() method — the one every requests.get()/session.send() call goes through — among the callers you found? If not, explain precisely why not, given how the adapter Session.send() calls send() on is obtained.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived by reading the pinned source: there are 5 different declarations named `send` in this repo (RedirectSession.send in a test, HTTPAdapter.send, BaseAdapter.send, Session.send, SessionRedirectMixin.send). Only ONE call site in the whole repo resolves specifically to HTTPAdapter's own send(): src/requests/auth.py's HTTPDigestAuth.handle_401, in the line `_r = r.connection.send(prep, **kwargs)` — this resolves to HTTPAdapter.send because Response.connection is declared/annotated as type HTTPAdapter (src/requests/models.py: `connection: HTTPAdapter`). Session.send (src/requests/sessions.py) does call `adapter.send(request, **kwargs)`, and at runtime that adapter genuinely is an HTTPAdapter instance by default (Session.__init__ does `self.mount('https://', HTTPAdapter())` and `self.mount('http://', HTTPAdapter())`) — but that call does NOT count as a caller of HTTPAdapter.send specifically, because `adapter`'s declared/annotated type there comes from `get_adapter()`'s return-type annotation, `-> BaseAdapter` (the abstract base, not the concrete HTTPAdapter subclass) — so any type-aware static analysis over the source alone resolves that call to BaseAdapter.send, the interface-level declaration, not to HTTPAdapter's override, even though HTTPAdapter is what actually runs at runtime. PASS only if the answer (a) names HTTPDigestAuth.handle_401 (or unambiguously src/requests/auth.py's `r.connection.send(...)` line) as a/the caller that resolves to HTTPAdapter.send specifically, AND (b) correctly states that Session.send is NOT found as a caller of HTTPAdapter.send, AND (c) explains this is because the adapter variable in Session.send is statically typed/declared as BaseAdapter (via get_adapter's `-> BaseAdapter` return annotation) rather than as HTTPAdapter, even though an HTTPAdapter instance is what's actually mounted and called at runtime — not a vague 'the tool couldn't resolve it' with no mechanism. FAIL if the answer claims Session.send IS a direct caller of HTTPAdapter.send, misses HTTPDigestAuth.handle_401 entirely, or gives an incorrect/no mechanism for why Session.send is excluded."
+    }
+  },
+  {
+    "id": "py-callees-session-send",
+    "kind": "find_callees",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "Session.send",
+      "file": "src/requests/sessions.py"
+    },
+    "prompt": "In this repository, find Session's send() method — the one that actually dispatches a PreparedRequest through whichever adapter is mounted for its URL. List every other function or method (named, not anonymous) it directly calls, and name the file each one is defined in.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "src/requests/sessions.py",
+        "src/requests/_types.py",
+        "src/requests/cookies.py",
+        "src/requests/utils.py",
+        "src/requests/adapters.py",
+        "src/requests/hooks.py"
+      ],
+      "minMatches": 4
+    }
+  },
+  {
+    "id": "py-deps-packages-boundary",
+    "kind": "get_dependencies",
+    "category": "control",
+    "expectedWinner": "baseline",
+    "revealsLocation": true,
+    "target": {
+      "symbol": "packages",
+      "file": "src/requests/packages.py"
+    },
+    "prompt": "In this repository, src/requests/packages.py exists purely for backwards compatibility: at import time it walks sys.modules and aliases whatever it finds there under requests.packages.<name> keys (e.g. requests.packages.urllib3), so old code that does `import requests.packages.urllib3` keeps working. Investigate two things: (1) which file elsewhere in this repository statically imports the `requests.packages` submodule itself (as opposed to one of the dynamically-created requests.packages.<name> aliases) — there is exactly one; and (2) find at least one place in the test suite that imports or accesses one of those dynamically-created requests.packages.<name> aliases instead, and explain precisely why the exact module such a reference resolves to cannot be determined by reading only this repository's own source.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned source: (a) exactly one file in the repo statically imports the `requests.packages` submodule itself: src/requests/__init__.py, via `from . import packages, utils`. (b) src/requests/packages.py dynamically creates requests.packages.<name> aliases at runtime with `sys.modules[f\"requests.packages.{mod}\"] = sys.modules[mod]` for whatever happens to already be in sys.modules when it runs (driven by urllib3's and idna's own internal module layout, which is external to this repo) — no static reading of requests' own source can enumerate which requests.packages.<name> paths will exist. Two places in the test suite reach through one of these dynamic aliases: tests/test_requests.py has `from requests.packages.urllib3.poolmanager import PoolManager`, and tests/test_packages.py accesses `requests.packages.urllib3`, `requests.packages.idna`, and `requests.packages.chardet` as plain attributes. Separately, note (for context, not part of the pass/fail criteria): g-mesh 3.7.0's own get_dependencies(Incoming) on the `requests.packages` module returns an empty, confident-looking result (`results: []`, `truncated: false`) even though case (a) above is a fully static, trivially-grep-able import — so this specific miss is NOT the documented dynamic-import limit, it is a plain gap on an ordinary static import; a rubric-passing answer should still correctly name __init__.py regardless of what any one tool's dependency query returned. PASS only if the answer (a) names src/requests/__init__.py as the file that statically imports the packages submodule (or unambiguously identifies its `from . import packages, utils` line), (b) names at least one of tests/test_requests.py or tests/test_packages.py as reaching through a requests.packages.<name> alias, AND (c) correctly explains the mechanism: that packages.py builds these entries at runtime by copying whatever happens to be in sys.modules (or an equivalent description of that dynamic aliasing), so the set of valid requests.packages.<name> paths depends on urllib3/idna's own internal structure and is not visible from reading requests' own source. FAIL if the answer misses __init__.py as the static importer, claims a different or no file statically imports the packages submodule, fails to name a test file reaching through a requests.packages.* alias, or claims those alias targets are determinable purely by reading requests' own source (e.g. asserting the target is simply urllib3.poolmanager without acknowledging that mapping is never declared anywhere in this repo)."
+    }
+  },
+  {
+    "id": "py-semantic-basicauth-header",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "HTTPBasicAuth",
+      "file": "src/requests/auth.py"
+    },
+    "prompt": "In this repository, find the class that attaches HTTP Basic Authentication credentials to an outgoing request by setting its Authorization header. Report the class name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": [
+        "HTTPBasicAuth"
+      ],
+      "mustMentionFiles": [
+        "src/requests/auth.py"
+      ]
+    }
+  }
+]
