@@ -1,0 +1,426 @@
+[
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 6,
+    "outputTokens": 813,
+    "cacheReadTokens": 36759,
+    "cacheCreationTokens": 9827,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 6671,
+        "cacheCreationTokens": 7919
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14590,
+        "cacheCreationTokens": 908
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 495,
+        "cacheReadTokens": 15498,
+        "cacheCreationTokens": 1000
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_callers",
+        "chars": 1665,
+        "args": "{\"symbol_name\":\"Context.Abort\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "context.go",
+          "context_test.go",
+          "recovery.go"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1852,
+        "args": "{\"symbol_id\":\"289008b19f49bae58f72a5e7444759d5\",\"limit\":200}",
+        "argsChars": 60,
+        "paths": [
+          "context.go",
+          "context_test.go",
+          "recovery.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 10820,
+    "costUsd": 0.0558548,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `(*Context).Abort` in `context.go:206`. It sets the abort index so no further handlers in the chain run. Its callers, excluding tests, are:\n\n| Caller | File | Line |\n|---|---|---|\n| `Context.AbortWithStatus` | `context.go` | 212 |\n| `Context.AbortWithStatusPureJSON` | `context.go` | 221 |\n| `Context.AbortWithStatusJSON` | `context.go` | 229 |\n| `Context.Render` | `context.go` | 1151 |\n| `CustomRecoveryWithWriter` | `recovery.go` | 52 |\n\nThe lines are where each caller is declared, not where it calls `Abort`. The index doesn't record call-site lines.\n\n- **Tests:** `TestContextIsAborted` in `context_test.go` also calls it. You said to exclude tests, but it will need updating too.\n- **Completeness:** `find_references` returned the same six rows as `find_callers`. All are resolved, with no unconfirmed rows. That should cover every call inside a named function.\n- **Other `AbortWith*` methods:** `AbortWithError` isn't a direct caller. It goes through `AbortWithStatus`, so it needs no edit. It would still lose the reason unless you thread it through.\n- **Not covered:** a call to `c.Abort()` in an anonymous middleware closure would not show up here. The results are from the index, and I did not grep the repo for `.Abort()` to check for those.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 4,
+    "outputTokens": 748,
+    "cacheReadTokens": 29180,
+    "cacheCreationTokens": 1085,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14590,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 14590,
+        "cacheCreationTokens": 1085
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1863,
+        "args": "{\"symbol_name\":\"Context.Abort\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "context.go",
+          "context_test.go",
+          "recovery.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 9244,
+    "costUsd": 0.018717,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `(*Context).Abort` at `context.go:206`. It sets the context's index past the end of the handler chain, so remaining handlers don't run. Apart from tests, these functions call it directly:\n\n| Caller | Location |\n|---|---|\n| `Context.AbortWithStatus` | `context.go:212` |\n| `Context.AbortWithStatusPureJSON` | `context.go:221` |\n| `Context.AbortWithStatusJSON` | `context.go:229` |\n| `Context.Render` | `context.go:1151` |\n| `CustomRecoveryWithWriter` | `recovery.go:52` |\n\nThe one test caller, `TestContextIsAborted` in `context_test.go`, would also need updating, but you asked for non-test code only.\n\nThe index marked every row as resolved, so I didn't cross-check with grep.\n\nIf you add a required parameter to `Abort`, all five call sites need updating. Three of them are the `AbortWithStatus*` wrappers, which don't take a reason today. You'll need to decide whether they pass one through or pass a default.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 6,
+    "outputTokens": 1002,
+    "cacheReadTokens": 44676,
+    "cacheCreationTokens": 2090,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14590,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14590,
+        "cacheCreationTokens": 906
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 495,
+        "cacheReadTokens": 15496,
+        "cacheCreationTokens": 1184
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_callers",
+        "chars": 1665,
+        "args": "{\"symbol_name\":\"Context.Abort\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "context.go",
+          "context_test.go",
+          "recovery.go"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1852,
+        "args": "{\"symbol_id\":\"289008b19f49bae58f72a5e7444759d5\",\"limit\":200}",
+        "argsChars": 60,
+        "paths": [
+          "context.go",
+          "context_test.go",
+          "recovery.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 12284,
+    "costUsd": 0.0283902,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `Context.Abort` (`context.go:206`). It sets the abort index so the remaining handlers in the chain don't run.\n\nFive non-test functions call it directly:\n\n| Caller | File |\n|---|---|\n| `Context.AbortWithStatus` | `context.go:212` |\n| `Context.AbortWithStatusPureJSON` | `context.go:221` |\n| `Context.AbortWithStatusJSON` | `context.go:229` |\n| `Context.Render` | `context.go:1151` |\n| `CustomRecoveryWithWriter` | `recovery.go:52` |\n\n- **Same-file callers:** four of the five are in `context.go` itself. The exception is `CustomRecoveryWithWriter` in `recovery.go`.\n- **Test file:** `TestContextIsAborted` in `context_test.go:1800` also calls it. I left it out as you asked, but it will need updating too.\n- **Completeness:** `find_references` returned the same six rows as `find_callers`, all marked `resolved: true`. Every reference is a direct call, and none sit in anonymous closures or top-level code.\n- **Indirect callers:** other functions reach `Abort` only through the `AbortWith*` wrappers, so a signature change there flows through them. Calls to `AbortWithStatus`, `AbortWithStatusJSON` and so on from user code, such as an authorization middleware, don't call `Abort` directly. They only need changing if you alter those wrappers' signatures too.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 4,
+    "outputTokens": 1221,
+    "cacheReadTokens": 22900,
+    "cacheCreationTokens": 12726,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 9,
+        "cacheReadTokens": 8318,
+        "cacheCreationTokens": 6264
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 14582,
+        "cacheCreationTokens": 6462
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 14180,
+        "args": "{\"symbol_name\":\"HandlerFunc\",\"limit\":200}",
+        "argsChars": 41,
+        "paths": [
+          "gin.go",
+          "recovery.go",
+          "routergroup.go",
+          "logger.go",
+          "context_test.go",
+          "ginS/gins.go",
+          "routergroup_test.go",
+          "auth.go",
+          "gin_test.go",
+          "utils.go",
+          "context.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 14000,
+    "costUsd": 0.068754,
+    "judgeCostUsd": 0,
+    "resultText": "`HandlerFunc` is declared in `gin.go:50` as `type HandlerFunc func(*Context)`. The `files` tally covers the whole reference set, even though the result page was truncated.\n\n**Other non-test source files that reference it**\n\n| File | Refs | Where it appears |\n|---|---|---|\n| `routergroup.go` | 26 | The `IRouter` and `IRoutes` interface methods (`Use`, `Handle`, `Any`, `GET`, `POST`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Match`, `Group`). The matching `RouterGroup` methods. `createStaticHandler`. |\n| `ginS/gins.go` | 13 | Package-level wrappers: `Group`, `Handle`, `NoRoute`, `NoMethod`, `GET`, `POST`, `PUT`, `OPTIONS`, `HEAD`, `Any`. |\n| `logger.go` | 6 | `Logger`, `LoggerWithWriter`, `LoggerWithConfig`, `ErrorLoggerT` (as return types). |\n| `recovery.go` | 4 | `Recovery`, `RecoveryWithWriter`, `CustomRecovery`, `CustomRecoveryWithWriter` (as return types). |\n| `auth.go` | 3 | `BasicAuth`, `BasicAuthForProxy` (as return types). |\n| `utils.go` | 3 | `Bind`, `WrapF`, `WrapH`. |\n| `context.go` | 1 | `Context.Handler`, which returns the handler. |\n\n**Other references in `gin.go` itself (the declaring file)**\n\n- `HandlersChain` (`gin.go:56`) is `[]HandlerFunc`, and `HandlersChain.Last` returns one.\n- `RouteInfo.HandlerFunc` is a field of this type.\n- `Engine.NoRoute`, `Engine.NoMethod` and `Engine.Use` take it as a parameter.\n\n**Changing the signature also affects code that never names the type**\n\n- **Callers of `HandlersChain`:** anything that ranges over it and calls `handler(c)` breaks, for example `Context.Next` in `context.go`. `HandlersChain` is the type that reaches the most code.\n- **Function literals:** any inline `func(c *gin.Context) {...}` passed as a handler no longer matches. That includes the examples and any other packages.\n- **Test files:** they also reference it (`gin_test.go`, `context_test.go`, `routergroup_test.go`). I left them out as you asked, but they will need updating too.\n\nThe reference graph only covers places that name `HandlerFunc`. The call sites in the `HandlersChain` and function-literal points above are not in this list, so grep for `handlers[` and `c.handlers` to find them.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 4,
+    "outputTokens": 1153,
+    "cacheReadTokens": 29164,
+    "cacheCreationTokens": 6461,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 14582,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 14582,
+        "cacheCreationTokens": 6461
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 14180,
+        "args": "{\"symbol_name\":\"HandlerFunc\",\"limit\":200}",
+        "argsChars": 41,
+        "paths": [
+          "gin.go",
+          "recovery.go",
+          "routergroup.go",
+          "logger.go",
+          "context_test.go",
+          "ginS/gins.go",
+          "routergroup_test.go",
+          "auth.go",
+          "gin_test.go",
+          "utils.go",
+          "context.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 13210,
+    "costUsd": 0.044261800000000004,
+    "judgeCostUsd": 0,
+    "resultText": "`HandlerFunc` is declared in `gin.go:50` as `type HandlerFunc func(*Context)`.\n\nBesides `gin.go`, these seven non-test source files reference it:\n\n| File | Refs | What references it |\n|---|---|---|\n| `routergroup.go` | 26 | The `IRoutes` and `IRouter` interface methods (`Use`, `Handle`, `Any`, `GET`, `POST`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Match`, `Group`). Also the `RouterGroup` implementations of the same methods, and `RouterGroup.createStaticHandler`. |\n| `ginS/gins.go` | 13 | The package-level wrappers: `Handle`, `Group`, `NoRoute`, `NoMethod`, `GET`, `POST`, `PUT`, `OPTIONS`, `HEAD`, `Any`. |\n| `logger.go` | 6 | `ErrorLoggerT`, `Logger`, `LoggerWithWriter`, `LoggerWithConfig` (return types). |\n| `recovery.go` | 4 | `Recovery`, `RecoveryWithWriter`, `CustomRecovery`, `CustomRecoveryWithWriter` (return types or parameters). |\n| `auth.go` | 3 | `BasicAuth` and `BasicAuthForProxy` (return types). |\n| `utils.go` | 3 | `Bind`, `WrapF`, `WrapH` (adapters that build a `HandlerFunc`). |\n| `context.go` | 1 | `Context.Handler()`, which returns the current handler. |\n\nInside `gin.go` itself, these also use it, so they need updating too:\n- `HandlersChain` (`[]HandlerFunc`) and `HandlersChain.Last`.\n- `RouteInfo` (its handler field).\n- `Engine.NoRoute`, `Engine.NoMethod` and `Engine.Use`.\n\nThe files that reference it only through `HandlersChain` count as indirect. Examples are `Context.handlers` and the tree and route-registration code. A change to `HandlerFunc` will reach them, but they won't show up as direct references.\n\nTest files also reference it, but I excluded them as you asked: `gin_test.go`, `context_test.go` and `routergroup_test.go`.\n\nThe result was paged and reported `hasMore: true`. The per-file list comes from the response's `files` tally, which covers every reference, not only the first page. The symbol-level rows I quoted come from that first page, so a few of those method names may be missing.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:28:11.757Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 4,
+    "outputTokens": 1221,
+    "cacheReadTokens": 35625,
+    "cacheCreationTokens": 0,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 14582,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 21043,
+        "cacheCreationTokens": 0
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 14180,
+        "args": "{\"symbol_name\":\"HandlerFunc\",\"limit\":200}",
+        "argsChars": 41,
+        "paths": [
+          "gin.go",
+          "recovery.go",
+          "routergroup.go",
+          "logger.go",
+          "context_test.go",
+          "ginS/gins.go",
+          "routergroup_test.go",
+          "auth.go",
+          "gin_test.go",
+          "utils.go",
+          "context.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 13720,
+    "costUsd": 0.02039,
+    "judgeCostUsd": 0,
+    "resultText": "`HandlerFunc` is declared in `gin.go:50` as `type HandlerFunc func(*Context)`. Its slice alias `HandlersChain` (`gin.go:56`) is a second thing you'd have to keep in step.\n\nThese non-test files reference it. The counts are usages found by the code graph:\n\n| File | Refs | Where it appears |\n|---|---|---|\n| `routergroup.go` | 26 | The `IRouter` and `IRoutes` interface methods (`Use`, `Handle`, `Any`, `GET`, `POST`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Match`, `Group`). The `RouterGroup` implementations of those same methods, plus `createStaticHandler`. |\n| `ginS/gins.go` | 13 | The package-level wrappers: `Handle`, `Group`, `NoRoute`, `NoMethod`, `GET`, `POST`, `PUT`, `OPTIONS`, `HEAD`, `Any`, and others. |\n| `logger.go` | 6 | `Logger`, `LoggerWithWriter`, `LoggerWithConfig`, `ErrorLoggerT`. These return or build a `HandlerFunc`. |\n| `recovery.go` | 4 | `Recovery`, `RecoveryWithWriter`, `CustomRecovery`, `CustomRecoveryWithWriter`. |\n| `auth.go` | 3 | `BasicAuth`, `BasicAuthForProxy`. |\n| `utils.go` | 3 | `Bind`, `WrapF`, `WrapH`. |\n| `context.go` | 1 | `Context.Handler()`, which returns the last handler in the chain. |\n\nInside `gin.go` itself, it is also used by:\n- `HandlersChain` and `HandlersChain.Last`\n- `RouteInfo`, as a field\n- `Engine.NoRoute`, `Engine.NoMethod` and `Engine.Use`\n\n**Notes for the change:**\n- `WrapF` and `WrapH` in `utils.go` adapt `http.HandlerFunc` and `http.Handler` into a `HandlerFunc`. They build the closure, so they'll need the new parameter handled.\n- `Context.Handler()` in `context.go` and `HandlersChain.Last` return the type, so their callers will see the new signature.\n- `Bind` in `utils.go` also returns a `HandlerFunc`, and it builds a closure.\n\n**Coverage caveat:** the first page of results had `hasMore: true`, so I didn't see every individual row. The per-file tally covers the full set and lists only the files above, so this file list is complete. The symbol-level detail may be missing a few entries. Test files also reference it (`gin_test.go`, `context_test.go`, `routergroup_test.go`), but you asked for source only, so I left them out.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

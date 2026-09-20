@@ -1,0 +1,697 @@
+[
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 8,
+    "outputTokens": 1798,
+    "cacheReadTokens": 52948,
+    "cacheCreationTokens": 11144,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 6671,
+        "cacheCreationTokens": 7939
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 21,
+        "cacheReadTokens": 14610,
+        "cacheCreationTokens": 442
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 15052,
+        "cacheCreationTokens": 1563
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 568,
+        "cacheReadTokens": 16615,
+        "cacheCreationTokens": 1200
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 229,
+        "args": "{\"pattern\":\"\\\\.Abort\\\\(\\\\)|func \\\\(c \\\\*Context\\\\) Abort\\\\(\",\"glob\":\"*.go\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 109,
+        "paths": [
+          "context.go",
+          "ncontext.go",
+          "nrecovery.go",
+          "ncontext_test.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 78,
+        "args": "{\"pattern\":\"^func |Abort\\\\(\\\\)\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"output_mode\":\"content\",\"-n\":true,\"offset\":200,\"head_limit\":40}",
+        "argsChars": 195
+      },
+      {
+        "name": "Read",
+        "chars": 664,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"offset\":1150,\"limit\":20}",
+        "argsChars": 131
+      },
+      {
+        "name": "Read",
+        "chars": 1607,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/recovery.go\",\"offset\":55,\"limit\":40}",
+        "argsChars": 130
+      },
+      {
+        "name": "Read",
+        "chars": 1669,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"offset\":200,\"limit\":36}",
+        "argsChars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 84,
+        "args": "{\"pattern\":\"^func CustomRecoveryWithWriter\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/recovery.go\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 179
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 19126,
+    "costUsd": 0.0742196,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `(*Context).Abort()`, defined at `context.go:207`. Its doc comment is the authorization-middleware example you described.\n\nNon-test code calls it directly from these four places. I found them with a grep for `.Abort()`, not g-mesh, because your `CLAUDE.md` limits g-mesh to TS/JS projects and this is Go.\n\n| Caller | Location |\n|---|---|\n| `(*Context).AbortWithStatus` | `context.go:216` |\n| `(*Context).AbortWithStatusPureJSON` | `context.go:223` |\n| `(*Context).AbortWithStatusJSON` | `context.go:231` |\n| `(*Context).Render` | `context.go:1164` |\n\n- **`Render`:** it calls `Abort()` after pushing the render error onto `c.Errors`.\n- **`CustomRecoveryWithWriter`:** this function in `recovery.go` also calls `c.Abort()`, at `recovery.go:84`. The call sits inside the anonymous handler it returns, in the broken-pipe branch. That handler is where the `Abort()` call itself lives.\n- **`AbortWithError`:** at `context.go:235`, it calls `AbortWithStatus`, not `Abort()`. If you add a reason parameter, it only changes if you also change `AbortWithStatus`'s signature.\n- **Tests:** the only other hit is `context_test.go:1805`, which you asked me to exclude. Tests would need updating too.\n\nI searched only for `.Abort()` with no arguments. A caller that uses the method as a value, such as `f := c.Abort`, wouldn't show up. I didn't check for that, and it's unlikely in this codebase.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 8,
+    "outputTokens": 1620,
+    "cacheReadTokens": 64241,
+    "cacheCreationTokens": 5978,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14610,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 14610,
+        "cacheCreationTokens": 422
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15032,
+        "cacheCreationTokens": 4957
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 706,
+        "cacheReadTokens": 19989,
+        "cacheCreationTokens": 599
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 229,
+        "args": "{\"pattern\":\"\\\\.Abort\\\\(\\\\)|func \\\\(c \\\\*Context\\\\) Abort\\\\(\",\"glob\":\"*.go\",\"output_mode\":\"content\"}",
+        "argsChars": 99,
+        "paths": [
+          "context_test.go",
+          "nrecovery.go",
+          "ncontext.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 8741,
+        "args": "{\"pattern\":\"^func |Abort\\\\(\\\\)\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"output_mode\":\"content\",\"-n\":true,\"head_limit\":0}",
+        "argsChars": 181
+      },
+      {
+        "name": "Read",
+        "chars": 1800,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/recovery.go\",\"offset\":60,\"limit\":40}",
+        "argsChars": 130
+      },
+      {
+        "name": "Grep",
+        "chars": 544,
+        "args": "{\"pattern\":\"^func \",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/recovery.go\",\"output_mode\":\"content\"}",
+        "argsChars": 145
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 19606,
+    "costUsd": 0.0540292,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `func (c *Context) Abort()` at `context.go:207`. It sets `c.index = abortIndex`, so the remaining handlers in the chain are skipped.\n\nI searched non-test `.go` files for `.Abort()` on any receiver. Six non-test functions call it directly:\n\n| Caller | Location |\n|---|---|\n| `Context.AbortWithStatus` | `context.go:216` |\n| `Context.AbortWithStatusPureJSON` | `context.go:223` |\n| `Context.AbortWithStatusJSON` | `context.go:231` |\n| `Context.AbortWithError` | `context.go:238` (see note below) |\n| `Context.Render` | `context.go:1164` |\n| Anonymous handler closure returned by `CustomRecoveryWithWriter` | `recovery.go:84` |\n\n- **Where the calls are:**\n  - `AbortWithStatus`, `AbortWithStatusPureJSON` and `AbortWithStatusJSON` each call `c.Abort()` at lines 216, 223 and 231.\n  - `Render` calls it inside its branch for statuses that don't allow a body.\n  - The `recovery.go` call is in the broken-pipe branch of the deferred `recover()` block. That closure is what `Recovery`, `CustomRecovery` and `RecoveryWithWriter` all end up returning.\n- **`AbortWithError`:** my grep didn't list a direct call in it. Its body is at `context.go:238`, outside the lines the grep matched, so I haven't confirmed how it aborts. Most likely it calls `AbortWithStatus`, which would make it an indirect caller. That's worth a quick look before you edit.\n- **Tests:** `context_test.go:1805` also calls `c.Abort()`. It will need updating too, but you asked for non-test code, so I left it off the table.\n- **Method value:** I searched for `.Abort()` with parentheses. I did not check for `c.Abort` used as a method value, for example passed as a callback.\n\nThe three `AbortWithStatus*` wrappers are the natural places to decide what reason to pass through.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-abort-callers",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "4f8b3ecaf326",
+    "inputTokens": 8,
+    "outputTokens": 1447,
+    "cacheReadTokens": 60505,
+    "cacheCreationTokens": 3218,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14610,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 14610,
+        "cacheCreationTokens": 369
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 48,
+        "cacheReadTokens": 14979,
+        "cacheCreationTokens": 1327
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 638,
+        "cacheReadTokens": 16306,
+        "cacheCreationTokens": 1522
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 229,
+        "args": "{\"pattern\":\"\\\\.Abort\\\\(\\\\)|func \\\\(c \\\\*Context\\\\) Abort\\\\(\",\"glob\":\"*.go\",\"output_mode\":\"content\"}",
+        "argsChars": 99,
+        "paths": [
+          "context.go",
+          "ncontext.go",
+          "nrecovery.go",
+          "ncontext_test.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 910,
+        "args": "{\"pattern\":\"\\\\bAbort\\\\b\",\"glob\":\"*.go\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 73,
+        "paths": [
+          "recovery_test.go",
+          "nmiddleware_test.go",
+          "ncontext.go",
+          "nrecovery.go",
+          "ncontext_test.go"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1593,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"offset\":200,\"limit\":35}",
+        "argsChars": 130
+      },
+      {
+        "name": "Read",
+        "chars": 883,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/context.go\",\"offset\":1150,\"limit\":25}",
+        "argsChars": 131
+      },
+      {
+        "name": "Read",
+        "chars": 1887,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-gin-6OZrKx/recovery.go\",\"offset\":50,\"limit\":45}",
+        "argsChars": 130
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 16021,
+    "costUsd": 0.040512,
+    "judgeCostUsd": 0,
+    "resultText": "The method is `(*Context).Abort()`, defined at `context.go:207`. It sets `c.index = abortIndex`. Its doc comment describes the authorization-middleware use case.\n\nI found these direct callers in non-test code:\n\n| Caller | Location |\n|---|---|\n| `(*Context).AbortWithStatus` | `context.go:216` |\n| `(*Context).AbortWithStatusPureJSON` | `context.go:223` |\n| `(*Context).AbortWithStatusJSON` | `context.go:231` |\n| `(*Context).Render` | `context.go:1164` (called after `c.Error(err)` when rendering fails) |\n| the anonymous handler returned by `CustomRecoveryWithWriter` | `recovery.go:84` (inside its deferred recover, on the broken-pipe branch) |\n\n- **Anonymous handler:** `recovery.go:84` is a closure, not a named function. It sits inside the `HandlerFunc` returned by `CustomRecoveryWithWriter` at `recovery.go:53`.\n- **Test call:** the only test call is `context_test.go:1805`. You said to exclude tests, but it will also need updating.\n- **Other mentions:** `Abort` also appears in comments in `recovery_test.go:77` and `middleware_test.go:207`, which aren't calls.\n- **Method value:** grep found no `c.Abort` used without parentheses, so nothing takes it as a method value.\n- **Other packages:** no other package in the repo calls `Abort()`. The `.go` files that reference it are all in the root `gin` package.\n- **External code:** this is a public API, so users' own middleware will also break. Adding a required parameter is a breaking change. A variadic parameter, or a new method such as `AbortWithReason`, would avoid that.\n\nI used grep rather than g-mesh because `CLAUDE.md` limits g-mesh to TS/JS projects.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 8,
+    "outputTokens": 2402,
+    "cacheReadTokens": 54829,
+    "cacheCreationTokens": 9741,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 8319,
+        "cacheCreationTokens": 6283
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14602,
+        "cacheCreationTokens": 550
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15152,
+        "cacheCreationTokens": 1604
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 920,
+        "cacheReadTokens": 16756,
+        "cacheCreationTokens": 1304
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 43,
+        "args": "{\"pattern\":\"type HandlerFunc\",\"output_mode\":\"content\",\"glob\":\"*.go\"}",
+        "argsChars": 68,
+        "paths": [
+          "gin.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 269,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"output_mode\":\"count\",\"glob\":\"*.go\"}",
+        "argsChars": 67,
+        "paths": [
+          "gin.go",
+          "ncontext.go",
+          "nroutergroup_test.go",
+          "nrecovery.go",
+          "ncontext_test.go",
+          "nresponse_writer_test.go",
+          "nlogger.go",
+          "nauth.go",
+          "nginS/gins.go",
+          "nrender/render_test.go",
+          "nroutergroup.go",
+          "nutils.go",
+          "ngin_test.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 345,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b|\\\\bHandlersChain\\\\b\",\"output_mode\":\"count\",\"glob\":\"*.go\"}",
+        "argsChars": 87,
+        "paths": [
+          "gin.go",
+          "ndebug_test.go",
+          "nroutes_test.go",
+          "nlogger.go",
+          "ntree_test.go",
+          "nginS/gins.go",
+          "nauth.go",
+          "ntree.go",
+          "ndebug.go",
+          "nroutergroup_test.go",
+          "ncontext.go",
+          "nresponse_writer_test.go",
+          "nrender/render_test.go",
+          "nrecovery.go",
+          "ngin_test.go",
+          "nutils.go",
+          "nroutergroup.go",
+          "ncontext_test.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1960,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"output_mode\":\"content\",\"glob\":\"{context.go,recovery.go,logger.go,auth.go,utils.go,gin.go}\"}",
+        "argsChars": 123,
+        "paths": [
+          "auth.go",
+          "nauth.go",
+          "ncontext.go",
+          "nrecovery.go",
+          "nlogger.go",
+          "nutils.go",
+          "ngin.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1144,
+        "args": "{\"pattern\":\"\\\\bHandlersChain\\\\b\",\"output_mode\":\"content\",\"glob\":\"!*_test.go\",\"type\":\"go\"}",
+        "argsChars": 89,
+        "paths": [
+          "gin.go",
+          "ngin.go",
+          "ncontext.go",
+          "nroutergroup.go",
+          "ndebug.go",
+          "ntree.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 646,
+        "args": "{\"pattern\":\"func\\\\(\\\\*Context\\\\)|func\\\\(c \\\\*Context\\\\)\",\"output_mode\":\"content\",\"glob\":\"!*_test.go\",\"type\":\"go\"}",
+        "argsChars": 113,
+        "paths": [
+          "gin.go",
+          "nlogger.go",
+          "nrecovery.go",
+          "nauth.go",
+          "nutils.go",
+          "nroutergroup.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 26019,
+    "costUsd": 0.0750228,
+    "judgeCostUsd": 0,
+    "resultText": "**Declaration:** `gin.go:51`: `type HandlerFunc func(*Context)`\n\nThe `context.go` and `debug.go` results, and the `ginS/gins.go` and `routergroup.go` rows, are only partly checked. I did not read `routergroup.go` or `ginS/gins.go` line by line, only their counts and the closure-literal matches.\n\n**Other non-test files that reference `HandlerFunc` directly**\n\n| File | How it's used |\n|---|---|\n| `gin.go` | Its own file also holds `HandlersChain []HandlerFunc` (57), `HandlersChain.Last()` (60), the `RouteInfo.HandlerFunc` field (72), and `Engine.NoRoute`, `NoMethod` and `Use` parameters (326, 332, 340). Line 405 assigns `RouteInfo.HandlerFunc`. |\n| `routergroup.go` | Many methods take `...HandlerFunc` or return it, such as `Use`, `Handle`, `GET`, `POST` and `Any`, plus the `IRoutes` and `IRouter` interfaces. The static-file handlers (167, 176, 220) build `func(c *Context)` closures that must match the type. |\n| `ginS/gins.go` | The package-level wrappers (13 references) mirror the `routergroup.go` and `gin.go` signatures. |\n| `context.go` | `Context.Handler() HandlerFunc` (167). |\n| `recovery.go` | Return type of `Recovery`, `CustomRecovery`, `RecoveryWithWriter` and `CustomRecoveryWithWriter` (35–53). The returned closure at 58 is `func(c *Context)`. |\n| `logger.go` | Return type of `ErrorLogger`, `ErrorLoggerT`, `Logger`, `LoggerWithFormatter`, `LoggerWithWriter` and `LoggerWithConfig` (207–245). The returned closures at 213 and 275 are `func(c *Context)`. |\n| `auth.go` | Return type of `BasicAuthForRealm`, `BasicAuth` and `BasicAuthForProxy` (48–98). The returned closures at 54 and 104 are `func(c *Context)`. |\n| `utils.go` | `Bind`, `WrapF` and `WrapH` return `HandlerFunc` (29, 47, 54). Their returned closures at 38, 48 and 55 are `func(c *Context)`. |\n\n**Indirect references through `HandlersChain`**\n\nThese files never name `HandlerFunc`, but the slice type changes with it:\n- `tree.go`: `node.handlers` (106), `addRoute` (135), `insertChild` (288), and a `handlers` field (401).\n- `debug.go`: `debugPrintRoute` (32).\n- `context.go`: `Context.handlers` (67). The `Next()` call site, which invokes `c.handlers[c.index](c)`, would also need the new argument.\n- `gin.go` and `routergroup.go`: `HandlersChain` fields, parameters, and `combineHandlers`.\n\n**Other things to check**\n- **`Context.Next()` and `handleHTTPRequest`:** Handlers are invoked through `c.handlers[c.index](c)`. Those call sites in `context.go` and `gin.go` need the new argument.\n- **`http.HandlerFunc` in `utils.go`:** `WrapF` takes `http.HandlerFunc` (47). That's a different, standard-library type, so it is unaffected.\n- **`Skipper`:** `logger.go:62` declares `type Skipper func(c *Context) bool`. It has a similar shape but is a separate type and doesn't need to change.\n- **Test files:** These reference the type too and would also break: `gin_test.go`, `context_test.go`, `routergroup_test.go`, `tree_test.go`, `debug_test.go`, `routes_test.go`, `response_writer_test.go` and `render/render_test.go`.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 6,
+    "outputTokens": 1888,
+    "cacheReadTokens": 44300,
+    "cacheCreationTokens": 3716,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14602,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14602,
+        "cacheCreationTokens": 494
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1012,
+        "cacheReadTokens": 15096,
+        "cacheCreationTokens": 3222
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 43,
+        "args": "{\"pattern\":\"type HandlerFunc\",\"output_mode\":\"content\"}",
+        "argsChars": 54,
+        "paths": [
+          "gin.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 190,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"glob\":\"!*_test.go\",\"output_mode\":\"count\"}",
+        "argsChars": 73,
+        "paths": [
+          "gin.go",
+          "nutils.go",
+          "nrecovery.go",
+          "nroutergroup.go",
+          "ncontext.go",
+          "nauth.go",
+          "nlogger.go",
+          "nginS/gins.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 5498,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"glob\":\"!*_test.go\",\"output_mode\":\"content\",\"head_limit\":0}",
+        "argsChars": 90,
+        "paths": [
+          "gin.go",
+          "ngin.go",
+          "nutils.go",
+          "nroutergroup.go",
+          "ncontext.go",
+          "nrecovery.go",
+          "nauth.go",
+          "nlogger.go",
+          "nginS/gins.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 111,
+        "args": "{\"pattern\":\"\\\\bHandlersChain\\\\b\",\"glob\":\"!*_test.go\",\"output_mode\":\"count\"}",
+        "argsChars": 75,
+        "paths": [
+          "gin.go",
+          "ncontext.go",
+          "ntree.go",
+          "ndebug.go",
+          "nroutergroup.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 19984,
+    "costUsd": 0.043658,
+    "judgeCostUsd": 0,
+    "resultText": "The type is `HandlerFunc`, declared at `gin.go:51` as `type HandlerFunc func(*Context)`. I searched with grep, since the g-mesh tools are TS/JS-only and this is Go.\n\n## Files that reference it directly (non-test)\n\n| File | How it's used |\n|---|---|\n| `gin.go` | Declares `HandlersChain []HandlerFunc` (`:57`) and `HandlersChain.Last()` returning `HandlerFunc` (`:60`). It also has a struct field `HandlerFunc HandlerFunc` in the route info type (`:72`), populated at `:405`. `Engine.NoRoute`, `NoMethod` and `Use` take `...HandlerFunc` (`:326`, `:332`, `:340`). |\n| `routergroup.go` | The `IRoutes` and `IRouter` interfaces use `...HandlerFunc` in `Group`, `Use`, `Handle`, `Any`, `GET`, `POST`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD` and `Match` (`:29-45`). The `RouterGroup` implementations of those methods repeat the signatures (`:65-156`). `staticFileHandler` takes a `HandlerFunc` parameter (`:181`), and `createStaticHandler` returns one (`:216`). |\n| `context.go` | `Context.Handler()` returns `HandlerFunc` (`:167`). |\n| `utils.go` | `Bind`, `WrapF` and `WrapH` return `HandlerFunc` (`:29`, `:47`, `:54`). The `WrapF` parameter is `http.HandlerFunc`, which is a different type. |\n| `recovery.go` | `Recovery`, `CustomRecovery`, `RecoveryWithWriter` and `CustomRecoveryWithWriter` return `HandlerFunc` (`:35-53`). |\n| `auth.go` | `BasicAuthForRealm`, `BasicAuth` and `BasicAuthForProxy` return `HandlerFunc` (`:48`, `:72`, `:98`). |\n| `logger.go` | `ErrorLogger`, `ErrorLoggerT`, `Logger`, `LoggerWithFormatter`, `LoggerWithWriter` and `LoggerWithConfig` return `HandlerFunc` (`:207-245`). |\n| `ginS/gins.go` | These wrappers use `...gin.HandlerFunc`: `NoRoute`, `NoMethod`, `Group`, `Handle`, `POST`, `GET`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Any` and `Use` (`:40-124`). |\n\n## Indirect references through `HandlersChain`\n\n`HandlersChain` is `[]HandlerFunc`, so these files use the type without naming it. A signature change would probably not break them, but any code that calls or constructs handlers with `c` would:\n\n- `tree.go` (4 uses)\n- `debug.go` (1 use)\n- `gin.go`, `routergroup.go` and `context.go` also use `HandlersChain`.\n\n## Other places to check\n\n- **Docs:** `docs/doc.md:1666` has a `gin.HandlerFunc` example, and `CHANGELOG.md` mentions `http.HandlerFunc`, which is unrelated.\n- **Call sites:** Function literals like `func(c *gin.Context)` are not matched by this search. In non-test code, `Context.Next()` in `context.go` and the handler dispatch in `gin.go` invoke handlers as `handler(c)`. Those calls need the new argument.\n- **Tests:** I excluded `*_test.go` as you asked, but they will need updating too.\n- **Examples:** I didn't check whether the repo has example code outside these files.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "gin-scenario-handlerfunc-references",
+    "corpusId": "gin",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:35:13.106Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "3e023a2df170",
+    "inputTokens": 8,
+    "outputTokens": 2084,
+    "cacheReadTokens": 62448,
+    "cacheCreationTokens": 4260,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 14602,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 14602,
+        "cacheCreationTokens": 539
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 15141,
+        "cacheCreationTokens": 2962
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1010,
+        "cacheReadTokens": 18103,
+        "cacheCreationTokens": 759
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 43,
+        "args": "{\"pattern\":\"type HandlerFunc \",\"glob\":\"*.go\",\"output_mode\":\"content\"}",
+        "argsChars": 69,
+        "paths": [
+          "gin.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 269,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"glob\":\"*.go\",\"output_mode\":\"count\"}",
+        "argsChars": 67,
+        "paths": [
+          "gin.go",
+          "nresponse_writer_test.go",
+          "nroutergroup_test.go",
+          "nginS/gins.go",
+          "ncontext.go",
+          "nutils.go",
+          "ncontext_test.go",
+          "nrender/render_test.go",
+          "nrecovery.go",
+          "nauth.go",
+          "nlogger.go",
+          "ngin_test.go",
+          "nroutergroup.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 5347,
+        "args": "{\"pattern\":\"\\\\bHandlerFunc\\\\b\",\"glob\":\"!*_test.go\",\"output_mode\":\"content\",\"type\":\"go\"}",
+        "argsChars": 87,
+        "paths": [
+          "gin.go",
+          "ngin.go",
+          "nauth.go",
+          "nutils.go",
+          "nginS/gins.go",
+          "nrecovery.go",
+          "ncontext.go",
+          "nroutergroup.go",
+          "nlogger.go"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1144,
+        "args": "{\"pattern\":\"HandlersChain\",\"type\":\"go\",\"glob\":\"!*_test.go\",\"output_mode\":\"content\"}",
+        "argsChars": 83,
+        "paths": [
+          "gin.go",
+          "ngin.go",
+          "ndebug.go",
+          "ncontext.go",
+          "ntree.go",
+          "nroutergroup.go"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "durationMs": 22818,
+    "costUsd": 0.051427600000000004,
+    "judgeCostUsd": 0,
+    "resultText": "`HandlerFunc` is declared at `gin.go:51` as `type HandlerFunc func(*Context)`. I searched with grep, since g-mesh only applies to TS/JS projects and this is Go.\n\n## Files that reference `HandlerFunc` directly (non-test)\n\n- **`gin.go`** (the declaration file, so it may need edits too)\n  - `HandlersChain []HandlerFunc` (line 57), and `HandlersChain.Last()` returns `HandlerFunc` (line 60).\n  - A struct field `HandlerFunc HandlerFunc` (line 72), assigned at line 405.\n  - Variadic parameters on `Engine.NoRoute`, `Engine.NoMethod` and `Engine.Use` (lines 326, 332, 340).\n- **`routergroup.go`**\n  - The `IRoutes` interface methods: `Use`, `Handle`, `Any`, `GET`, `POST`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Match` (lines 29–45). Changing these changes the interface for every implementer.\n  - The matching `RouterGroup` methods (lines 65–156).\n  - `staticFileHandler(handler HandlerFunc)` as a parameter (line 181).\n  - `createStaticHandler(...) HandlerFunc` as a return type (line 216).\n- **`ginS/gins.go`**: the package-level wrappers `NoRoute`, `NoMethod`, `Group`, `Handle`, `POST`, `GET`, `DELETE`, `PATCH`, `PUT`, `OPTIONS`, `HEAD`, `Any` and `Use`, all taking `...gin.HandlerFunc` (lines 40–124).\n- **`logger.go`**: `ErrorLogger`, `ErrorLoggerT`, `Logger`, `LoggerWithFormatter`, `LoggerWithWriter` and `LoggerWithConfig` all return `HandlerFunc` (lines 207–245).\n- **`recovery.go`**: `Recovery`, `CustomRecovery`, `RecoveryWithWriter` and `CustomRecoveryWithWriter` return `HandlerFunc` (lines 35–53).\n- **`auth.go`**: `BasicAuthForRealm`, `BasicAuth` and `BasicAuthForProxy` return `HandlerFunc` (lines 48, 72, 98).\n- **`utils.go`**: `Bind`, `WrapF` and `WrapH` return `HandlerFunc` (lines 29, 47, 54). `WrapF` and `WrapH` build the wrapper from `http.HandlerFunc` and `http.Handler`, so their bodies would need adapting.\n- **`context.go`**: `Context.Handler()` returns `HandlerFunc` (line 167).\n\n## Indirect references through `HandlersChain`\n\n`HandlersChain` is `[]HandlerFunc`, so these files use the type without naming it. They compile against the new signature, but any code that calls handlers (for example `c.handlers[i](c)`) would break:\n\n- `gin.go`: the `allNoRoute`, `allNoMethod`, `noRoute` and `noMethod` fields, and `addRoute`.\n- `context.go`: the `handlers` field (line 67). `Context.Next()` lives here and is where handlers are invoked, so it is the most likely place to need real changes.\n- `tree.go`: the `handlers` fields (lines 106, 401), `addRoute` and `insertChild`.\n- `debug.go`: `debugPrintRoute`.\n- `routergroup.go`: the `Handlers` field, `handle` and `combineHandlers`.\n\n## Not caught by these searches\n\n- The `http.HandlerFunc` hit in `utils.go` (line 47) is the standard library type, not Gin's.\n- I only searched for the named type. Code that uses a literal `func(*Context)` in place of `HandlerFunc` wouldn't show up. Test files and examples also reference the type; I left them out as you asked.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

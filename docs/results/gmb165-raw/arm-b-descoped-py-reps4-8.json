@@ -1,0 +1,758 @@
+[
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1354,
+    "cacheReadTokens": 36764,
+    "cacheCreationTokens": 10497,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 6671,
+        "cacheCreationTokens": 7833
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14504,
+        "cacheCreationTokens": 1085
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 775,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 1579
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      },
+      {
+        "name": "Grep",
+        "chars": 975,
+        "args": "{\"pattern\":\"SupportsRead|hasattr\\\\(.*read|__iter__|runtime_checkable|isinstance\\\\(.*(Iterable|Mapping)|\\\"read\\\"\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-request",
+        "argsChars": 257
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 15827,
+    "costUsd": 0.0639448,
+    "judgeCostUsd": 0.0268375,
+    "resultText": "No class in the repository implements `SupportsRead`. There are no subclasses, and `find_implementations` with `transitive: true` returned nothing. Conformance is checked structurally at runtime with `isinstance()`.\n\n**How it works**\n\n- `SupportsRead` is declared at `src/requests/_types.py:27-29` with `@runtime_checkable`. That decorator lets `isinstance(obj, SupportsRead)` work on a `Protocol`.\n- The check is structural, not nominal. It passes if the object has a callable attribute named `read`. It does not inspect the signature or the return type, so `length: int = ...` and `_T_co` are only for static type checkers.\n- Any file-like object therefore conforms without declaring anything. That includes `io.BytesIO`, `io.StringIO`, open file handles, and `urllib3` responses.\n- `SupportsItems` at `src/requests/_types.py:32-34` uses the same mechanism.\n\n**Where the runtime checks happen**\n\nAll of them are in `src/requests/models.py`, where the protocol is imported as `_SupportsRead` (line 39):\n\n- **`RequestEncodingMixin._encode_params`, line 164:** `elif isinstance(data, _SupportsRead): return data`. A file-like `data` is passed through unchanged, before the `hasattr(data, \"__iter__\")` branch that handles mappings and iterables.\n- **`RequestEncodingMixin._encode_files`, line 239:** `elif isinstance(fp, _SupportsRead):`. It reads the content of a file object. The `# type: ignore[reportUnnecessaryIsInstance]` comment there says this is a defensive check for untyped callers.\n- **`PreparedRequest.prepare_body`, line 639:** `if isinstance(data, basestring) or isinstance(data, _SupportsRead):`. A string or file-like body is not treated as a stream that needs a `Content-Length`. The streaming branch is decided at line 600 by `isinstance(data, Iterable) or hasattr(data, \"__iter__\")`, excluding `str`, `bytes`, `list`, `tuple` and `Mapping`.\n\nLines 144-145 and 154 use `_t.SupportsRead[str | bytes]` only as type annotations, in `_encode_params` overloads and its return type. The graph shows `SupportsRead` referenced only from `_types.py` and `models.py`.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states no class implements SupportsRead and clearly explains structural conformance via @runtime_checkable and isinstance() checks, matching both rubric requirements (a) and (b).",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1269,
+    "cacheReadTokens": 44775,
+    "cacheCreationTokens": 2948,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 14504,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14682,
+        "cacheCreationTokens": 907
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 743,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 2041
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      },
+      {
+        "name": "Grep",
+        "chars": 2096,
+        "args": "{\"pattern\":\"SupportsRead|hasattr\\\\(.*\\\"read\\\"|__iter__|runtime_checkable\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests\",\"output_mode\":\"c",
+        "argsChars": 208,
+        "paths": [
+          "src/requests/structures.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/cookies.py",
+          "nsrc/requests/_types.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 14999,
+    "costUsd": 0.034501000000000004,
+    "judgeCostUsd": 0.0262695,
+    "resultText": "**No class in the repository implements `SupportsRead`.** g-mesh's `find_implementations` with `transitive: true` returned an empty result. Nothing subclasses it or declares it as a base.\n\nIt is a structural protocol, so nothing needs to declare it. Conformance is checked in two ways.\n\n**At runtime**\n\n`SupportsRead` is decorated with `@runtime_checkable` (`src/requests/_types.py:27-29`):\n\n```python\n@runtime_checkable\nclass SupportsRead(Protocol[_T_co]):\n    def read(self, length: int = ..., /) -> _T_co: ...\n```\n\nThat decorator makes `isinstance(obj, SupportsRead)` work. It only checks that `obj` has a callable attribute named `read`. It does not check the signature or the return type. Any file-like object passes, such as `io.BytesIO`, an open file, or a custom stream.\n\n`src/requests/models.py` imports the protocol as `_SupportsRead` (line 39) and does `isinstance` checks against it in three places:\n\n- **`models.py:164`, in `RequestEncodingMixin._encode_params`:** `elif isinstance(data, _SupportsRead):` returns the data as-is, as a stream. It is tested before the `hasattr(data, \"__iter__\")` branch, which handles dicts and lists of pairs.\n- **`models.py:239`, in `RequestEncodingMixin._encode_files`:** `elif isinstance(fp, _SupportsRead):` reads the file content. The `# type: ignore` comment there calls it a \"defensive check for untyped callers\".\n- **`models.py:639`, in `PreparedRequest.prepare_body`:** `isinstance(data, basestring) or isinstance(data, _SupportsRead)` decides whether the body is sent as-is or treated as multipart or form data.\n\n**At type-check time**\n\nThe protocol is used in annotations, so a static checker such as pyright or mypy verifies structural compatibility:\n\n- `_types.py:95`: `StreamDataType`\n- `_types.py:104` and `_types.py:109`: body and data input aliases\n- `_types.py:118`: `_FileContent`\n- `models.py:144-154`: the `_encode_params` overloads",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states no class implements SupportsRead and thoroughly explains structural conformance via @runtime_checkable and isinstance() checks, with specific code locations and concrete examples.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1276,
+    "cacheReadTokens": 45682,
+    "cacheCreationTokens": 1664,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 14504,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 755,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 1664
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      },
+      {
+        "name": "Grep",
+        "chars": 1211,
+        "args": "{\"pattern\":\"SupportsRead|hasattr\\\\(.*\\\"read\\\"|runtime_checkable\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests\",\"output_mode\":\"content\"}",
+        "argsChars": 199,
+        "paths": [
+          "src/requests/models.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/_types.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 14605,
+    "costUsd": 0.0296164,
+    "judgeCostUsd": 0.0263165,
+    "resultText": "**No class in the repository implements `SupportsRead`.** `find_implementations` (run transitively) returns nothing, and `find_references` shows only type annotations and `isinstance` uses, with no subclasses.\n\n**How conformance is checked at runtime**\n\n`SupportsRead` is declared `@runtime_checkable` (`src/requests/_types.py:27-29`):\n\n```python\n@runtime_checkable\nclass SupportsRead(Protocol[_T_co]):\n    def read(self, length: int = ..., /) -> _T_co: ...\n```\n\n`@runtime_checkable` lets `isinstance(obj, SupportsRead)` work by structural (duck-typed) matching. It returns `True` if `obj` has a `read` attribute, whatever its class. Any file object, `io.BytesIO`, `io.StringIO` or custom stream therefore passes without declaring anything.\n\n`isinstance` only checks that the attribute exists. It does not check the signature or the return type.\n\n`src/requests/models.py` imports it as `_SupportsRead` and uses it in three `isinstance` checks:\n- **`models.py:164`, in `RequestEncodingMixin._encode_params`:** `elif isinstance(data, _SupportsRead):` returns file-like `data` unchanged instead of form-encoding it.\n- **`models.py:239`, in `_encode_files`:** `elif isinstance(fp, _SupportsRead):` treats a file-like `fp` as a stream and calls `.read()` on it. It has a `# type: ignore[reportUnnecessaryIsInstance]` comment saying it's a defensive check for untyped callers.\n- **`models.py:639`, in `PreparedRequest.prepare_body`:** `isinstance(data, basestring) or isinstance(data, _SupportsRead)` decides whether the body counts as a stream.\n\n**Static checking**\n\nThe other references are annotations, such as `StreamDataType` and `_FileContent` in the `TYPE_CHECKING` block of `_types.py` (lines 95-118) and the `_t.SupportsRead[str | bytes]` overloads in `models.py` (144-154). A type checker verifies these structurally, again with no declared subclasses.\n\n`SupportsItems` in the same file is set up the same way.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states no class implements SupportsRead (empty result is valid) and thoroughly explains that conformance is checked structurally via @runtime_checkable and isinstance() duck-typing, with concrete examples and call sites.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 4,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1189,
+    "cacheReadTokens": 45682,
+    "cacheCreationTokens": 1698,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 14504,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 637,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 1698
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      },
+      {
+        "name": "Grep",
+        "chars": 1211,
+        "args": "{\"pattern\":\"SupportsRead|\\\"read\\\"|'read'|runtime_checkable\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests\",\"output_mode\":\"content\"}",
+        "argsChars": 194,
+        "paths": [
+          "src/requests/_types.py",
+          "nsrc/requests/_types.py",
+          "nsrc/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 13870,
+    "costUsd": 0.028882400000000003,
+    "judgeCostUsd": 0.0258845,
+    "resultText": "**No class in the repository implements `SupportsRead`.** g-mesh's `find_implementations` (transitive) returned no implementors or subclasses, and its references show no class inheriting from it.\n\n**How conformance is checked instead**\n\n`SupportsRead` is a structural (duck-typed) protocol. Any object with a compatible `read()` method conforms, without declaring it. Two things make this work:\n\n1. **The protocol is marked `@runtime_checkable`** (`src/requests/_types.py:27-29`). That allows `isinstance(obj, SupportsRead)` to work. At runtime it only checks that the object has a `read` attribute. It doesn't check the signature or the return type.\n\n2. **`models.py` calls `isinstance()` against it.** It imports it as `_SupportsRead` (`src/requests/models.py:39`) and uses it in three places:\n   - `RequestEncodingMixin._encode_params`, line 164: `elif isinstance(data, _SupportsRead):` passes file-like `data` through unchanged.\n   - `RequestEncodingMixin._encode_files`, line 239: `elif isinstance(fp, _SupportsRead):` reads file contents. It carries a `# type: ignore[reportUnnecessaryIsInstance]` comment saying it is a defensive check for untyped callers.\n   - `PreparedRequest.prepare_body`, line 639: `isinstance(data, basestring) or isinstance(data, _SupportsRead)` is used to decide whether `data` is a stream.\n\n**Static type checking**\n\nThe other uses are in type aliases in `_types.py` (lines 95, 104, 109, 118) and in the `_encode_params` overload signatures in `models.py` (lines 144-145). Type checkers use these to accept any object with a `read()` method, such as `io.BytesIO`, `io.StringIO` or an open file. Those objects satisfy the protocol structurally.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states zero implementations (an empty result is legitimate) and explains structural conformance via isinstance() checks against the @runtime_checkable Protocol, with specific line citations.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 5,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1303,
+    "cacheReadTokens": 45682,
+    "cacheCreationTokens": 1599,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 14504,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 734,
+        "cacheReadTokens": 15589,
+        "cacheCreationTokens": 1599
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      },
+      {
+        "name": "Grep",
+        "chars": 975,
+        "args": "{\"pattern\":\"SupportsRead|hasattr\\\\(.*read|__iter__|isinstance\\\\(.*(Iterable|Mapping)\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-OkFsD6/src/requests/model",
+        "argsChars": 230
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 15572,
+    "costUsd": 0.0296264,
+    "judgeCostUsd": 0.026990500000000004,
+    "resultText": "No class in this repository is declared to implement `SupportsRead`. `find_implementations` with `transitive: true` returned nothing. The only references to it are the definition and `src/requests/models.py`.\n\n`SupportsRead` is a structural (duck-typed) protocol, so nothing needs to declare it. Its definition at `src/requests/_types.py:27-29` is:\n\n```python\n@runtime_checkable\nclass SupportsRead(Protocol[_T_co]):\n    def read(self, length: int = ..., /) -> _T_co: ...\n```\n\nBecause of `@runtime_checkable`, `isinstance(obj, SupportsRead)` works. It returns `True` if `obj` has a callable attribute named `read`. It only checks that the attribute exists. It does not check the signature or the return type. File objects, `io.BytesIO`, `io.StringIO`, and urllib3 or `HTTPResponse` streams all pass this way without inheriting from anything.\n\nThe runtime checks are in `src/requests/models.py`, where it is imported as `_SupportsRead` on line 39:\n\n- **`RequestEncodingMixin._encode_params`, line 164:** `elif isinstance(data, _SupportsRead):` returns a file-like `data` unchanged. It is tested before the `hasattr(data, \"__iter__\")` branch, which handles dicts and lists of pairs.\n- **`RequestEncodingMixin._encode_files`, line 239:** `elif isinstance(fp, _SupportsRead):` reads the content of a file-like value. The code marks this `# type: ignore[reportUnnecessaryIsInstance]` and calls it a \"defensive check for untyped callers\".\n- **`PreparedRequest.prepare_body`, line 639:** `isinstance(data, basestring) or isinstance(data, _SupportsRead)` is part of the check that decides whether the body is streamed.\n\nThe `_t.SupportsRead[str | bytes]` annotations on lines 144-154 are for static type checkers only. A checker such as pyright or mypy verifies conformance structurally against `read()` and needs no declared implementer.\n\n`SupportsItems`, defined right below it in `_types.py`, follows the same pattern.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states zero classes explicitly implement SupportsRead and thoroughly explains the runtime_checkable structural conformance mechanism via isinstance() checks with concrete examples.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 279,
+    "cacheReadTokens": 22756,
+    "cacheCreationTokens": 6731,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 8321,
+        "cacheCreationTokens": 6114
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 187,
+        "cacheReadTokens": 14435,
+        "cacheCreationTokens": 617
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4840,
+    "costUsd": 0.035271199999999996,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84).\n\nOutside that file, only one file under `src/` references it:\n\n- `src/requests/models.py` has two references. One is at file level, which is probably the import. The other is inside `PreparedRequest.prepare_auth` (line 667).\n\nWithin `auth.py` itself, `HTTPProxyAuth` subclasses it (line 115). That is in the defining file, so it isn't counted in the list above.\n\nI took this from the g-mesh reference index and didn't grep to double-check it.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 278,
+    "cacheReadTokens": 28964,
+    "cacheCreationTokens": 518,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 14435,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 186,
+        "cacheReadTokens": 14529,
+        "cacheCreationTokens": 518
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 5163,
+    "costUsd": 0.0116508,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84).\n\nOutside that file, only one file under `src/` references it:\n\n- `src/requests/models.py`. It has a file-level reference, plus a reference inside `PreparedRequest.prepare_auth` (line 667).\n\nWithin `auth.py` itself, `HTTPProxyAuth` subclasses it. That is the defining file, so it isn't counted above.\n\nI took this from g-mesh's reference index and didn't grep to double-check it. The result was fully resolved and complete.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 279,
+    "cacheReadTokens": 28964,
+    "cacheCreationTokens": 522,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 14435,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 187,
+        "cacheReadTokens": 14529,
+        "cacheCreationTokens": 522
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 5287,
+    "costUsd": 0.0116818,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84). Outside that file, one file under `src/` references it:\n\n- `src/requests/models.py` has two references. One is at file level, which is the import. The other is in `PreparedRequest.prepare_auth` (line 667).\n\n`HTTPProxyAuth` in `auth.py` (line 115) subclasses it, but that is in the defining file, so it isn't counted.\n\nThis comes from the g-mesh reference index, and I didn't grep to double-check it. The result was fully resolved.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 4,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 264,
+    "cacheReadTokens": 29482,
+    "cacheCreationTokens": 0,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 14435,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 172,
+        "cacheReadTokens": 15047,
+        "cacheCreationTokens": 0
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4895,
+    "costUsd": 0.0095424,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84).\n\nOutside that file, only one file under `src/` references it:\n\n- `src/requests/models.py`. It has a file-level reference, plus one inside `PreparedRequest.prepare_auth` (line 667).\n\nInside `auth.py` itself, `HTTPProxyAuth` subclasses it. That's the defining file, so it's excluded from the list.\n\nI took this from the g-mesh index and didn't grep to double-check it.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 5,
+    "timestamp": "2026-09-20T17:52:02.275Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 256,
+    "cacheReadTokens": 29482,
+    "cacheCreationTokens": 0,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 14435,
+        "cacheCreationTokens": 0
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 164,
+        "cacheReadTokens": 15047,
+        "cacheCreationTokens": 0
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.7.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4619,
+    "costUsd": 0.0094624,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84).\n\nOutside that file, only one file under `src/` references it:\n\n- `src/requests/models.py`. It has a file-level reference, and `PreparedRequest.prepare_auth` (line 667) also references it.\n\nThe only other reference is `HTTPProxyAuth`, which subclasses it, but that is in `auth.py` itself. I took this from g-mesh's reference index and did not grep the tree separately.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]
