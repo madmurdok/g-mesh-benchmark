@@ -12,5 +12,13 @@
     "path": "/Users/Valentin_Taiurskii/Projects/excalidraw",
     "revision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
     "language": "ts"
+  },
+  {
+    "id": "gin",
+    "kind": "git",
+    "repoUrl": "https://github.com/gin-gonic/gin.git",
+    "ref": "v1.12.0",
+    "revision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "language": "go"
   }
 ]
