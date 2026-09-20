@@ -414,36 +414,59 @@ export function computeMcpUnavailableSummary(
 }
 
 /**
- * Arms that declared MCP servers, recorded their tool-call counts, and never
- * once called an MCP tool across every single run.
+ * (arm, corpus) pairs that declared MCP servers, recorded their tool-call
+ * counts, and never once called an MCP tool across every run of that arm *on
+ * that corpus*.
  *
  * This is the aggregate half of the guard, and the one that catches a failure
  * mcpHealth.ts's per-run assertion cannot: a server that reports `connected`
  * and then does nothing useful, or any future variant of "the arm was named
  * serena but behaved exactly like baseline". One run with zero MCP calls means
  * nothing; N runs with zero between them means the arm's whole premise is
- * unsupported, and its numbers are baseline's numbers under another name.
+ * unsupported on that corpus, and its numbers are baseline's numbers under
+ * another name.
+ *
+ * Grouped by (arm, corpus) rather than by arm alone (GMB-173) because pooling
+ * across corpora hides exactly the failure this function exists to catch: an
+ * arm that is genuinely silent on one corpus but busy on another sums to
+ * nonzero and clears. GMB-165 measured this for real — `gmesh-configured`
+ * called g-mesh in 0/6 runs on the gin (Go) corpus while calling it in 3/3 on
+ * task-tracker-mcp (TypeScript); pooled, that arm's total is nonzero and looks
+ * fine, and the gin half never gets raised. See
+ * docs/results/v0.23.0-gmb165-what-the-scope-line-does.md §8.
+ *
+ * Deliberately NOT rolled up further to language: `TokenEconomyRun` carries
+ * `corpusId`, not the corpus's declared language (that lives in
+ * `corpora/registry.json`, resolved only via `loadRegistry()`, which is async
+ * I/O). Widening this pure, synchronous function to also resolve language
+ * would mean either threading a registry lookup through every caller
+ * (report.ts's filtering below, and any test) or accepting a second,
+ * un-testable code path. A corpus is the granularity a run actually carries;
+ * a caller that wants a language view already has registry access (see
+ * report.ts's buildCurrentHashByTaskId for the pattern) and can roll these
+ * per-corpus rows up itself.
  *
  * Counted over runs that actually recorded `mcpToolCalls` — a `undefined` is
- * unknown, and an arm with no such runs at all is simply not evaluated here
- * rather than being convicted on missing data.
+ * unknown, and an (arm, corpus) pair with no such runs at all is simply not
+ * evaluated here rather than being convicted on missing data.
  */
-export function computeSilentMcpArms(runs: TokenEconomyRun[]): { arm: Arm; runsWithData: number }[] {
-  const byArm = new Map<Arm, { runsWithData: number; mcpCalls: number }>();
+export function computeSilentMcpArms(runs: TokenEconomyRun[]): { arm: Arm; corpusId: string; runsWithData: number }[] {
+  const byArmCorpus = new Map<string, { arm: Arm; corpusId: string; runsWithData: number; mcpCalls: number }>();
   for (const run of runs) {
     // Requires a declared server, not just the count: `mcpToolCalls: 0` on
     // `baseline` is correct and expected, and must never be read as a fault.
     if (run.mcpToolCalls === undefined) continue;
     if (run.mcpServers === undefined || run.mcpServers.length === 0) continue;
-    const entry = byArm.get(run.arm) ?? { runsWithData: 0, mcpCalls: 0 };
+    const key = `${run.arm}::${run.corpusId}`;
+    const entry = byArmCorpus.get(key) ?? { arm: run.arm, corpusId: run.corpusId, runsWithData: 0, mcpCalls: 0 };
     entry.runsWithData++;
     entry.mcpCalls += run.mcpToolCalls;
-    byArm.set(run.arm, entry);
+    byArmCorpus.set(key, entry);
   }
-  return [...byArm.entries()]
-    .filter(([, { mcpCalls }]) => mcpCalls === 0)
-    .map(([arm, { runsWithData }]) => ({ arm, runsWithData }))
-    .sort((a, b) => String(a.arm).localeCompare(String(b.arm)));
+  return [...byArmCorpus.values()]
+    .filter(({ mcpCalls }) => mcpCalls === 0)
+    .map(({ arm, corpusId, runsWithData }) => ({ arm, corpusId, runsWithData }))
+    .sort((a, b) => String(a.arm).localeCompare(String(b.arm)) || a.corpusId.localeCompare(b.corpusId));
 }
 
 /** Stale-run counts grouped by taskId, sorted by taskId ascending — the "Excluded as stale" report section's data source. */

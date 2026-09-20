@@ -183,21 +183,21 @@ function printMcpUnavailableSummary(unavailable: TokenEconomyRun[]): void {
   console.log("");
 }
 
-/** The aggregate refusal: see computeSilentMcpArms for why zero-across-everything is disqualifying where zero-on-one-run is not. */
-function printSilentMcpArms(silent: { arm: string; runsWithData: number }[]): void {
+/** The aggregate refusal: see computeSilentMcpArms for why zero-across-everything-on-a-corpus is disqualifying where zero-on-one-run is not. */
+function printSilentMcpArms(silent: { arm: string; corpusId: string; runsWithData: number }[]): void {
   if (silent.length === 0) return;
 
   console.log("# Refused: arm never called an MCP tool\n");
   console.log(
-    `The arm(s) below declared an MCP server that connected, yet made zero mcp__* calls across every\n` +
-      `run that recorded a count. An arm that never uses its own tools is not measuring that tool — it is\n` +
-      `a second copy of baseline. Their runs are excluded from every table below; pass --all to include\n` +
-      `them anyway.\n`,
+    `The (arm, corpus) pair(s) below declared an MCP server that connected, yet made zero mcp__* calls\n` +
+      `across every run of that arm on that corpus that recorded a count. An arm that never uses its own\n` +
+      `tools on a corpus is not measuring that tool there — it is a second copy of baseline. Their runs\n` +
+      `are excluded from every table below; pass --all to include them anyway.\n`,
   );
-  console.log("| Arm | Runs with tool-call data | mcp__* calls |");
-  console.log("|---|---|---|");
+  console.log("| Arm | Corpus | Runs with tool-call data | mcp__* calls |");
+  console.log("|---|---|---|---|");
   for (const row of silent) {
-    console.log(`| ${row.arm} | ${row.runsWithData} | 0 |`);
+    console.log(`| ${row.arm} | ${row.corpusId} | ${row.runsWithData} | 0 |`);
   }
   console.log("");
 }
@@ -209,7 +209,7 @@ async function reportTokenEconomy(): Promise<void> {
   let runs = allRuns;
   let stale: TokenEconomyRun[] = [];
   let mcpUnavailable: TokenEconomyRun[] = [];
-  let silentArms: { arm: string; runsWithData: number }[] = [];
+  let silentArms: { arm: string; corpusId: string; runsWithData: number }[] = [];
   if (!useAll) {
     const currentHashByTaskId = await buildCurrentHashByTaskId();
     const partitioned = partitionByCurrentDef(allRuns, currentHashByTaskId);
@@ -223,13 +223,16 @@ async function reportTokenEconomy(): Promise<void> {
     runs = byMcp.available;
     mcpUnavailable = byMcp.unavailable;
 
-    // Evaluated on what survived: an arm whose only proof of life was in runs
-    // just excluded above has no proof of life. Its remaining runs go too —
-    // presenting them would put a column named after a tool next to numbers
-    // that tool never produced.
-    silentArms = computeSilentMcpArms(runs).map((r) => ({ arm: String(r.arm), runsWithData: r.runsWithData }));
-    const silentNames = new Set(silentArms.map((r) => r.arm));
-    if (silentNames.size > 0) runs = runs.filter((r) => !silentNames.has(String(r.arm)));
+    // Evaluated on what survived: an (arm, corpus) pair whose only proof of
+    // life was in runs just excluded above has no proof of life. Its
+    // remaining runs go too — presenting them would put a column named after
+    // a tool next to numbers that tool never produced on that corpus. Scoped
+    // to (arm, corpus), not arm alone (GMB-173): a busy corpus for this arm
+    // must stay in the report even when a different corpus of the same arm is
+    // silent — that is the whole point of the per-corpus split.
+    silentArms = computeSilentMcpArms(runs).map((r) => ({ arm: String(r.arm), corpusId: r.corpusId, runsWithData: r.runsWithData }));
+    const silentKeys = new Set(silentArms.map((r) => `${r.arm}::${r.corpusId}`));
+    if (silentKeys.size > 0) runs = runs.filter((r) => !silentKeys.has(`${String(r.arm)}::${r.corpusId}`));
   }
 
   printCorrectness(runs);

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { ROOT } from "./benchConfig.js";
 import type { TokenEconomyRun } from "../token-economy.js";
 import {
   aggregateGroup,
@@ -18,6 +21,12 @@ import {
 } from "./reportData.js";
 import type { Arm } from "./types.js";
 
+/** Loads one of GMB-165's real result files from docs/results/gmb165-raw/ — see the GMB-173 test below for why a real record, not a fixture, is required here. */
+function loadGmb165RawRecords(filename: string): TokenEconomyRun[] {
+  const raw = readFileSync(path.join(ROOT, "docs", "results", "gmb165-raw", filename), "utf8");
+  return JSON.parse(raw) as TokenEconomyRun[];
+}
+
 /**
  * Covers computeCategoryTokenBreakdown without spending API money — it is a
  * pure function of a run set, so the pairing/filtering rules that make its
@@ -32,6 +41,7 @@ let seq = 0;
 
 function run(overrides: {
   taskId?: string;
+  corpusId?: string;
   arm: Arm;
   repetition?: number;
   category?: TokenEconomyRun["category"];
@@ -51,7 +61,7 @@ function run(overrides: {
 }): TokenEconomyRun {
   return {
     taskId: overrides.taskId ?? `task-${seq++}`,
-    corpusId: "c",
+    corpusId: overrides.corpusId ?? "c",
     arm: overrides.arm,
     repetition: overrides.repetition ?? 1,
     timestamp: "2026-07-31T00:00:00.000Z",
@@ -369,7 +379,7 @@ test("a run whose recorded MCP server failed is partitioned out as unavailable",
 
 test("a connected server with zero calls on one run is available, not unavailable", () => {
   // An arm that had its tools and chose Grep is a real measurement. Only the
-  // whole-arm view (computeSilentMcpArms) may convict on zero.
+  // whole-(arm, corpus) view (computeSilentMcpArms) may convict on zero.
   const { available, unavailable } = partitionByMcpAvailability([
     run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
   ]);
@@ -400,16 +410,19 @@ test("computeMcpUnavailableSummary groups excluded runs by arm with the disquali
 });
 
 test("an arm that connected but never once called an MCP tool is refused", () => {
+  // Single corpus throughout (default "c" from run()) — this is the
+  // single-corpus case, and its shape must be unaffected by the GMB-173
+  // per-(arm, corpus) change: the pair just carries its corpusId now.
   const silent = computeSilentMcpArms([
     run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
     run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
     run({ arm: "gmesh-configured", mcpServers: [{ name: "g-mesh", status: "connected" }], mcpToolCalls: 2 }),
   ]);
 
-  assert.deepEqual(silent, [{ arm: "serena-configured", runsWithData: 2 }]);
+  assert.deepEqual(silent, [{ arm: "serena-configured", corpusId: "c", runsWithData: 2 }]);
 });
 
-test("one MCP call anywhere in an arm's history clears it", () => {
+test("one MCP call anywhere in an arm's history on that corpus clears it", () => {
   assert.deepEqual(
     computeSilentMcpArms([
       run({ arm: "serena-configured", mcpServers: CONNECTED, mcpToolCalls: 0 }),
@@ -429,4 +442,58 @@ test("baseline and pre-instrumentation runs are never convicted as silent MCP ar
     ]),
     [],
   );
+});
+
+/**
+ * GMB-173's discriminating case, built on the real records GMB-165 left in
+ * docs/results/gmb165-raw/ rather than an invented fixture — the acceptance
+ * criteria ask for exactly this shape: a busy TypeScript corpus mixed with a
+ * silent Go one, and the Go one must be raised rather than averaged away.
+ *
+ * `arm-c-hardened-gin.json`: `gmesh-configured` on the gin (Go) corpus, 6
+ * runs, mcpToolCalls: 0 on every single one — genuinely silent, per
+ * docs/results/v0.23.0-gmb165-what-the-scope-line-does.md §3 (arm C, "0/6").
+ * `verify-shipped-harness-ts-and-py.json`: the same arm on task-tracker-mcp
+ * (TypeScript), 3 runs, mcpToolCalls: 1 on every one — busy, per that doc's
+ * §7. Pooled by arm alone, the total is 0+1+1+1 = 3, nonzero, and the silent
+ * Go half never gets raised — which is the defect GMB-165 §8 named and this
+ * task fixes.
+ */
+test("a busy TypeScript corpus does not average away a silent Go corpus of the same arm (GMB-173, real GMB-165 records)", () => {
+  const ginSilent = loadGmb165RawRecords("arm-c-hardened-gin.json");
+  const verifyRecords = loadGmb165RawRecords("verify-shipped-harness-ts-and-py.json");
+  const ttBusy = verifyRecords.filter((r) => r.corpusId === "task-tracker-mcp");
+
+  // Sanity-check the fixture shape before trusting the assertion below: the
+  // gin file really is all-zero, and the task-tracker-mcp slice really is
+  // all-nonzero. If either drifts, the test below would stop discriminating
+  // anything and should fail loudly here instead of passing for the wrong
+  // reason.
+  assert.equal(ginSilent.length, 6);
+  assert.ok(ginSilent.every((r) => r.mcpToolCalls === 0));
+  assert.equal(ttBusy.length, 3);
+  assert.ok(ttBusy.every((r) => (r.mcpToolCalls ?? 0) > 0));
+
+  const mixed = [...ginSilent, ...ttBusy];
+
+  // Control: pooling by arm alone (the pre-fix behavior) would sum to a
+  // nonzero total and clear the arm entirely — the exact averaging-away this
+  // task exists to stop.
+  const pooledTotal = mixed.reduce((sum, r) => sum + (r.mcpToolCalls ?? 0), 0);
+  assert.ok(pooledTotal > 0, "pooled total must be nonzero for this to be the averaging-away case");
+
+  const silent = computeSilentMcpArms(mixed);
+
+  // Evidence: the fix raises the silent Go corpus specifically...
+  assert.deepEqual(
+    silent.find((r) => r.corpusId === "gin"),
+    { arm: "gmesh-configured", corpusId: "gin", runsWithData: 6 },
+  );
+  // ...and leaves the busy TypeScript corpus of the same arm alone, unlike a
+  // per-arm filter which would have dropped it too.
+  assert.equal(
+    silent.find((r) => r.corpusId === "task-tracker-mcp"),
+    undefined,
+  );
+  assert.equal(silent.length, 1);
 });
