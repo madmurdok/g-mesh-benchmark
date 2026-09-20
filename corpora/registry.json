@@ -20,5 +20,13 @@
     "ref": "v1.12.0",
     "revision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
     "language": "go"
+  },
+  {
+    "id": "ripgrep",
+    "kind": "git",
+    "repoUrl": "https://github.com/BurntSushi/ripgrep.git",
+    "ref": "15.2.0",
+    "revision": "e89fff89ac9af12e8d4ce9d5fd07beb408ca730f",
+    "language": "rust"
   }
 ]
