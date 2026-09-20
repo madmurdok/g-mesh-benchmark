@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { runAcceptanceTest } from "./testRunner.js";
+import { execFile } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { promisify } from "node:util";
+import { regressionPathsIn, runAcceptanceTest } from "./testRunner.js";
 
 /**
  * Any file that's guaranteed to exist in this repo and is cheap to read — the
@@ -76,5 +80,160 @@ test("a test-mode oracle with no testCommand fails instead of silently passing",
     const result = await runAcceptanceTest(cwd, { mode: "test" });
     assert.equal(result.passed, false);
     assert.match(result.reason, /testCommand/);
+  });
+});
+
+/**
+ * GMB-153: the regression half of a test-mode oracle is restored from HEAD so
+ * the oracle grades the agent's implementation, not the tests the agent wrote
+ * about it. The two `runAcceptanceTest` cases below are the discriminating
+ * pair the standing rule asks for - one where the mechanism must now change
+ * the verdict, one where it must not.
+ */
+
+const execFileAsync = promisify(execFile);
+
+/** A clone-shaped fixture: a real git repo with one committed test file. */
+async function withGitCwd(committed: string, fn: (cwd: string) => Promise<void>): Promise<void> {
+  await withTempCwd(async (cwd) => {
+    await execFileAsync("git", ["-C", cwd, "init", "-q"]);
+    await execFileAsync("git", ["-C", cwd, "config", "user.email", "t@example.com"]);
+    await execFileAsync("git", ["-C", cwd, "config", "user.name", "t"]);
+    await mkdir(path.join(cwd, "tests"), { recursive: true });
+    await writeFile(path.join(cwd, "tests/regression.test.ts"), committed);
+    await execFileAsync("git", ["-C", cwd, "add", "tests/regression.test.ts"]);
+    await execFileAsync("git", ["-C", cwd, "commit", "-q", "-m", "corpus"]);
+    await fn(cwd);
+  });
+}
+
+test("regressionPathsIn: picks the real corpus command's regression files and drops its holdout", () => {
+  const command =
+    "npm ci --no-audit --no-fund --silent && npx vitest run tests/lifecycle.test.ts " +
+    "tests/status.test.ts tests/ownership.test.ts tests/__bench_holdout__/release-cancelled.test.ts";
+  assert.deepEqual(regressionPathsIn(command, ["tests/__bench_holdout__/release-cancelled.test.ts"]), [
+    "tests/lifecycle.test.ts",
+    "tests/status.test.ts",
+    "tests/ownership.test.ts",
+  ]);
+});
+
+test("regressionPathsIn: flags and bare package names are never mistaken for paths", () => {
+  assert.deepEqual(regressionPathsIn("npm ci --no-audit --silent && npx vitest run", []), []);
+});
+
+test("a broken test the AGENT added to a tracked file no longer fails the oracle", async () => {
+  await withGitCwd('process.exit(0);\n', async (cwd) => {
+    // Stand-in for the agent appending its own it(...) and getting it wrong -
+    // exactly what all three arms did on tt-implement-release-cancelled-task-bug.
+    await writeFile(path.join(cwd, "tests/regression.test.ts"), 'process.exit(1);\n');
+
+    const result = await runAcceptanceTest(cwd, {
+      mode: "test",
+      holdoutFiles: {},
+      testCommand: "node tests/regression.test.ts",
+    });
+
+    assert.equal(result.passed, true, "the committed version exits 0; the agent's edit must not be graded");
+  });
+});
+
+test("a broken HOLDOUT still fails the oracle - the restore must not blunt the grader", async () => {
+  await withGitCwd('process.exit(0);\n', async (cwd) => {
+    const result = await runAcceptanceTest(cwd, {
+      mode: "test",
+      holdoutFiles: { "tests/__bench_holdout__/acceptance.test.ts": HOLDOUT_SRC },
+      // The holdout copied in is a vitest file that node cannot run, so this
+      // exits non-zero for a reason that comes from the holdout, not the agent.
+      testCommand: "node tests/regression.test.ts && node tests/__bench_holdout__/acceptance.test.ts",
+    });
+
+    assert.equal(result.passed, false);
+  });
+});
+
+test("a cwd that is not a git repo is graded anyway, with the failure to restore reported", async () => {
+  await withTempCwd(async (cwd) => {
+    await mkdir(path.join(cwd, "tests"), { recursive: true });
+    await writeFile(path.join(cwd, "tests/regression.test.ts"), 'process.exit(0);\n');
+
+    const result = await runAcceptanceTest(cwd, {
+      mode: "test",
+      testCommand: "node tests/regression.test.ts",
+    });
+
+    assert.equal(result.passed, true, "a git failure must not cost a run its verdict");
+    assert.match(result.reason, /could not restore tests\/regression\.test\.ts/);
+  });
+});
+
+/**
+ * GMB-155: a `seedFiles` destination is excluded from the GMB-153 restore
+ * list the same way a holdout destination is, and — for the narrower case
+ * where the seed's dest is itself named in `testCommand` — re-applied so
+ * grading sees the seeded content rather than whatever the corpus tracks at
+ * HEAD. See testRunner.ts's `seedFilesNamedInCommand` doc comment for why the
+ * re-apply exists on top of the exclusion.
+ */
+
+// Repo root computed the same way fixtureFiles.ts/testRunner.ts resolve their
+// own ROOT — this test needs it to point `seedFiles` at a real, repo-relative
+// src path without adding a permanent fixture file to the repo for one test.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+test("a tracked seeded file named in testCommand keeps its seeded content, not HEAD's, through grading", async (t) => {
+  const seedSrcDir = await mkdtemp(path.join(tmpdir(), "gmesh-bench-seed-src-"));
+  t.after(() => rm(seedSrcDir, { recursive: true, force: true }));
+  const seedSrcAbsPath = path.join(seedSrcDir, "seed.js");
+  await writeFile(seedSrcAbsPath, "process.exit(0);\n");
+  // Relative to REPO_ROOT, same convention `seedFiles`/`holdoutFiles` use —
+  // it happens to climb back out to a tmpdir via "..", which `copyFixtureFiles`
+  // resolves exactly like any other relative src.
+  const seedSrcRelPath = path.relative(REPO_ROOT, seedSrcAbsPath);
+
+  // HEAD carries the "buggy" version (exit 1) — if this ever got restored
+  // from HEAD instead of staying seeded, the test command below would fail.
+  await withGitCwd("process.exit(1);\n", async (cwd) => {
+    // Models what token-economy.ts's resolveRunCwd already did before the
+    // agent's turn: the seed overwrote the tracked file on disk, uncommitted.
+    await writeFile(path.join(cwd, "tests/regression.test.ts"), "process.exit(0);\n");
+
+    const result = await runAcceptanceTest(
+      cwd,
+      { mode: "test", testCommand: "node tests/regression.test.ts" },
+      { "tests/regression.test.ts": seedSrcRelPath },
+    );
+
+    assert.equal(result.passed, true, "the seeded (exit 0) content must survive grading, not HEAD's exit 1");
+    assert.equal(
+      await readFile(path.join(cwd, "tests/regression.test.ts"), "utf-8"),
+      "process.exit(0);\n",
+      "the file must end grading in its seeded state",
+    );
+  });
+});
+
+test("a seed whose dest is NOT named in testCommand is left untouched by grading", async (t) => {
+  const seedSrcDir = await mkdtemp(path.join(tmpdir(), "gmesh-bench-seed-src-"));
+  t.after(() => rm(seedSrcDir, { recursive: true, force: true }));
+  const seedSrcAbsPath = path.join(seedSrcDir, "seed.txt");
+  await writeFile(seedSrcAbsPath, "seed content\n");
+  const seedSrcRelPath = path.relative(REPO_ROOT, seedSrcAbsPath);
+
+  await withGitCwd("process.exit(0);\n", async (cwd) => {
+    // A seed at a path the test command never mentions — e.g. a diagnostics
+    // fixture the agent reads but the test suite doesn't touch. The agent
+    // (if it had Edit/Write) could have changed it; grading must not revert
+    // or re-seed it either way.
+    await writeFile(path.join(cwd, "unrelated-seed.txt"), "agent edited this\n");
+
+    const result = await runAcceptanceTest(
+      cwd,
+      { mode: "test", testCommand: "node tests/regression.test.ts" },
+      { "unrelated-seed.txt": seedSrcRelPath },
+    );
+
+    assert.equal(result.passed, true);
+    assert.equal(await readFile(path.join(cwd, "unrelated-seed.txt"), "utf-8"), "agent edited this\n");
   });
 });

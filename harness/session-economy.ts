@@ -24,7 +24,7 @@ import {
 } from "./lib/corpusResolver.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
-import { checkOracle } from "./lib/oracleCheck.js";
+import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { renderSessionHtmlReport } from "./lib/sessionReport.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
@@ -36,6 +36,7 @@ import {
   combinedBudgetStatus,
   groupArmsByCwd,
   taskEditsCode,
+  taskNeedsOwnClone,
   type RunStatus,
   type TokenEconomyRun,
 } from "./token-economy.js";
@@ -303,18 +304,23 @@ async function runSessionChain(
   for (const [index, task] of tasks.entries()) {
     const sequenceIndex = index + 1;
 
-    // oracle.mode:"test" tasks are graded on edits made to the run cwd (see
-    // token-economy.ts's taskEditsCode()/gradeRun()), but a chain's cwd is one
-    // warm checkout shared and reused across the whole chain (and across future
-    // runs via resolveWarm()) — letting such a task edit it would corrupt every
-    // task after it, in this chain and later ones. Skipped rather than aborting
-    // the chain: unlike a budget overrun or a broken session invariant, this
-    // isn't a sign anything is wrong, just a task shape this experiment can't
-    // measure, so the rest of the corpus's tasks still run normally.
-    if (taskEditsCode(task)) {
+    // oracle.mode:"test" tasks are graded on edits made to the run cwd, and a
+    // seedFiles task writes its fixture onto disk before the agent's turn
+    // even without Edit/Write (see token-economy.ts's taskEditsCode()/
+    // taskNeedsOwnClone()/gradeRun()) — but a chain's cwd is one warm checkout
+    // shared and reused across the whole chain (and across future runs via
+    // resolveWarm()), so either kind would corrupt every task after it, in
+    // this chain and later ones: an edit stays on disk for the next task to
+    // trip over, and a seed would leak into a later task's corpus. Skipped
+    // rather than aborting the chain: unlike a budget overrun or a broken
+    // session invariant, this isn't a sign anything is wrong, just a task
+    // shape this experiment can't measure, so the rest of the corpus's tasks
+    // still run normally.
+    if (taskNeedsOwnClone(task)) {
+      const reason = taskEditsCode(task) ? 'oracle.mode "test" task' : "seedFiles task";
       console.log(
         `  [${corpusId}] ${arm} rep ${sessionRepetition}: ${sequenceIndex}/${sessionLength} ${task.id} — ` +
-          `skipping (oracle.mode "test" task; can't run inside a shared chained session).`,
+          `skipping (${reason}; can't run inside a shared chained session).`,
       );
       runs.push(
         skippedRun(task, corpusId, arm, sessionRepetition, timestamp, sequenceIndex, sessionLength, corpusRevision),
@@ -415,6 +421,7 @@ async function runSessionChain(
       resultText: result.resultText,
       oraclePassed: oracle?.passed ?? false,
       judgeReason: oracle?.reason,
+      oracleMissed: oracle ? reportableMissed(oracle.passed, oracle.missed) : undefined,
       status,
       sequenceIndex,
       sessionLength,

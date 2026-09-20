@@ -13,6 +13,27 @@ export interface OracleCheckResult {
   judgeCostUsd?: number;
 }
 
+/**
+ * What of an oracle's `missed` list is worth writing onto the run record, or
+ * `undefined` when nothing is.
+ *
+ * Two exclusions, both deliberate. A **passing** run's `missed` is not a
+ * defect: `minMatches` lets a pool pass with entries outstanding, so recording
+ * them would put a "what went wrong" list on a record where nothing did. An
+ * **empty** list says only that the mode has no candidates to miss (judge and
+ * test always return `[]`), and a field present on every record to say nothing
+ * is the byte cost `files`/`excludedReferences` avoid on the g-mesh side for
+ * the same reason.
+ *
+ * One helper rather than the rule inlined at each write site, because there
+ * are two of them (token-economy.ts and session-economy.ts) and a rule
+ * duplicated in two places is a rule that will disagree with itself.
+ */
+export function reportableMissed(passed: boolean, missed: readonly string[] | undefined): string[] | undefined {
+  if (passed || !missed || missed.length === 0) return undefined;
+  return [...missed];
+}
+
 function checkSubstring(resultText: string, oracle: Oracle): OracleCheckResult {
   const missed = [...(oracle.mustMentionFiles ?? []), ...(oracle.mustMentionSymbols ?? [])].filter(
     (expected) => !resultText.includes(expected),

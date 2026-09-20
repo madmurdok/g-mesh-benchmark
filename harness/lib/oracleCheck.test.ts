@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checkOracle } from "./oracleCheck.js";
+import { checkOracle, reportableMissed } from "./oracleCheck.js";
 import type { Oracle } from "./types.js";
 
 /**
@@ -151,4 +151,30 @@ test("substring mode is untouched by the pool negation guard (v1 behavior preser
   const oracle: Oracle = { mustMentionFiles: ["src/foo.ts"] };
   const result = await checkOracle("Not src/foo.ts, that's unrelated.", oracle);
   assert.equal(result.passed, true, "substring mode has no negation awareness by design");
+});
+
+/**
+ * reportableMissed is the single rule both run-record write sites share for
+ * whether a `missed` list is worth persisting (GMB-154). The three tests
+ * below pin the two exclusions and the one case that survives them.
+ */
+
+test("reportableMissed: a failing run's non-empty missed list is what gets recorded", () => {
+  assert.deepEqual(reportableMissed(false, ["a.ts", "b.ts"]), ["a.ts", "b.ts"]);
+});
+
+test("reportableMissed: a passing run reports nothing, even with entries outstanding (minMatches lets a pool pass short)", () => {
+  assert.equal(reportableMissed(true, ["b.ts"]), undefined);
+});
+
+test("reportableMissed: an empty or absent list is absent, not [] — judge and test modes always return []", () => {
+  assert.equal(reportableMissed(false, []), undefined);
+  assert.equal(reportableMissed(false, undefined), undefined);
+});
+
+test("reportableMissed: the returned array is a copy, so a record cannot alias the oracle's own list", () => {
+  const missed = ["a.ts"];
+  const reported = reportableMissed(false, missed);
+  missed.push("b.ts");
+  assert.deepEqual(reported, ["a.ts"]);
 });

@@ -27,13 +27,14 @@ import {
   warmGmeshIndex,
   writeRepoMap,
 } from "./lib/corpusResolver.js";
+import { copyFixtureFiles } from "./lib/fixtureFiles.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
 import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { generateNarrative } from "./lib/narrative.js";
-import { checkOracle } from "./lib/oracleCheck.js";
+import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
 import { formatPhaseSummary, phaseProfileJson, timePhase } from "./lib/phaseTimer.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
@@ -216,8 +217,33 @@ export interface TokenEconomyRun {
   judgeCostUsd: number;
   resultText: string;
   oraclePassed: boolean;
-  /** Judge's one-line rationale, judge mode only — kept so a judge verdict can be audited after the fact. */
+  /**
+   * Why the oracle ruled as it did, for the two modes that can say so in
+   * prose: judge mode's one-line rationale, and test mode's tail of the test
+   * command's own output. Named for the first of those and outgrown it — the
+   * name is kept because renaming it would orphan every record already
+   * written, but read it as "the oracle's reason", not "the judge's".
+   *
+   * Absent for pool and substring modes, which have no prose to give. Those
+   * report through `oracleMissed` instead.
+   */
   judgeReason?: string;
+  /**
+   * Which `candidatePool`/`mustMention*` entries the answer failed to carry —
+   * pool and substring modes only, and only when at least one was missed.
+   *
+   * `checkOracle` has always computed this (`OracleCheckResult.missed`) and
+   * both write sites used to drop it, which left a pool failure with no field
+   * at all saying what went wrong: the eight `ex-find-callers-mutateelement`
+   * failures in the 2026-08-26 five-repetition sweep could only be attributed
+   * by reopening their transcripts. Absent rather than `[]` on a pass, so a
+   * passing record does not grow bytes to say nothing was missed.
+   *
+   * A `missed` list on a *passing* pool record is not a contradiction worth
+   * storing either: `minMatches` lets a pool pass with entries outstanding,
+   * and those are the pool doing its job, not a defect to report.
+   */
+  oracleMissed?: string[];
   status: RunStatus;
 }
 
@@ -444,10 +470,47 @@ export function taskEditsCode(task: BenchTask): boolean {
   return task.oracle.mode === "test";
 }
 
+/** Whether `task` carries any `seedFiles` — split out only so `taskNeedsOwnClone` reads as one predicate over two reasons. */
+function hasSeedFiles(task: BenchTask): boolean {
+  return task.seedFiles !== undefined && Object.keys(task.seedFiles).length > 0;
+}
+
+/**
+ * Whether a task needs a throwaway clone all to itself for this one (task,
+ * arm, rep) rather than one of this harness's shared/reused checkouts
+ * (`resolveWarm`'s cache, or a per-corpus `-configured` clone reused across
+ * every read-only task).
+ *
+ * Broader than `taskEditsCode`: an edit task needs it because it writes to the
+ * clone, but a `seedFiles` task needs it too even when it never touches
+ * Edit/Write, because `copyFixtureFiles` writes the seed onto disk before the
+ * agent's turn — and a shared clone is exactly the thing every later task and
+ * repetition reuses, so a seed left there would leak into all of them.
+ * `checkout --force` (resolveWarm's refresh mechanism) resets tracked files
+ * but never removes untracked ones, so nothing later would ever clean it back
+ * up.
+ *
+ * Exported for session-economy.ts, same reason `taskEditsCode` already was: a
+ * chained session shares one warm cwd across its whole task list, so neither
+ * kind of task can run inside it, and both harnesses have to agree on which
+ * tasks those are rather than drift two copies of the predicate.
+ */
+export function taskNeedsOwnClone(task: BenchTask): boolean {
+  return taskEditsCode(task) || hasSeedFiles(task);
+}
+
 /** The pass/fail verdict for one run, normalized across the two grading paths (see gradeRun). */
 interface GradingOutcome {
   passed: boolean;
   reason?: string;
+  /**
+   * Pool/substring modes' unmatched candidates, already filtered by
+   * `reportableMissed` — so this is empty-or-absent exactly when there is
+   * nothing to report, and the two write sites can pass it through unexamined.
+   * Test mode has no candidate list and leaves it undefined; its diagnosis is
+   * in `reason`.
+   */
+  missed?: string[];
   /** Real API spend for grading: judge mode only; test mode runs a local process and spends nothing. */
   judgeCostUsd: number;
 }
@@ -465,11 +528,16 @@ async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promi
     // installs the corpus's dependencies into the throwaway clone before the
     // test runner starts (excalidraw's `yarn install` alone is ~58s on a cold
     // clone), which is real sweep wall-clock spent outside every arm call.
-    const verdict = await timePhase("grade.test", () => runAcceptanceTest(cwd, task.oracle));
+    const verdict = await timePhase("grade.test", () => runAcceptanceTest(cwd, task.oracle, task.seedFiles));
     return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
   }
   const verdict = await checkOracle(resultText, task.oracle);
-  return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: verdict.judgeCostUsd ?? 0 };
+  return {
+    passed: verdict.passed,
+    reason: verdict.reason,
+    missed: reportableMissed(verdict.passed, verdict.missed),
+    judgeCostUsd: verdict.judgeCostUsd ?? 0,
+  };
 }
 
 async function runArm(
@@ -556,6 +624,7 @@ async function runArm(
     resultText: result.resultText,
     oraclePassed: oracle?.passed ?? false,
     judgeReason: oracle?.reason,
+    oracleMissed: oracle?.missed,
     status,
   };
 }
@@ -716,23 +785,102 @@ function shouldIncludeKungfuConfiguredArm(): boolean {
 }
 
 /**
+ * The warm-up/map functions `resolveMapConfigured`/`resolveRunCwd` call,
+ * injectable so a test can observe call order (e.g. "seeding happened before
+ * warming") with a spy instead of actually spawning the g-mesh binary. Real
+ * callers omit this and get the real functions — see `defaultRunCwdDeps`.
+ */
+export interface RunCwdDeps {
+  warmGmeshIndex: (cwd: string) => Promise<void>;
+  writeRepoMap: (cwd: string, tokens: number) => Promise<void>;
+}
+
+const defaultRunCwdDeps: RunCwdDeps = { warmGmeshIndex, writeRepoMap };
+
+/**
  * A ready-to-run `gmesh-configured-map` cwd: the same throwaway clone and
  * CLAUDE.md guidance `gmesh-configured` gets, plus a warm index and a generated
  * repo map in `AGENTS.md`.
  *
- * The three steps are ordered, not merely grouped. `g-mesh map` reads
- * `index.db` off disk and refuses to emit a partial map before the bulk walk
- * has finished, so the index has to be warm *first* — and both must be done
- * before the first measured call, or the map's generation cost would land
- * inside a run's turn count. Pulled out of main() because the warm-up block and
- * the per-corpus loop both need the identical sequence, and a map arm that got
- * two subtly different setups would be two different arms.
+ * The steps are ordered, not merely grouped. A task's `seedFiles` (if any) has
+ * to land *before* the index is warmed and the map is generated, or both
+ * would describe a tree the agent never actually sees, and whatever the
+ * daemon later catches up on would land inside a measured run instead of in
+ * setup. `g-mesh map` also reads `index.db`
+ * off disk and refuses to emit a partial map before the bulk walk has
+ * finished, so the index has to be warm before the map regardless. Pulled out
+ * of main() because the warm-up block, the per-corpus loop, and
+ * `resolveRunCwd` below all need the identical sequence, and a map arm that
+ * got two subtly different setups would be two different arms.
  */
-async function resolveMapConfigured(corpus: CorpusEntry): Promise<string> {
+async function resolveMapConfigured(
+  corpus: CorpusEntry,
+  seedFiles?: Record<string, string>,
+  deps: RunCwdDeps = defaultRunCwdDeps,
+): Promise<string> {
   const dest = await resolveConfigured(corpus, GMESH_MAP_CONFIGURED_CLAUDE_MD);
+  await copyFixtureFiles(dest, seedFiles);
   console.log(`[${corpus.id}] warming g-mesh index for the gmesh-configured-map checkout...`);
-  await warmGmeshIndex(dest);
-  await writeRepoMap(dest, mapTokenBudget());
+  await deps.warmGmeshIndex(dest);
+  await deps.writeRepoMap(dest, mapTokenBudget());
+  return dest;
+}
+
+/**
+ * Resolves the per-run cwd for one (arm, task) — the same branch that used to
+ * live inline in main()'s per-run loop (see the git history around GMB-155),
+ * pulled out so it's independently testable and so `task.seedFiles` has one
+ * place to be applied correctly for every arm rather than four ad hoc call
+ * sites.
+ *
+ * The order is fixed for every branch: resolve the clone (`resolveFresh` /
+ * `resolveConfigured`) → `copyFixtureFiles` the task's seeds into it → warm
+ * the g-mesh index / write the repo map, for whichever arms need those. Seeds
+ * before warm for the same reason `resolveMapConfigured` puts them there: an
+ * index or map built before the seed lands describes a tree the agent never
+ * sees. For a task with no `seedFiles`, `copyFixtureFiles` is a no-op and the
+ * order and calls made are exactly what they were before this function
+ * existed.
+ *
+ * `deps` exists only for tests — see `RunCwdDeps`'s doc comment.
+ */
+export async function resolveRunCwd(
+  arm: Arm,
+  corpus: CorpusEntry,
+  task: BenchTask,
+  deps: RunCwdDeps = defaultRunCwdDeps,
+): Promise<string> {
+  if (arm === "gmesh-configured") {
+    // Unlike the shared configuredCwd in main(), this clone is fresh every
+    // single (task, rep) - never free after the first run, since every rep
+    // needs the corpus back in its unfixed state. Warming here pays a real
+    // g-mesh init walk every rep, front-loaded into setup instead of leaking
+    // into the measured call's turn count.
+    const dest = await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD);
+    await copyFixtureFiles(dest, task.seedFiles);
+    console.log(`  [${task.id}] warming g-mesh index for this rep's edit sandbox...`);
+    await deps.warmGmeshIndex(dest);
+    return dest;
+  }
+  if (arm === "gmesh-configured-map") {
+    // Same per-rep freshness requirement as gmesh-configured above, with the
+    // map regenerated per rep too: this clone starts from the unfixed corpus
+    // every time, so a map (or a seed) carried over from another clone would
+    // describe a different tree.
+    return resolveMapConfigured(corpus, task.seedFiles, deps);
+  }
+  if (arm === "kungfu-configured") {
+    const dest = await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD);
+    await copyFixtureFiles(dest, task.seedFiles);
+    return dest;
+  }
+  if (arm === "serena-configured") {
+    const dest = await resolveConfigured(corpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON);
+    await copyFixtureFiles(dest, task.seedFiles);
+    return dest;
+  }
+  const dest = await resolveFresh(corpus);
+  await copyFixtureFiles(dest, task.seedFiles);
   return dest;
 }
 
@@ -1182,13 +1330,14 @@ async function main() {
       console.log(`[${corpus.id}] warming g-mesh index for the bare gmesh arm's shared checkout...`);
       await warmGmeshIndex(cwd);
     }
-    // The shared per-corpus clones below exist only for read-only tasks:
-    // an edit task resolves its own clone per (task, arm, rep) instead. Skip
-    // them entirely when this corpus is running edit tasks only, or a run
-    // naming just `ex-implement-...` would pay for a full extra excalidraw
-    // clone (now once per default run, since gmesh-configured is no longer
-    // opt-in) and never read it.
-    const hasReadOnlyTask = tasks.some((t) => !taskEditsCode(t));
+    // The shared per-corpus clones below exist only for tasks that can safely
+    // reuse a clone across tasks/reps: an edit task, or a task carrying
+    // seedFiles, resolves its own clone per (task, arm, rep) instead (see
+    // taskNeedsOwnClone). Skip them entirely when this corpus has no task
+    // that can use them, or a run naming just `ex-implement-...` would pay for
+    // a full extra excalidraw clone (now once per default run, since
+    // gmesh-configured is no longer opt-in) and never read it.
+    const hasReadOnlyTask = tasks.some((t) => !taskNeedsOwnClone(t));
     // kungfu writes a .kungfu/ index directory into its cwd — unlike g-mesh,
     // which indexes into ~/.g-mesh, never the project dir. Running it against
     // the shared `cwd` above would plant that directory inside the live,
@@ -1254,49 +1403,28 @@ async function main() {
         const armCwds: string[] = [];
         for (const arm of arms) {
           // A task graded by `mode: "test"` hands the agent Edit/Write, so its
-          // cwd is about to be modified. The shared `cwd` above is either the
-          // live registered checkout (kind=local) or a cache reused by every
-          // other task in this run — writing into either would corrupt the rest
-          // of the benchmark, and for kind=local, the user's actual working
-          // tree. Same reason kungfu/gmesh-configured take a throwaway clone,
-          // except this one can't be shared: each (task, arm, rep) needs the
-          // corpus back in its unfixed state, so the clone is per run.
+          // cwd is about to be modified; a task carrying `seedFiles` writes a
+          // fixture onto disk before the agent's turn even without Edit/Write.
+          // Either way the shared `cwd` above is either the live registered
+          // checkout (kind=local) or a cache reused by every other task in
+          // this run — writing into either would corrupt the rest of the
+          // benchmark, and for kind=local, the user's actual working tree.
+          // Same reason kungfu/gmesh-configured take a throwaway clone, except
+          // this one can't be shared: each (task, arm, rep) needs the corpus
+          // back in its unfixed state, so the clone is per run.
           //
           // A *-configured arm needs its CLAUDE.md in that per-run clone too,
-          // which is why this branches on the arm rather than handing every
-          // edit task a bare resolveFresh(). It used to short-circuit on
+          // which is why resolveRunCwd branches on the arm rather than handing
+          // every such task a bare resolveFresh(). It used to short-circuit on
           // taskEditsCode() alone, so gmesh-configured silently ran with no
           // CLAUDE.md at all on exactly the category where the guidance
           // matters most — i.e. it was bare gmesh under another name. Note
           // these deliberately do NOT reuse the shared per-corpus
-          // configuredCwd/kungfuConfiguredCwd below: those are for read-only
-          // tasks, and an edit task must start from the unfixed corpus every
-          // repetition.
-          const armCwd = taskEditsCode(task)
-            ? arm === "gmesh-configured"
-              ? await (async () => {
-                  // Unlike the shared configuredCwd above, this clone is
-                  // fresh every single (task, rep) - never free after the
-                  // first run, since every rep needs the corpus back in its
-                  // unfixed state. Warming here pays a real g-mesh init walk
-                  // every rep, front-loaded into setup instead of leaking
-                  // into the measured call's turn count.
-                  const dest = await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD);
-                  console.log(`  [${task.id}] warming g-mesh index for this rep's edit sandbox...`);
-                  await warmGmeshIndex(dest);
-                  return dest;
-                })()
-              : arm === "gmesh-configured-map"
-                // Same per-rep freshness requirement as gmesh-configured above,
-                // with the map regenerated per rep too: an edit task's clone
-                // starts from the unfixed corpus every time, so a map carried
-                // over from another clone would describe a different tree.
-                ? await resolveMapConfigured(corpus)
-              : arm === "kungfu-configured"
-                ? await resolveConfigured(corpus, KUNGFU_CONFIGURED_CLAUDE_MD)
-                : arm === "serena-configured"
-                  ? await resolveConfigured(corpus, undefined, SERENA_CONFIGURED_SETTINGS_JSON)
-                  : await resolveFresh(corpus)
+          // configuredCwd/kungfuConfiguredCwd below: those are for tasks that
+          // can share a clone, and this one must start from the unfixed
+          // corpus every repetition.
+          const armCwd = taskNeedsOwnClone(task)
+            ? await resolveRunCwd(arm, corpus, task)
             : (ownCloneCwds.get(arm) ??
               (arm === "gmesh-configured" && configuredCwd !== undefined
                 ? configuredCwd
@@ -1309,8 +1437,14 @@ async function main() {
                     : cwd));
           // Logged (and left on disk) so a surprising verdict can be examined
           // afterwards — the agent's actual diff is the only real evidence of
-          // what it did, and it lives nowhere else.
-          if (taskEditsCode(task)) console.log(`  edit sandbox (${arm}): ${armCwd}`);
+          // what it did, and for a seeded task the seed itself lives nowhere
+          // else either. The reason names which of taskNeedsOwnClone's two
+          // triggers applies, since "edit sandbox" would be misleading for a
+          // read-only task that only got its own clone for a seed.
+          if (taskNeedsOwnClone(task)) {
+            const reason = taskEditsCode(task) ? "edit" : "seed";
+            console.log(`  ${reason} sandbox (${arm}): ${armCwd}`);
+          }
           armCwds.push(armCwd);
         }
 
