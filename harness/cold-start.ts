@@ -3,13 +3,13 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveFresh } from "./lib/corpusResolver.js";
+import { LANGUAGE_EXTENSIONS } from "./lib/language.js";
 import { connectMcpClient } from "./lib/mcpClient.js";
 import { gmeshBinaryPath } from "./lib/mcpConfig.js";
 import type { CorpusEntry } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTLINE_TOOL = "get_file_outline";
-const INDEXABLE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
 // Mirrors the skip-list g-mesh's own bulk-index walk uses (see g-mesh/README.md).
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", ".claude"]);
 
@@ -23,14 +23,27 @@ interface ColdStartRun {
   totalDurationMs: number;
 }
 
-interface CodeStats {
+export interface CodeStats {
   locCount: number;
   fileCount: number;
   /** Project-relative path of one indexable file, used as the get_file_outline target. */
   sampleRelPath: string | null;
 }
 
-async function walkCodeStats(rootDir: string): Promise<CodeStats> {
+/**
+ * Walks `rootDir` counting only files whose extension belongs to `corpus`'s
+ * declared language (lib/language.ts's `LANGUAGE_EXTENSIONS`) — GMB-164:
+ * before this was per-corpus, the walk used a hardcoded TS/JS extension list
+ * regardless of what the corpus actually was, so a Go corpus silently counted
+ * zero indexable files and read as a *fast* cold start rather than as no
+ * measurement at all.
+ *
+ * Exported for cold-start.test.ts — everything else in this file needs a real
+ * g-mesh binary and a live corpus checkout, so this is the one piece worth
+ * testing in isolation.
+ */
+export async function walkCodeStats(rootDir: string, corpus: CorpusEntry): Promise<CodeStats> {
+  const indexableExtensions = new Set(LANGUAGE_EXTENSIONS[corpus.language]);
   let locCount = 0;
   let fileCount = 0;
   let sampleRelPath: string | null = null;
@@ -43,7 +56,7 @@ async function walkCodeStats(rootDir: string): Promise<CodeStats> {
         await walk(path.join(dir, entry.name));
         continue;
       }
-      if (!INDEXABLE_EXTENSIONS.has(path.extname(entry.name))) continue;
+      if (!indexableExtensions.has(path.extname(entry.name))) continue;
 
       const abs = path.join(dir, entry.name);
       const content = await readFile(abs, "utf8");
@@ -70,7 +83,7 @@ async function measureColdStart(corpus: CorpusEntry, timestamp: string): Promise
   const cloneDurationMs = performance.now() - cloneStart;
 
   try {
-    const stats = await walkCodeStats(dir);
+    const stats = await walkCodeStats(dir, corpus);
     if (!stats.sampleRelPath) {
       console.warn(`[${corpus.id}] no indexable files found in fresh checkout; skipping.`);
       return null;
@@ -140,4 +153,9 @@ async function main() {
   console.log(`Wrote ${runs.length} run records to ${outPath}`);
 }
 
-main();
+// Guarded so cold-start.test.ts can import walkCodeStats() without running
+// the whole binary-check/registry/network flow as a module-load side effect
+// — same entrypoint guard token-economy.ts's main() already uses.
+if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

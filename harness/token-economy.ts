@@ -40,7 +40,7 @@ import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
-import type { Arm, BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
+import type { Arm, BenchTask, CorpusEntry, CorpusLanguage, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 /**
@@ -521,14 +521,21 @@ interface GradingOutcome {
  * cwd, every other mode by text-checking the answer. The two produce
  * deliberately different shapes — see lib/testRunner.ts for why they aren't one
  * function — so they're normalized here, at the single point runArm consumes.
+ *
+ * `corpusLanguage` is this task's corpus's own declared `CorpusEntry.language`
+ * (GMB-164) — threaded through to `runAcceptanceTest` so it recognizes the
+ * right testCommand path extensions for this corpus instead of a TS/JS-shaped
+ * guess.
  */
-async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promise<GradingOutcome> {
+async function gradeRun(cwd: string, resultText: string, task: BenchTask, corpusLanguage: CorpusLanguage): Promise<GradingOutcome> {
   if (taskEditsCode(task)) {
     // Timed as its own phase because this is not a cheap assertion check: it
     // installs the corpus's dependencies into the throwaway clone before the
     // test runner starts (excalidraw's `yarn install` alone is ~58s on a cold
     // clone), which is real sweep wall-clock spent outside every arm call.
-    const verdict = await timePhase("grade.test", () => runAcceptanceTest(cwd, task.oracle, task.seedFiles));
+    const verdict = await timePhase("grade.test", () =>
+      runAcceptanceTest(cwd, task.oracle, task.seedFiles, corpusLanguage),
+    );
     return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
   }
   const verdict = await checkOracle(resultText, task.oracle);
@@ -544,6 +551,7 @@ async function runArm(
   cwd: string,
   task: BenchTask,
   corpusId: string,
+  corpusLanguage: CorpusLanguage,
   arm: Arm,
   repetition: number,
   timestamp: string,
@@ -573,7 +581,7 @@ async function runArm(
   // reason minus the money: an agent that errored out or ran out of budget
   // mid-edit may well have left the corpus half-edited, and grading that says
   // nothing about the arm.
-  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task) : undefined;
+  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task, corpusLanguage) : undefined;
   const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
   const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
   if (status === "budget_exceeded" && result.status === "ok") {
@@ -1470,7 +1478,7 @@ async function main() {
         try {
           await mapWithConcurrency(lanes, armConcurrency, async (lane) => {
             for (const i of lane) {
-              groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, arms[i] as Arm, rep, timestamp, {
+              groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, corpus.language, arms[i] as Arm, rep, timestamp, {
                 serena: serenaRevision,
                 corpus: corpusRevision,
                 gmesh: gmeshVersion,
