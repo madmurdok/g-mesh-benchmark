@@ -1,0 +1,166 @@
+[
+  {
+    "id": "gin-find-impl-render",
+    "kind": "find_implementations",
+    "category": "lookup",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "Render",
+      "file": "render/render.go"
+    },
+    "prompt": "In this repository, there's an interface responsible for writing a handler's response body to the wire and setting its Content-Type header - every response format the framework supports (JSON, XML, HTML, YAML, and so on) is written through it. Go has no `implements` keyword, so nothing in an implementing type's own text names this interface explicitly. Find every type in the whole repository that satisfies it, and report each type name and the file it's declared in - don't stop at the first package you find some in.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "render/json.go",
+        "render/html.go",
+        "render/xml.go",
+        "render/reader.go",
+        "render/protobuf.go",
+        "render/yaml.go",
+        "render/msgpack.go",
+        "render/data.go",
+        "render/bson.go",
+        "render/text.go",
+        "render/redirect.go",
+        "render/toml.go",
+        "context_test.go"
+      ],
+      "minMatches": 8
+    }
+  },
+  {
+    "id": "gin-ambiguous-binding",
+    "kind": "find_definition",
+    "category": "ambiguous-name",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "Binding",
+      "file": "binding/binding.go"
+    },
+    "prompt": "In this repository, there's an interface named Binding used for extracting request data (JSON body, form fields, query parameters, and so on) into a Go struct. Find where it is declared. If it turns out to be declared in more than one place, report every location.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": [
+        "Binding"
+      ],
+      "mustMentionFiles": [
+        "binding/binding.go",
+        "binding/binding_nomsgpack.go"
+      ]
+    }
+  },
+  {
+    "id": "gin-scenario-abort-callers",
+    "kind": "find_callers",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "Abort",
+      "file": "context.go"
+    },
+    "prompt": "In this repository, I'm about to change the signature of the request-context method that stops any remaining handlers in the chain from running (the one you'd call from an authorization middleware after a check fails) - for example, giving it a reason parameter. Before making the change, find that method and list every function elsewhere in the codebase's own source (not tests) that calls it directly, so I know what call sites need updating.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "AbortWithStatusJSON",
+        "AbortWithStatusPureJSON",
+        "AbortWithStatus",
+        "CustomRecoveryWithWriter",
+        "Context.Render"
+      ],
+      "minMatches": 3
+    }
+  },
+  {
+    "id": "gin-callees-dispatch",
+    "kind": "find_callees",
+    "category": "lookup",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "handleHTTPRequest",
+      "file": "gin.go"
+    },
+    "prompt": "In this repository, Engine implements the standard library's http.Handler interface. Find the method that satisfies it, follow it to the internal function it immediately hands the request off to (the one that actually walks the routing tree and dispatches to the matched handlers), and list every function that internal dispatch function calls directly - including any special-case redirect or error-handling helpers it falls back to when no route matches.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "redirectFixedPath",
+        "redirectTrailingSlash",
+        "cleanPath",
+        "serveError",
+        "getValue",
+        "WriteHeaderNow"
+      ],
+      "minMatches": 4
+    }
+  },
+  {
+    "id": "gin-deps-render-incoming",
+    "kind": "get_dependencies",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "",
+      "file": "render/render.go"
+    },
+    "prompt": "In this repository, find the package responsible for writing an HTTP response in various formats (JSON, XML, HTML, and so on) via a shared interface, then list every file under the repository root (not test files) that imports that package directly.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "context.go",
+        "gin.go"
+      ],
+      "minMatches": 2
+    }
+  },
+  {
+    "id": "gin-semantic-panic-recovery",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "Recovery",
+      "file": "recovery.go"
+    },
+    "prompt": "In this repository, find the middleware you'd add to the chain so that if any handler further down panics, the server doesn't crash - the panic gets caught and turned into an HTTP 500 response instead. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": [
+        "Recovery"
+      ],
+      "mustMentionFiles": [
+        "recovery.go"
+      ]
+    }
+  },
+  {
+    "id": "gin-scenario-handlerfunc-references",
+    "kind": "find_references",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "HandlerFunc",
+      "file": "gin.go"
+    },
+    "prompt": "In this repository, there's a function type used throughout to represent a single route or middleware handler. Suppose I'm about to change its signature (for example, giving it a second parameter). Find where it's declared, then list every other file in the codebase's own source (not test files) that references it - as a field type, parameter type, return type, or otherwise - so I know what else might need updating.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "routergroup.go",
+        "ginS/gins.go",
+        "gin.go",
+        "logger.go",
+        "recovery.go",
+        "auth.go",
+        "utils.go",
+        "context.go"
+      ],
+      "minMatches": 5
+    }
+  }
+]
