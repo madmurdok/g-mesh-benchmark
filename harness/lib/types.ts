@@ -129,6 +129,19 @@ export const ARM_ORDER: readonly Arm[] = [
   "kungfu-configured",
 ] satisfies readonly BuiltinArm[];
 
+/**
+ * A language `corpora/registry.json` may declare for a corpus via
+ * `CorpusEntry.language`.
+ *
+ * Widened from `"ts" | "js"` for GMB-164 so a Go, Rust or Python corpus has a
+ * value it's allowed to declare. Everything keyed off a corpus's language —
+ * cold-start.ts's indexable-file walk, testRunner.ts's testCommand path
+ * parser, runClaude.ts's file-mention regex — derives its extension list from
+ * `LANGUAGE_EXTENSIONS` in lib/language.ts rather than hardcoding a second
+ * TS/JS-shaped constant; see that file for why.
+ */
+export type CorpusLanguage = "ts" | "js" | "go" | "rust" | "python";
+
 export interface CorpusEntry {
   id: string;
   kind: "local" | "git";
@@ -151,7 +164,7 @@ export interface CorpusEntry {
    * is the moment to re-run scripts/computeCandidatePool.ts — see README.
    */
   revision?: string;
-  language: "ts" | "js";
+  language: CorpusLanguage;
 }
 
 /**

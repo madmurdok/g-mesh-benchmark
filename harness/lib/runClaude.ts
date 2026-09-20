@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBenchConfig } from "./benchConfig.js";
 import { trackGmeshCwd } from "./corpusResolver.js";
+import { LANGUAGE_EXTENSIONS } from "./language.js";
 import {
   McpArmUnavailableError,
   assertMcpHealthy,
@@ -254,6 +255,36 @@ const MAX_ARGS_CHARS = 200;
 const MAX_PATHS = 40;
 
 /**
+ * Extension alternation for `pathsIn`'s regex, dot stripped.
+ *
+ * Not scoped to one corpus's declared language the way cold-start.ts's file
+ * walk or testRunner.ts's testCommand parser are (see lib/language.ts):
+ * a run's tool-result transcript can name files from whatever corpus is
+ * under test, and this function has no single corpus in scope to key off. So
+ * this is the union of every language's own extensions in
+ * `LANGUAGE_EXTENSIONS` — `.go` joins `.rs`/`.py` here for GMB-164, closing
+ * the gap where Go file mentions were undercounted relative to Rust's and
+ * Python's — plus a handful of TS/JS-adjacent extensions (`.mts`/`.cts`
+ * module variants, `.json` config/data files) this parser has always
+ * recognized that aren't part of `LANGUAGE_EXTENSIONS`' ts/js entry itself.
+ */
+const PATH_EXTENSIONS = [
+  ...LANGUAGE_EXTENSIONS.ts,
+  ".mts",
+  ".cts",
+  ".mjs",
+  ".cjs",
+  ".json",
+  ...LANGUAGE_EXTENSIONS.go,
+  ...LANGUAGE_EXTENSIONS.rust,
+  ...LANGUAGE_EXTENSIONS.python,
+];
+const PATH_REGEX = new RegExp(
+  `[\\w./@-]+\\.(?:${PATH_EXTENSIONS.map((ext) => ext.slice(1)).join("|")})\\b`,
+  "g",
+);
+
+/**
  * Source-file paths mentioned anywhere in a serialized tool result.
  *
  * Deliberately extension-driven rather than structural: `find_references`
@@ -263,7 +294,7 @@ const MAX_PATHS = 40;
  */
 function pathsIn(serialized: string): string[] {
   const found = new Set<string>();
-  for (const m of serialized.matchAll(/[\w./@-]+\.(?:ts|tsx|js|jsx|mts|cts|mjs|cjs|json|rs|py)\b/g)) {
+  for (const m of serialized.matchAll(PATH_REGEX)) {
     found.add(m[0].replace(/^\.\//, ""));
     if (found.size >= MAX_PATHS) break;
   }
