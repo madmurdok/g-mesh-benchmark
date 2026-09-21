@@ -43,13 +43,8 @@
     },
     "prompt": "In this repository, ripgrep's JSON output printer lives in its own module within one of this cargo workspace's crates. This workspace is made up of several separately-versioned grep-* crates (grep-searcher, grep-matcher, grep-regex, grep-printer, grep-pcre2, and more), each its own compilation unit. Find the JSON printer's source module, then find every OTHER workspace crate (not third-party crates like serde_json or std, and not this file's own crate's other submodules) that it directly depends on / pulls types from at the module level - i.e. walk this module's OUTGOING dependency edges. Name each such crate.",
     "oracle": {
-      "mode": "pool",
-      "candidatePool": [
-        "grep_searcher",
-        "grep_matcher",
-        "grep_regex"
-      ],
-      "minMatches": 2
+      "mode": "judge",
+      "rubric": "The answer must name BOTH workspace crates that crates/printer/src/json.rs pulls types from at module level: grep-searcher and grep-matcher. Either spelling is correct - the Cargo crate name (grep-searcher) and the Rust module identifier (grep_searcher) name the same thing, and the prompt itself uses the hyphenated form.\n\nThe answer must NOT claim grep-regex is one of them. It is a [dev-dependencies] entry of grep-printer and is imported only inside json.rs's `#[cfg(test)] mod tests`, so it is not a module-level dependency, which is what the prompt asks for. An answer that names it and explains that it is test-only is correct; an answer that lists it alongside the other two as a module-level dependency is not.\n\nThird-party and standard-library crates (serde_json, std) and grep-printer's own submodules (counter, jsont, stats, util) are out of scope either way - mentioning them is neither required nor disqualifying."
     }
   },
   {
@@ -126,13 +121,11 @@
     "prompt": "In this repository, list the public/exported items declared in crates/searcher/src/sink.rs, then contrast it with crates/searcher/src/lines.rs (a much smaller, internal-only file with no public API of its own beyond a couple of iterator types). Report both lists.",
     "oracle": {
       "mode": "substring",
-      "mustMentionFiles": [
-        "crates/searcher/src/sink.rs",
-        "crates/searcher/src/lines.rs"
-      ],
       "mustMentionSymbols": [
         "SinkMatch",
-        "LineStep"
+        "SinkFinish",
+        "LineStep",
+        "LineIter"
       ]
     }
   },
