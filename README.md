@@ -812,6 +812,32 @@ blended into the aggregate (see `docs/results/v0.2.0-realistic-tasks-findings.md
 `npm run report -- --all` to include every run regardless of staleness,
 reproducing the old unscoped behavior.
 
+## Which categories a corpus can use, by language
+
+Every read-only category works on every registered corpus: `lookup`,
+`multi-hop`, `scenario`, `feature-request`, `semantic-search`,
+`ambiguous-name`, `control`. They are graded on what the agent *says*, so the
+harness never has to build anything.
+
+`implementation` is the exception, and it is **TypeScript-only today**. It is
+graded by `oracle.mode: "test"` — the corpus's own suite plus a held-out
+acceptance test — and `lib/testRunner.ts`'s dependency prep is npm's. A
+corpus names its own `testCommand`, so `go test ./...`, `cargo test` and
+`pytest` would be spawned correctly; nothing creates the Go module cache,
+cargo registry or virtualenv they need, and nothing keeps one warm between
+runs.
+
+So the three corpora added in 0.23.0 — `gin` (Go), `ripgrep` (Rust),
+`py-requests` (Python) — are read-only **by construction**. That costs
+something worth naming: `implementation` is the only category that measures
+an agent changing code, and three of the four languages g-mesh supports
+cannot host one.
+
+The failure mode if you try anyway is the reason this is written down: the
+command runs, exits non-zero for want of dependencies it was never given, and
+the run is graded as the agent having failed to fix the bug. See
+`lib/testRunner.ts`'s own header for the two shapes a fix could take.
+
 ## Authoring `mode: "pool"` oracle tasks
 
 Tasks whose answer is an enumerable set of files ("list at least N callers/

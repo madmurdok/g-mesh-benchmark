@@ -1,3 +1,31 @@
+/**
+ * Running a `mode: "test"` oracle's command against a throwaway clone.
+ *
+ * ## The dependency prep here is npm's, and only npm's (GMB-170)
+ *
+ * A corpus supplies its own `testCommand`, so `go test ./...`, `cargo test`
+ * and `pytest` are spawned correctly. What is missing is everything around
+ * them: `resolveFresh()` clones tracked files only, and the install this
+ * module budgets for in `TEST_TIMEOUT_MS` is npm's. Nothing here creates a Go
+ * module cache, a cargo registry or a virtualenv, and nothing keeps one warm
+ * across runs the way the npm cache is kept warm.
+ *
+ * So a `mode: "test"` task — and with it the whole `implementation` category,
+ * the only one that measures an agent *changing* code rather than describing
+ * it — is reachable from a TypeScript corpus and from no other. The three
+ * corpora added in 0.23.0 (gin, ripgrep, py-requests) are read-only **by
+ * construction**, not by preference.
+ *
+ * Written here rather than left to be discovered, because of *how* it would
+ * be discovered: the command would run, exit non-zero for want of
+ * dependencies it was never given, and be graded as the agent having failed
+ * to fix the bug. A task that appears to grade and does not is the failure
+ * this repository spends its effort removing.
+ *
+ * Whoever needs one has two shapes to choose between, and the choice is not
+ * made here: per-language prep inside this module, or a corpus that carries
+ * its own prepared dependencies into the clone.
+ */
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { copyFixtureFiles } from "./fixtureFiles.js";
