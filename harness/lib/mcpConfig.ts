@@ -1,12 +1,98 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULT_GMESH_BINARY = path.resolve(
-  HERE,
-  "../../../g-mesh/core/target/release/g-mesh",
-);
+/**
+ * The g-mesh checkout this harness measures, as a sibling of this repo
+ * (README.md's documented layout).
+ */
+const GMESH_REPO = path.resolve(HERE, "../../../g-mesh");
+
+/**
+ * Where `cargo build --release` puts the core binary — the workspace root's
+ * `target/`, not `core/target/`.
+ *
+ * GMB-171: this said `core/target/release/g-mesh` until now, which was right
+ * until g-mesh became a cargo workspace on 2026-09-16 (GM-295). Nothing has
+ * written to `core/target/` since. The path kept resolving anyway, because
+ * the artifact from before the restructure was still on disk — measured on
+ * one machine, `core/target/release/g-mesh` was g-mesh 2.12.0 built
+ * 2026-08-27 while `target/release/g-mesh` was 3.7.0 built that morning. A
+ * run started without `G_MESH_BENCH_BINARY` would have spawned a g-mesh five
+ * minor versions old and recorded `gmeshVersion: "g-mesh 2.12.0"` perfectly
+ * correctly, and every conclusion drawn from it would have been about a
+ * build nobody meant to test. Worse on a non-TypeScript corpus: 2.12.0
+ * refuses all four plugins outright (`protocol_version 2, but core expects
+ * protocol version 1`), so the run shows an empty index rather than an error.
+ *
+ * Hence [`assertDefaultBinaryIsCurrent`]: a default that silently resolves to
+ * something older than the checkout it claims to be built from is the same
+ * defect class this project keeps finding — absent rendering like present.
+ */
+const DEFAULT_GMESH_BINARY = path.resolve(GMESH_REPO, "target/release/g-mesh");
+
+function gmeshHeadCommittedAt(repo: string): Date | undefined {
+  try {
+    const iso = execFileSync("git", ["-C", repo, "log", "-1", "--format=%cI"], {
+      encoding: "utf8",
+      timeout: 10_000,
+    }).trim();
+    const at = new Date(iso);
+    return Number.isNaN(at.getTime()) ? undefined : at;
+  } catch {
+    // No git, or no checkout there. The staleness question is unanswerable
+    // rather than answered "fresh", so the caller says nothing about it.
+    return undefined;
+  }
+}
+
+function binaryVersion(binary: string): string {
+  try {
+    return execFileSync(binary, ["--version"], { encoding: "utf8", timeout: 15_000 }).trim();
+  } catch {
+    return "unknown (the binary would not run)";
+  }
+}
+
+/**
+ * Refuses a default that does not exist, or that predates the g-mesh checkout
+ * it is supposed to have been built from.
+ *
+ * **Only the default.** An explicit `G_MESH_BENCH_BINARY` is never checked,
+ * and that is deliberate rather than an oversight: pointing this harness at a
+ * deliberately older binary is how every A/B control in this project has been
+ * built (g-mesh's GM-372 and GM-378 each saved a pre-fix binary and measured
+ * against it). A staleness check on the override would break the one workflow
+ * that needs a stale binary on purpose.
+ */
+export function assertBinaryIsCurrent(binary: string, repo: string): void {
+  if (!existsSync(binary)) {
+    throw new Error(
+      `g-mesh binary not found at ${binary}.\n` +
+        `Build it with: cd ${repo} && cargo build --release -p g-mesh\n` +
+        `Or point this run at one explicitly with G_MESH_BENCH_BINARY.`,
+    );
+  }
+
+  const headAt = gmeshHeadCommittedAt(repo);
+  if (headAt === undefined) return;
+
+  const builtAt = statSync(binary).mtime;
+  if (builtAt >= headAt) return;
+
+  throw new Error(
+    `g-mesh binary at ${binary} is older than the checkout it measures.\n` +
+      `  binary:   ${binaryVersion(binary)}, built ${builtAt.toISOString()}\n` +
+      `  checkout: ${repo} at HEAD committed ${headAt.toISOString()}\n` +
+      `Rebuild with: cd ${repo} && cargo build --release -p g-mesh\n` +
+      `A stale binary does not fail — it records its own version correctly and ` +
+      `every conclusion is about a build nobody meant to test (GMB-171). ` +
+      `To measure an older build on purpose, set G_MESH_BENCH_BINARY, which is never age-checked.`,
+  );
+}
 
 export interface McpServerConfig {
   mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }>;
@@ -14,6 +100,32 @@ export interface McpServerConfig {
 
 export function gmeshBinaryPath(): string {
   return process.env.G_MESH_BENCH_BINARY ?? DEFAULT_GMESH_BINARY;
+}
+
+/**
+ * The precondition every entry point that spawns g-mesh must assert before it
+ * starts measuring. Throws with a message naming what is wrong and how to fix
+ * it; returns the binary otherwise.
+ *
+ * Deliberately *not* folded into [`gmeshBinaryPath`]: naming a path and being
+ * ready to run are different questions, and conflating them made a unit test
+ * that only builds an MCP config depend on someone having run `cargo build`
+ * (caught by armConfig.test.ts while this was being written).
+ *
+ * An explicit `G_MESH_BENCH_BINARY` is checked for existence but never for
+ * age — see [`assertBinaryIsCurrent`] for why a stale override is a workflow
+ * rather than a mistake.
+ */
+export function assertGmeshBinaryUsable(): string {
+  const override = process.env.G_MESH_BENCH_BINARY;
+  if (override !== undefined) {
+    if (!existsSync(override)) {
+      throw new Error(`G_MESH_BENCH_BINARY points at ${override}, which does not exist.`);
+    }
+    return override;
+  }
+  assertBinaryIsCurrent(DEFAULT_GMESH_BINARY, GMESH_REPO);
+  return DEFAULT_GMESH_BINARY;
 }
 
 /**
