@@ -1,7 +1,36 @@
+/**
+ * Running a `mode: "test"` oracle's command against a throwaway clone.
+ *
+ * ## The dependency prep here is npm's, and only npm's (GMB-170)
+ *
+ * A corpus supplies its own `testCommand`, so `go test ./...`, `cargo test`
+ * and `pytest` are spawned correctly. What is missing is everything around
+ * them: `resolveFresh()` clones tracked files only, and the install this
+ * module budgets for in `TEST_TIMEOUT_MS` is npm's. Nothing here creates a Go
+ * module cache, a cargo registry or a virtualenv, and nothing keeps one warm
+ * across runs the way the npm cache is kept warm.
+ *
+ * So a `mode: "test"` task — and with it the whole `implementation` category,
+ * the only one that measures an agent *changing* code rather than describing
+ * it — is reachable from a TypeScript corpus and from no other. The three
+ * corpora added in 0.23.0 (gin, ripgrep, py-requests) are read-only **by
+ * construction**, not by preference.
+ *
+ * Written here rather than left to be discovered, because of *how* it would
+ * be discovered: the command would run, exit non-zero for want of
+ * dependencies it was never given, and be graded as the agent having failed
+ * to fix the bug. A task that appears to grade and does not is the failure
+ * this repository spends its effort removing.
+ *
+ * Whoever needs one has two shapes to choose between, and the choice is not
+ * made here: per-language prep inside this module, or a corpus that carries
+ * its own prepared dependencies into the clone.
+ */
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { copyFixtureFiles } from "./fixtureFiles.js";
-import type { Oracle } from "./types.js";
+import { LANGUAGE_EXTENSIONS } from "./language.js";
+import type { CorpusLanguage, Oracle } from "./types.js";
 
 /**
  * How long `oracle.testCommand` may run before it's killed and the run graded
@@ -33,35 +62,57 @@ const execFileAsync = promisify(execFile);
 
 /**
  * Extensions a `testCommand` token has to end in before it counts as naming a
- * source file rather than a flag or a package name. Deliberately a closed
- * list: `--no-audit` and `vitest` must not be mistaken for paths, and a token
- * that is genuinely a path but wears an extension not listed here is left
- * alone rather than handed to `git checkout` on a guess.
+ * source file rather than a flag or a package name, for a corpus declared as
+ * `language`. Deliberately a closed list: `--no-audit` and `vitest` must not
+ * be mistaken for paths, and a token that is genuinely a path but wears an
+ * extension not listed here is left alone rather than handed to `git
+ * checkout` on a guess.
+ *
+ * Built from lib/language.ts's `LANGUAGE_EXTENSIONS` (GMB-164) rather than a
+ * second hardcoded TS/JS-shaped list, plus `.mjs`/`.cjs` for ts/js only: those
+ * mark a module-system variant of a JS/TS file (e.g. `vitest.config.mjs`) that
+ * a `testCommand` can genuinely name even though cold-start.ts's
+ * indexable-file walk deliberately excludes them (it counts source LOC, not
+ * build/config wrappers) — the one place this list still needs its own
+ * narrow addition on top of the shared base.
  */
-const TEST_FILE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"] as const;
+function testFileExtensionsFor(language: CorpusLanguage): readonly string[] {
+  return language === "ts" || language === "js"
+    ? [...LANGUAGE_EXTENSIONS[language], ".mjs", ".cjs"]
+    : LANGUAGE_EXTENSIONS[language];
+}
 
 /**
  * The paths a `testCommand` names that the agent could have edited.
  *
  * A token counts when it carries a `/` (so a bare `vitest` never does), ends
- * in one of [`TEST_FILE_EXTENSIONS`], and is not one of `holdoutFiles`' own
- * destinations. Quotes are stripped; nothing else is interpreted, because the
- * command is a shell line from this repo's versioned tasks.json rather than
- * anything a model produced, and the parse only has to be right about strings
- * we wrote.
+ * in one of [`testFileExtensionsFor`]'s extensions for `language`, and is not
+ * one of `holdoutFiles`' own destinations. Quotes are stripped; nothing else
+ * is interpreted, because the command is a shell line from this repo's
+ * versioned tasks.json rather than anything a model produced, and the parse
+ * only has to be right about strings we wrote.
  *
  * Everything about this is deliberately conservative. A path this misses stays
  * gradeable exactly as it is today; a path it wrongly *included* would revert
  * an agent edit that should have counted, so the failure mode is chosen to be
  * "changed nothing" rather than "silently discarded the agent's work".
+ *
+ * `language` defaults to "ts" — every existing caller (this repo's two
+ * registered corpora, and every test below that predates GMB-164) is a TS
+ * corpus and keeps its exact prior behavior without having to name it.
  */
-export function regressionPathsIn(testCommand: string, holdoutDestinations: readonly string[]): string[] {
+export function regressionPathsIn(
+  testCommand: string,
+  holdoutDestinations: readonly string[],
+  language: CorpusLanguage = "ts",
+): string[] {
+  const extensions = testFileExtensionsFor(language);
   const holdouts = new Set(holdoutDestinations.map((d) => d.replace(/^\.\//, "")));
   const seen = new Set<string>();
   for (const raw of testCommand.split(/\s+/)) {
     const token = raw.replace(/^["']|["']$/g, "").replace(/^\.\//, "");
     if (!token.includes("/")) continue;
-    if (!TEST_FILE_EXTENSIONS.some((ext) => token.endsWith(ext))) continue;
+    if (!extensions.some((ext) => token.endsWith(ext))) continue;
     if (holdouts.has(token)) continue;
     seen.add(token);
   }
@@ -132,9 +183,10 @@ async function restoreRegressionFiles(cwd: string, paths: readonly string[]): Pr
 function seedFilesNamedInCommand(
   testCommand: string,
   seedFiles: Record<string, string> | undefined,
+  language: CorpusLanguage,
 ): Record<string, string> {
   if (!seedFiles) return {};
-  const namedPaths = new Set(regressionPathsIn(testCommand, []));
+  const namedPaths = new Set(regressionPathsIn(testCommand, [], language));
   const named: Record<string, string> = {};
   for (const [dest, src] of Object.entries(seedFiles)) {
     if (namedPaths.has(dest.replace(/^\.\//, ""))) named[dest] = src;
@@ -163,11 +215,19 @@ function seedFilesNamedInCommand(
  * `cwd` before the agent's turn by token-economy.ts's resolveRunCwd) — passed
  * through here only so grading can protect it, never to copy it in for the
  * first time.
+ *
+ * `language` is the corpus's own declared `CorpusEntry.language` (GMB-164),
+ * threaded down from token-economy.ts's runArm()/gradeRun() so
+ * `regressionPathsIn` recognizes the right extensions for this corpus rather
+ * than a TS/JS-shaped guess. Defaults to "ts" so every pre-GMB-164 caller
+ * (this repo's two registered corpora, and every test below) keeps its exact
+ * prior behavior without having to name it.
  */
 export async function runAcceptanceTest(
   cwd: string,
   oracle: Oracle,
   seedFiles?: Record<string, string>,
+  language: CorpusLanguage = "ts",
 ): Promise<AcceptanceTestResult> {
   const testCommand = oracle.testCommand;
   if (!testCommand) {
@@ -186,12 +246,16 @@ export async function runAcceptanceTest(
     // it to the corpus's unseeded original).
     const restoreWarning = await restoreRegressionFiles(
       cwd,
-      regressionPathsIn(testCommand, [...Object.keys(oracle.holdoutFiles ?? {}), ...Object.keys(seedFiles ?? {})]),
+      regressionPathsIn(
+        testCommand,
+        [...Object.keys(oracle.holdoutFiles ?? {}), ...Object.keys(seedFiles ?? {})],
+        language,
+      ),
     );
 
     // See seedFilesNamedInCommand's doc comment for why this re-copy exists
     // even though the exclusion above already keeps git away from these paths.
-    await copyFixtureFiles(cwd, seedFilesNamedInCommand(testCommand, seedFiles));
+    await copyFixtureFiles(cwd, seedFilesNamedInCommand(testCommand, seedFiles, language));
     await copyFixtureFiles(cwd, oracle.holdoutFiles);
 
     const { exitCode, output } = await runCommand(testCommand, cwd);

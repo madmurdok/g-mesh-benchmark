@@ -1,0 +1,1253 @@
+[
+  {
+    "taskId": "py-ambiguous-close-session",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "cbb3ff1c9d46",
+    "inputTokens": 4,
+    "outputTokens": 331,
+    "cacheReadTokens": 21287,
+    "cacheCreationTokens": 8137,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 6741,
+        "cacheCreationTokens": 7805
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 266,
+        "cacheReadTokens": 14546,
+        "cacheCreationTokens": 332
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 610,
+        "args": "{\"symbol_name\":\"Session.close\"}",
+        "argsChars": 31,
+        "paths": [
+          "src/requests/sessions.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 5899,
+    "costUsd": 0.041151400000000005,
+    "judgeCostUsd": 0.0079865,
+    "resultText": "`Session.close` is at `src/requests/sessions.py:883`, and it's a short method:\n\n```python\ndef close(self) -> None:\n    \"\"\"Closes all adapters and as such the session\"\"\"\n    for v in self.adapters.values():\n        v.close()\n```\n\n- **What it iterates over:** the values of `self.adapters`, the session's mapping of URL prefix to transport adapter. It uses `.values()`, so the prefixes are ignored.\n- **What it calls on each item:** `close()` on each adapter, with no arguments. For the default adapters this is `HTTPAdapter.close`. That method is the adapter's own close, which is a separate method from this one.\n- **What it returns:** nothing (`None`). It doesn't close anything else directly, such as cookies or responses. Closing the session only means closing its adapters.",
+    "oraclePassed": true,
+    "judgeReason": "Answer unambiguously identifies Session.close by file path and docstring, and correctly describes the mechanism as iterating over self.adapters.values() and calling close() on each adapter.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-ambiguous-close-session",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "ambiguous-name",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "cbb3ff1c9d46",
+    "inputTokens": 4,
+    "outputTokens": 469,
+    "cacheReadTokens": 8054,
+    "cacheCreationTokens": 3598,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 2787,
+        "cacheCreationTokens": 2480
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 295,
+        "cacheReadTokens": 5267,
+        "cacheCreationTokens": 1118
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 2366,
+        "args": "{\"pattern\":\"def close\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests\",\"output_mode\":\"content\",\"-A\":8}",
+        "argsChars": 165,
+        "paths": [
+          "src/requests/adapters.py",
+          "nsrc/requests/adapters.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/sessions.py"
+        ]
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 6417,
+    "costUsd": 0.0217288,
+    "judgeCostUsd": 0.0086905,
+    "resultText": "`Session.close` is at `src/requests/sessions.py:883`.\n\n```python\ndef close(self) -> None:\n    \"\"\"Closes all adapters and as such the session\"\"\"\n    for v in self.adapters.values():\n        v.close()\n```\n\n- **What it iterates over:** the values of `self.adapters`. That is the mapping of URL prefix to transport adapter (for example the `HTTPAdapter` instances mounted for `http://` and `https://`). It uses `.values()`, so the prefixes are ignored.\n- **What it calls on each item:** `close()`, with no arguments. It doesn't use the return value.\n\nThe method doesn't close `Response` objects, and it doesn't touch cookies, auth or other session state. Each adapter's own `close` does the actual cleanup. For `HTTPAdapter` (`adapters.py:555`), that means clearing the `poolmanager` and each proxy manager.",
+    "oraclePassed": true,
+    "judgeReason": "Answer unambiguously identifies Session.close (file, line, and docstring quoted), and correctly describes the core mechanism: it loops over self.adapters.values() and calls close() on each adapter, with no other socket/connection work.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-authbase-transitive",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "c783800caba9",
+    "inputTokens": 6,
+    "outputTokens": 836,
+    "cacheReadTokens": 38179,
+    "cacheCreationTokens": 7447,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6163
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 14553,
+        "cacheCreationTokens": 683
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 328,
+        "cacheReadTokens": 15236,
+        "cacheCreationTokens": 601
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 1162,
+        "args": "{\"symbol_name\":\"AuthBase\",\"transitive\":true,\"limit\":200}",
+        "argsChars": 56,
+        "paths": [
+          "src/requests/auth.py",
+          "tests/test_requests.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 113,
+        "args": "{\"pattern\":\"^\\\\s*class \\\\w+\\\\(.*\\\\)\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/auth.py\",\"output_mode\":\"content\"}",
+        "argsChars": 179
+      },
+      {
+        "name": "Grep",
+        "chars": 78,
+        "args": "{\"pattern\":\"class \\\\w+\\\\(.*Auth.*\\\\)\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/tests\",\"output_mode\":\"content\"}",
+        "argsChars": 165,
+        "paths": [
+          "tests/test_requests.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 10392,
+    "costUsd": 0.04681779999999999,
+    "judgeCostUsd": 0.0090635,
+    "resultText": "Four classes implement `AuthBase`, which is defined in `src/requests/auth.py:77`. Three extend it directly and one extends it indirectly.\n\n**Direct subclasses of `AuthBase`**\n- `HTTPBasicAuth` in `src/requests/auth.py:85`\n- `HTTPDigestAuth` in `src/requests/auth.py:124`\n- `DummyAuth` in `tests/test_requests.py:1214`. It is a test helper nested inside `TestRequests.test_prepared_from_session` and is declared as `requests.auth.AuthBase`.\n\n**Indirect subclass**\n- `HTTPProxyAuth` in `src/requests/auth.py:116` extends `AuthBase` only through `HTTPBasicAuth`. Its declaration is `class HTTPProxyAuth(HTTPBasicAuth)`.\n\nThe transitive walk finished without truncation. A grep of `auth.py` and the tests found no other subclasses.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly identifies HTTPBasicAuth and HTTPDigestAuth as direct extenders, explicitly states HTTPProxyAuth extends HTTPBasicAuth (not AuthBase directly), and includes the bonus DummyAuth.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-authbase-transitive",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "c783800caba9",
+    "inputTokens": 6,
+    "outputTokens": 856,
+    "cacheReadTokens": 15374,
+    "cacheCreationTokens": 1636,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 840
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 5274,
+        "cacheCreationTokens": 392
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 5666,
+        "cacheCreationTokens": 404
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 408,
+        "args": "{\"pattern\":\"AuthBase\",\"output_mode\":\"content\",\"glob\":\"*.py\",\"-i\":false,\"head_limit\":0}",
+        "argsChars": 86,
+        "paths": [
+          "src/requests/_types.py",
+          "nsrc/requests/_types.py",
+          "nsrc/requests/auth.py",
+          "ntests/test_requests.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 313,
+        "args": "{\"pattern\":\"^\\\\s*class \\\\w+\\\\((.*(Auth|AuthBase)\\\\w*.*)\\\\)\",\"output_mode\":\"content\",\"head_limit\":0}",
+        "argsChars": 99,
+        "paths": [
+          "src/requests/auth.py",
+          "nsrc/requests/auth.py",
+          "ntests/test_requests.py"
+        ]
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 10835,
+    "costUsd": 0.019212800000000002,
+    "judgeCostUsd": 0.0087085,
+    "resultText": "I searched the whole repository for classes whose base list mentions `AuthBase` or any `*Auth*` class. The base class is defined at `src/requests/auth.py:78`.\n\n**Direct subclasses of `AuthBase`**\n- `HTTPBasicAuth` at `src/requests/auth.py:85`\n- `HTTPDigestAuth` at `src/requests/auth.py:124`\n- `DummyAuth` at `tests/test_requests.py:1214`. It is defined inside a test and extends `requests.auth.AuthBase`.\n- `PizzaAuth` at `docs/user/advanced.rst:508`. This one appears only in a documentation example, not in real code.\n\n**Indirect subclass of `AuthBase`**\n- `HTTPProxyAuth` at `src/requests/auth.py:116` extends `HTTPBasicAuth`, which extends `AuthBase`. Its intermediate class is `HTTPBasicAuth`.\n\n`src/requests/_types.py` imports `AuthBase` only for type annotations and doesn't subclass it. Nothing else in the repository extends `AuthBase` or any of its subclasses.",
+    "oraclePassed": true,
+    "judgeReason": "Answer lists HTTPBasicAuth and HTTPDigestAuth as direct extenders, explicitly identifies HTTPProxyAuth as extending HTTPBasicAuth (indirect/transitive), does not claim HTTPProxyAuth extends AuthBase directly, and includes the bonus DummyAuth test class.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1218,
+    "cacheReadTokens": 38615,
+    "cacheCreationTokens": 9078,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6181
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14571,
+        "cacheCreationTokens": 1083
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 744,
+        "cacheReadTokens": 15654,
+        "cacheCreationTokens": 1814
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_implementations",
+        "chars": 326,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"transitive\":true}",
+        "argsChars": 48,
+        "paths": [
+          "src/requests/_types.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1551,
+        "args": "{\"symbol_name\":\"SupportsRead\",\"limit\":100}",
+        "argsChars": 42,
+        "paths": [
+          "src/requests/_types.py",
+          "src/requests/models.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1697,
+        "args": "{\"pattern\":\"SupportsRead|runtime_checkable|hasattr\\\\(.*read|isinstance\\\\(.*(Iterable|Mapping)\",\"path\":\"src/requests\",\"output_mode\":\"content\"}",
+        "argsChars": 141,
+        "paths": [
+          "src/requests/structures.py",
+          "nsrc/requests/sessions.py",
+          "nsrc/requests/auth.py",
+          "nsrc/requests/_types.py",
+          "nsrc/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1564,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/_types.py\",\"limit\":50}",
+        "argsChars": 137
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 14062,
+    "costUsd": 0.057279000000000004,
+    "judgeCostUsd": 0.009631500000000001,
+    "resultText": "**No class in the repository implements `SupportsRead`.** g-mesh's transitive `find_implementations` returns nothing for it. Its only references are type annotations and `isinstance` checks in `src/requests/_types.py` and `src/requests/models.py`.\n\n**How conformance is checked at runtime**\n\n`SupportsRead` is declared with `@runtime_checkable` (`src/requests/_types.py:27-29`):\n\n```python\n@runtime_checkable\nclass SupportsRead(Protocol[_T_co]):\n    def read(self, length: int = ..., /) -> _T_co: ...\n```\n\nThat decorator lets `isinstance(obj, SupportsRead)` work through structural (duck-typed) matching. The check passes if `obj` has a callable attribute named `read`. Python doesn't verify the signature or the return type, so no subclassing or registration is needed.\n\n`models.py` imports it as `_SupportsRead` (line 39) and uses it in three `isinstance` checks:\n\n- **`RequestEncodingMixin._encode_params`, line 164:** `elif isinstance(data, _SupportsRead):` passes file-like `data` through unchanged, rather than form-encoding it.\n- **`RequestEncodingMixin._encode_files`, line 239:** `elif isinstance(fp, _SupportsRead):` treats a file-like value as the file content and calls `fp.read()`. The comment there marks it as a defensive check for untyped callers.\n- **`PreparedRequest.prepare_body`, line 639:** `isinstance(data, basestring) or isinstance(data, _SupportsRead)` decides whether `data` is treated as a plain body. The check also covers file objects, which are then not handled as streams.\n\n**Static checking**\n\nThe other references are annotations that use the protocol as a structural type, for example:\n\n- `StreamDataType` (`_types.py:95`)\n- `_FileContent` (`_types.py:118`)\n- the `_encode_params` overloads (`models.py:144-145`)\n\nType checkers accept any object with a compatible `read()`, such as `io.BytesIO`, `open(...)` handles and `tarfile` members.\n\n`SupportsItems` (line 32) is declared the same way as `SupportsRead`.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly states no class implements SupportsRead and thoroughly explains structural conformance via @runtime_checkable Protocol and isinstance() checks with specific line references.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-find-impl-supportsread-protocol",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "parity",
+    "taskDefHash": "ebfc2dcb4bb7",
+    "inputTokens": 6,
+    "outputTokens": 1388,
+    "cacheReadTokens": 16017,
+    "cacheCreationTokens": 3909,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 858
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 5292,
+        "cacheCreationTokens": 999
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 693,
+        "cacheReadTokens": 6291,
+        "cacheCreationTokens": 2052
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 1069,
+        "args": "{\"pattern\":\"SupportsRead\",\"output_mode\":\"content\"}",
+        "argsChars": 50,
+        "paths": [
+          "src/requests/models.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/_types.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 564,
+        "args": "{\"pattern\":\"runtime_checkable|Protocol\",\"path\":\"src\",\"output_mode\":\"content\"}",
+        "argsChars": 77,
+        "paths": [
+          "src/requests/adapters.py",
+          "nsrc/requests/adapters.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/_types.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1457,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/_types.py\",\"limit\":45}",
+        "argsChars": 138
+      },
+      {
+        "name": "Grep",
+        "chars": 350,
+        "args": "{\"pattern\":\"\\\\(.*SupportsRead.*\\\\):\",\"output_mode\":\"content\"}",
+        "argsChars": 61,
+        "paths": [
+          "src/requests/models.py",
+          "nsrc/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1217,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/models.py\",\"offset\":155,\"limit\":25}",
+        "argsChars": 151
+      },
+      {
+        "name": "Read",
+        "chars": 642,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/models.py\",\"offset\":232,\"limit\":14}",
+        "argsChars": 151
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 16031,
+    "costUsd": 0.033783400000000005,
+    "judgeCostUsd": 0.0095385,
+    "resultText": "**No class in the repository declares or inherits from `SupportsRead`.** A search for every reference to the name found no subclass, and no `class X(SupportsRead)` anywhere. Conformance is checked structurally at runtime instead.\n\n**How it works**\n\n- `SupportsRead` (`src/requests/_types.py:27-29`) is decorated with `@runtime_checkable`. It is a `Protocol[_T_co]` whose only member is `read(self, length: int = ..., /) -> _T_co`.\n- `models.py` imports it as `_SupportsRead` (line 39) and passes it to `isinstance()` in three places:\n  - `models.py:164`, in `RequestEncodingMixin._encode_params`. If `data` is a `str`/`bytes` or has a `read` method, it is returned unchanged. Only other objects fall through to form-encoding as a dict or list of tuples.\n  - `models.py:239`, in `_encode_files`. If a file value is not `str`/`bytes`/`bytearray` but passes the check, the code calls `fp.read()` to get the file content. The `# type: ignore` comment there says this is a defensive check for untyped callers.\n  - `models.py:639`, in `prepare_body`. It is used with `basestring` to decide whether `data` is already a body rather than something to encode.\n- Elsewhere the name only appears in type annotations (for example `StreamDataType` and `_FileContent` in `_types.py`, and the `_encode_params` overloads at `models.py:144-145`). Those are for static type checkers only.\n\n**What the runtime check does and doesn't verify**\n\nA `@runtime_checkable` protocol makes `isinstance()` check only that the attribute `read` exists on the object. It does not check the signature, the `length` parameter or the return type. So `io.BytesIO`, `io.StringIO`, open file objects, `tempfile` wrappers, and any duck-typed object with a `read` attribute all pass. This works even though none of them inherit from the protocol. Static checkers such as pyright and mypy do the fuller signature check at type-check time.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly states no class explicitly implements SupportsRead and thoroughly explains the isinstance()-based structural conformance mechanism of @runtime_checkable Protocol with specific line citations.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 244,
+    "cacheReadTokens": 22892,
+    "cacheCreationTokens": 6724,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 25,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6112
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 152,
+        "cacheReadTokens": 14502,
+        "cacheCreationTokens": 612
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1084,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"limit\":200}",
+        "argsChars": 43,
+        "paths": [
+          "src/requests/auth.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4558,
+    "costUsd": 0.034920400000000004,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py` (line 84). Only one other file under `src/` references it:\n\n- `src/requests/models.py`. It has two references: one at file level and one inside `PreparedRequest.prepare_auth` (line 667).\n\n`HTTPProxyAuth` in `auth.py` also subclasses `HTTPBasicAuth`. That file is where the class is defined, so it's excluded from the list.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-references-httpbasicauth",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "fee01b70700e",
+    "inputTokens": 4,
+    "outputTokens": 327,
+    "cacheReadTokens": 9657,
+    "cacheCreationTokens": 1155,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 789
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 170,
+        "cacheReadTokens": 5223,
+        "cacheCreationTokens": 366
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 333,
+        "args": "{\"pattern\":\"HTTPBasicAuth\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src\",\"output_mode\":\"content\"}",
+        "argsChars": 153,
+        "paths": [
+          "src/requests/models.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/auth.py"
+        ]
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4997,
+    "costUsd": 0.010827400000000001,
+    "judgeCostUsd": 0,
+    "resultText": "`HTTPBasicAuth` is defined in `src/requests/auth.py:85`.\n\nOnly one other file under `src/` references it:\n\n- `src/requests/models.py`\n  - line 40 imports it: `from .auth import HTTPBasicAuth`\n  - line 683 instantiates it: `auth_handler = HTTPBasicAuth(*auth)`\n\n`HTTPProxyAuth` at `src/requests/auth.py:116` subclasses it, but that is in the defining file, so I left it out.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-scenario-callers-httpadapter-send",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "8c63b0a88b9b",
+    "inputTokens": 8,
+    "outputTokens": 1449,
+    "cacheReadTokens": 54366,
+    "cacheCreationTokens": 8393,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 2,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6241
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14631,
+        "cacheCreationTokens": 779
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 15410,
+        "cacheCreationTokens": 525
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 785,
+        "cacheReadTokens": 15935,
+        "cacheCreationTokens": 848
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_callers",
+        "chars": 532,
+        "args": "{\"symbol_name\":\"HTTPAdapter.send\",\"limit\":50}",
+        "argsChars": 45,
+        "paths": [
+          "src/requests/adapters.py",
+          "src/requests/auth.py"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 565,
+        "args": "{\"symbol_name\":\"HTTPAdapter.send\",\"limit\":50}",
+        "argsChars": 45,
+        "paths": [
+          "src/requests/adapters.py",
+          "src/requests/auth.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 719,
+        "args": "{\"pattern\":\"\\\\.send\\\\(|def get_adapter|def send\",\"path\":\"src/requests\",\"output_mode\":\"content\"}",
+        "argsChars": 95,
+        "paths": [
+          "src/requests/adapters.py",
+          "nsrc/requests/adapters.py",
+          "nsrc/requests/models.py",
+          "nsrc/requests/sessions.py",
+          "nsrc/requests/auth.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 847,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/sessions.py\",\"offset\":866,\"limit\":20}",
+        "argsChars": 152
+      },
+      {
+        "name": "Read",
+        "chars": 420,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/sessions.py\",\"offset\":775,\"limit\":12}",
+        "argsChars": 152
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 17659,
+    "costUsd": 0.0600502,
+    "judgeCostUsd": 0.0377045,
+    "resultText": "**No. `Session.send()` is not among the callers of `HTTPAdapter.send()`.**\n\n**Callers of `HTTPAdapter.send()`**\n\ng-mesh's `find_callers` and `find_references` both found exactly one caller: `HTTPDigestAuth.handle_401` at `src/requests/auth.py:272`. The call is at `auth.py:312`: `_r = r.connection.send(prep, **kwargs)`. Here `r.connection` is the adapter that produced the 401 response, and in practice that is an `HTTPAdapter`.\n\n**Why `Session.send()` isn't one**\n\n- **How it calls the adapter:** `Session.send()` (`sessions.py:752`) does `adapter = self.get_adapter(url=request.url)` at line 778 and then `r = adapter.send(request, **kwargs)` at line 784.\n- **What `get_adapter` returns:** its signature is `-> BaseAdapter` (`sessions.py:870`). It walks `self.adapters` and returns whichever mounted adapter's prefix matches the URL, or raises `InvalidSchema`.\n- **Why that breaks the static link:** `adapter` is a local variable typed as `BaseAdapter`. The code never names `HTTPAdapter` at that call site. `BaseAdapter.send` is declared at `adapters.py:128`, and `HTTPAdapter.send` at `adapters.py:634` overrides it.\n- **How `HTTPAdapter` gets there at runtime:** `Session.__init__` mounts `HTTPAdapter()` for `http://` and `https://`. `Session.send()` reaches `HTTPAdapter.send()` only through dynamic dispatch on whatever `self.adapters` holds. Users can also mount a different adapter, so the target isn't fixed.\n\nThe static call graph therefore records that call as `BaseAdapter.send`, not `HTTPAdapter.send`. `HTTPAdapter.send()` is still what runs at runtime for the default mounts.\n\n`handle_401` shows up as a caller because it goes through `r.connection`, not a session-selected adapter. That link is also not a statically certain `HTTPAdapter` call. The index matched it to `HTTPAdapter.send`, but by the same reasoning the receiver's declared type is not necessarily `HTTPAdapter`.",
+    "oraclePassed": true,
+    "judgeReason": "Correctly identifies HTTPDigestAuth.handle_401 as sole caller, properly excludes Session.send with accurate BaseAdapter type-annotation reasoning, though a closing caveat incorrectly questions handle_401's static certainty when the rubric states Response.connection is explicitly annotated as HTTPAdapter.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-scenario-callers-httpadapter-send",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "8c63b0a88b9b",
+    "inputTokens": 6,
+    "outputTokens": 2109,
+    "cacheReadTokens": 18138,
+    "cacheCreationTokens": 7115,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 918
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 5352,
+        "cacheCreationTokens": 3000
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 8352,
+        "cacheCreationTokens": 3197
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 6190,
+        "args": "{\"pattern\":\"\\\\.send\\\\(|def send\\\\(|HTTPAdapter\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests\",\"output_mode\":\"content\",\"glob\":\"*.py\"}",
+        "argsChars": 184,
+        "paths": [
+          "src/requests/adapters.py",
+          "nsrc/requests/adapters.py",
+          "nsrc/requests/auth.py",
+          "nsrc/requests/sessions.py",
+          "ntests/test_adapters.py",
+          "ntests/test_lowlevel.py",
+          "ntests/testserver/server.py",
+          "ntests/test_requests.py",
+          "nsrc/requests/models.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1789,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/sessions.py\",\"offset\":750,\"limit\":40}",
+        "argsChars": 153
+      },
+      {
+        "name": "Grep",
+        "chars": 1601,
+        "args": "{\"pattern\":\"def get_adapter|def mount\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/sessions.py\",\"output_mode\":\"content\",\"-A\":22}",
+        "argsChars": 194
+      },
+      {
+        "name": "Read",
+        "chars": 1137,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/auth.py\",\"offset\":295,\"limit\":25}",
+        "argsChars": 149
+      },
+      {
+        "name": "Read",
+        "chars": 1886,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/tests/test_requests.py\",\"offset\":2580,\"limit\":50}",
+        "argsChars": 152
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 22839,
+    "costUsd": 0.054288600000000006,
+    "judgeCostUsd": 0.030862499999999994,
+    "resultText": "**Yes. `Session.send()` is a caller of `HTTPAdapter.send()`, but only through dynamic dispatch, so a search for `HTTPAdapter` next to `.send(` won't turn it up.**\n\n**Call sites that end up in `HTTPAdapter.send()` (defined at `src/requests/adapters.py:634`; `BaseAdapter.send` is the abstract stub at line 128):**\n\n1. `src/requests/sessions.py:784`, `r = adapter.send(request, **kwargs)` inside `Session.send()`. Here `adapter` comes from `self.get_adapter(url=request.url)` at line 778.\n2. `src/requests/auth.py:312`, `_r = r.connection.send(prep, **kwargs)` in `HTTPDigestAuth.handle_401`. `r.connection` is declared as `HTTPAdapter` in `models.py:748`. It is the adapter that served the original response, so this is the same dynamic dispatch.\n\nNothing else calls it. The other `.send(` hits are unrelated:\n- The `sock.send(...)` calls in the tests are socket sends.\n- `RedirectSession.send` in `tests/test_requests.py:2590` is a test double.\n- `Session.send` is called from `sessions.py:292` and `sessions.py:651`, and the tests call it on sessions.\n\n**Why the caller isn't obvious:**\n\n- `get_adapter` (`sessions.py:870`) is annotated to return `BaseAdapter`. It walks `self.adapters` and returns the first adapter whose prefix matches the URL.\n- `Session` never names `HTTPAdapter` at the call site. `adapter` is whatever object was mounted for that prefix.\n- `Session.__init__` fills the mapping at `sessions.py:502-503` with `self.mount(\"https://\", HTTPAdapter())` and `self.mount(\"http://\", HTTPAdapter())`.\n- So on a default session, `get_adapter` returns one of those `HTTPAdapter` instances and line 784 runs `HTTPAdapter.send`. That is how `requests.get()` and `session.send()` reach it.\n\n**Where it wouldn't be true:** if someone mounts a different `BaseAdapter` subclass for a prefix, `get_adapter` returns that adapter and `HTTPAdapter.send` isn't called for those URLs. If they mount an `HTTPAdapter` subclass that overrides `send()`, that override runs, and it reaches `HTTPAdapter.send` only if it calls `super().send()`. The tests do mount custom `HTTPAdapter`s, for example around `tests/test_requests.py:1625` and `2718`.\n\nI found this by reading the code. I didn't run anything to confirm it at runtime.",
+    "oraclePassed": false,
+    "judgeReason": "The answer conflates static and runtime analysis; it claims Session.send IS a caller of HTTPAdapter.send (opening: 'Yes'), when the rubric requires stating it is NOT found as a direct caller from static analysis because adapter is typed as BaseAdapter, not HTTPAdapter. Additionally, it incorrectly labels HTTPDigestAuth.handle_401 as 'dynamic dispatch' when it's a static call to HTTPAdapter.send (r.connection is explicitly declared as HTTPAdapter).",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-callees-session-send",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "01551b516799",
+    "inputTokens": 4,
+    "outputTokens": 734,
+    "cacheReadTokens": 22918,
+    "cacheCreationTokens": 7222,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6138
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 14528,
+        "cacheCreationTokens": 1084
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_callees",
+        "chars": 2276,
+        "args": "{\"symbol_name\":\"Session.send\",\"limit\":50}",
+        "argsChars": 41,
+        "paths": [
+          "src/requests/sessions.py",
+          "src/requests/_types.py",
+          "src/requests/cookies.py",
+          "src/requests/utils.py",
+          "src/requests/adapters.py",
+          "src/requests/hooks.py",
+          "src/requests/models.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 9542,
+    "costUsd": 0.0418396,
+    "judgeCostUsd": 0,
+    "resultText": "`Session.send` is defined at `src/requests/sessions.py:751`. It directly calls these named functions and methods:\n\n| Callee | Defined in |\n|---|---|\n| `Session.get_adapter` | `src/requests/sessions.py:869` |\n| `SessionRedirectMixin.resolve_redirects` | `src/requests/sessions.py:185` |\n| `is_prepared` | `src/requests/_types.py:41` |\n| `extract_cookies_to_jar` | `src/requests/cookies.py:134` |\n| `resolve_proxies` | `src/requests/utils.py:910` |\n| `dispatch_hook` | `src/requests/hooks.py:31` |\n| `BaseAdapter.send` | `src/requests/adapters.py:127` |\n\n`BaseAdapter.send` is the abstract method. At runtime, `Session.send` calls `send` on whichever concrete adapter `get_adapter` returns, such as `HTTPAdapter`, which subclasses `BaseAdapter`.\n\nI got this from the g-mesh call graph and didn't read the source. The result was fully resolved. It also excluded 4 non-call references, in `models.py` (3) and `sessions.py` (1).",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-callees-session-send",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "lookup",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "01551b516799",
+    "inputTokens": 10,
+    "outputTokens": 1680,
+    "cacheReadTokens": 30582,
+    "cacheCreationTokens": 4079,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 815
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 5249,
+        "cacheCreationTokens": 329
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 5578,
+        "cacheCreationTokens": 1482
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 7060,
+        "cacheCreationTokens": 1201
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 648,
+        "cacheReadTokens": 8261,
+        "cacheCreationTokens": 252
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 298,
+        "args": "{\"pattern\":\"def send\\\\(\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src\",\"output_mode\":\"content\"}",
+        "argsChars": 151,
+        "paths": [
+          "src/requests/adapters.py",
+          "nsrc/requests/adapters.py",
+          "nsrc/requests/sessions.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 3787,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/sessions.py\",\"offset\":745,\"limit\":90}",
+        "argsChars": 153
+      },
+      {
+        "name": "Grep",
+        "chars": 419,
+        "args": "{\"pattern\":\"def (resolve_proxies|_is_prepared|get_adapter|dispatch_hook|extract_cookies_to_jar|resolve_redirects)\\\\(|preferred_clock\\\\s*=|import.*preferred_clock|^\\\\s*preferred_clock\",\"path\":\"/private",
+        "argsChars": 310,
+        "paths": [
+          "src/requests/utils.py",
+          "nsrc/requests/hooks.py",
+          "nsrc/requests/cookies.py",
+          "nsrc/requests/sessions.py"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 869,
+        "args": "{\"pattern\":\"^(from|import) .*|^\\\\s+(preferred_clock|resolve_proxies|_is_prepared|dispatch_hook|extract_cookies_to_jar),?$\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-",
+        "argsChars": 286
+      },
+      {
+        "name": "Grep",
+        "chars": 76,
+        "args": "{\"pattern\":\"def is_prepared\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/_types.py\",\"output_mode\":\"content\"}",
+        "argsChars": 174
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 19526,
+    "costUsd": 0.0402724,
+    "judgeCostUsd": 0,
+    "resultText": "The `send()` you want is `Session.send` at `src/requests/sessions.py:752`. It gets the adapter with `self.get_adapter(url=request.url)` and dispatches with `adapter.send(request, **kwargs)`.\n\nThe named functions and methods it calls directly, with where each is defined:\n\n| Call in `send()` | Defined in |\n|---|---|\n| `resolve_proxies(...)` | `src/requests/utils.py:911` |\n| `_is_prepared(request)` (imported alias of `is_prepared`) | `src/requests/_types.py:42` |\n| `self.get_adapter(url=...)` | `src/requests/sessions.py:870` |\n| `preferred_clock()` (called twice) | Not defined as a function. It is assigned at `src/requests/sessions.py:71` as `time.perf_counter`, or at line 73 as `time.time`. Both are stdlib functions in the `time` module. |\n| `adapter.send(request, **kwargs)` | `BaseAdapter.send` at `src/requests/adapters.py:128` is the abstract version. The mounted `HTTPAdapter.send` at `src/requests/adapters.py:634` is the concrete one used by default. |\n| `dispatch_hook(\"response\", ...)` | `src/requests/hooks.py:32` |\n| `extract_cookies_to_jar(...)` (called twice) | `src/requests/cookies.py:135` |\n| `self.resolve_redirects(...)` (called twice) | `src/requests/sessions.py:186` |\n\n`send()` also calls a few builtins and stdlib names that this repo doesn't define:\n- `isinstance`\n- `next`\n- `timedelta(...)`, from `datetime`\n- `kwargs.setdefault`, `kwargs.pop` and `kwargs.get`, which are `dict` methods\n\n`Request` appears only in the `isinstance` check, and `r.content` is a property access rather than a call.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-deps-packages-boundary",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "control",
+    "expectedWinner": "baseline",
+    "taskDefHash": "3466786fe1ab",
+    "inputTokens": 6,
+    "outputTokens": 1520,
+    "cacheReadTokens": 39410,
+    "cacheCreationTokens": 8543,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6315
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 14705,
+        "cacheCreationTokens": 1610
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 747,
+        "cacheReadTokens": 16315,
+        "cacheCreationTokens": 618
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__get_dependencies",
+        "chars": 688,
+        "args": "{\"file_path\":\"src/requests/packages.py\",\"direction\":\"Incoming\",\"max_depth\":1}",
+        "argsChars": 77,
+        "paths": [
+          "src/requests/__init__.py",
+          "src/requests/packages.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 1032,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/packages.py\"}",
+        "argsChars": 128
+      },
+      {
+        "name": "Grep",
+        "chars": 1297,
+        "args": "{\"pattern\":\"requests\\\\.packages|from requests import packages|from \\\\.packages|from \\\\. import .*packages\",\"output_mode\":\"content\"}",
+        "argsChars": 131,
+        "paths": [
+          "src/requests/packages.py",
+          "nsrc/requests/packages.py",
+          "nsrc/requests/__init__.py",
+          "ntests/test_requests.py",
+          "ntests/test_packages.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 291,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/tests/test_packages.py\"}",
+        "argsChars": 126
+      },
+      {
+        "name": "Grep",
+        "chars": 235,
+        "args": "{\"pattern\":\"chardet|charset_normalizer\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-py-requests-CevUz0/src/requests/compat.py\",\"output_mode\":\"content\"}",
+        "argsChars": 184
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 20052,
+    "costUsd": 0.05840200000000001,
+    "judgeCostUsd": 0.0125925,
+    "resultText": "**(1) The static importer of `requests.packages`**\n\n`src/requests/__init__.py:158` is the only one:\n\n```python\nfrom . import packages, utils\n```\n\ng-mesh's incoming-dependency walk on `requests.packages` returned only `src/requests/__init__.py`, and the grep found no other static import.\n\n**(2) Test-suite uses of the dynamic aliases**\n\n- `tests/test_packages.py:5`, `:9` and `:13` access `requests.packages.urllib3`, `requests.packages.idna` and `requests.packages.chardet` as attributes after a plain `import requests`.\n- `tests/test_requests.py:97` does `from requests.packages.urllib3.poolmanager import PoolManager`. This one is an import-statement use of a `sys.modules` alias.\n\n**Why the exact module can't be determined from this repository's source**\n\nNone of these names is defined by a file in this repo. There is no `src/requests/packages/urllib3/` directory. `packages.py` builds them at import time:\n\n- **urllib3 and idna.** `locals()[package] = __import__(package)` (line 9) binds whatever top-level module the environment's `urllib3` or `idna` resolves to. Lines 12–14 then copy every matching `sys.modules` entry to `sys.modules[\"requests.packages.<mod>\"]`. So `requests.packages.urllib3.poolmanager` is whichever `urllib3.poolmanager` the interpreter loaded. That depends on the installed version and on `sys.path` order. The repo only constrains `urllib3` through the version range in its packaging metadata. It doesn't pin a version, and `idna` is likewise resolved from the environment.\n- **chardet.** This is more indirect. `compat.py:39-49` runs `_resolve_char_detection()`. It tries `importlib.import_module` on `\"chardet\"` first, then `\"charset_normalizer\"`, and takes the first one that imports. The result may also be `None`. `packages.py` then aliases that module's `__name__` under `requests.packages.<name>`. Lines 22–23 also alias it under the `chardet` name. So `requests.packages.chardet` in `test_can_access_chardet_attribute` can be the real `chardet` package or `charset_normalizer`, depending on which is installed. If neither is installed, `chardet` is `None`, no alias is created, and that test would fail with an `AttributeError`.\n\nThe alias is therefore an identity-preserving pointer to a third-party module chosen at runtime. Which module that is depends on the installed environment, so reading the repository can't settle it.\n\nI did not run the tests or inspect an installed environment to see what these names resolve to in practice.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly identifies src/requests/__init__.py as the static importer, names both test files using dynamic aliases with specific line numbers, and accurately explains the runtime sys.modules mechanism that makes these paths environment-dependent and not discoverable from reading the repo alone.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-deps-packages-boundary",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "control",
+    "expectedWinner": "baseline",
+    "taskDefHash": "3466786fe1ab",
+    "inputTokens": 6,
+    "outputTokens": 1644,
+    "cacheReadTokens": 16528,
+    "cacheCreationTokens": 3259,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 992
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 5426,
+        "cacheCreationTokens": 1242
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 754,
+        "cacheReadTokens": 6668,
+        "cacheCreationTokens": 1025
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 1032,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/packages.py\"}",
+        "argsChars": 129
+      },
+      {
+        "name": "Grep",
+        "chars": 1297,
+        "args": "{\"pattern\":\"requests\\\\.packages|from \\\\. import packages|from requests import packages|from \\\\.packages|import packages\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 155,
+        "paths": [
+          "src/requests/packages.py",
+          "nsrc/requests/packages.py",
+          "nsrc/requests/__init__.py",
+          "ntests/test_requests.py",
+          "ntests/test_packages.py"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 291,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/tests/test_packages.py\"}",
+        "argsChars": 127
+      },
+      {
+        "name": "Grep",
+        "chars": 509,
+        "args": "{\"pattern\":\"urllib3|idna|chardet|charset\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/src/requests/compat.py\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 197
+      },
+      {
+        "name": "Grep",
+        "chars": 143,
+        "args": "{\"pattern\":\"urllib3|idna|chardet|charset\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-corpora/py-requests/pyproject.toml\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 189
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 18961,
+    "costUsd": 0.0339346,
+    "judgeCostUsd": 0.013046499999999999,
+    "resultText": "**(1) The static import of `requests.packages`**\n\n`src/requests/__init__.py:158` has `from . import packages, utils`. It is the only place in the repo that imports the `packages` submodule itself. Importing it there runs the aliasing loop in `packages.py` as a side effect.\n\n**(2) A test that uses a dynamically-created alias**\n\n- `tests/test_requests.py:97` has `from requests.packages.urllib3.poolmanager import PoolManager`.\n- `tests/test_packages.py:5`, `:9` and `:13` access `requests.packages.urllib3`, `requests.packages.idna` and `requests.packages.chardet`.\n\n**Why the target module can't be determined from this repo's source**\n\nNo file in the repo defines a `requests/packages/urllib3`, `idna` or `chardet` module. Each alias is created at import time by `packages.py`, using module objects that already exist in `sys.modules`. The alias is only a second name for whatever object was already there, and that object depends on the environment:\n\n- **`urllib3` and `idna`** (`packages.py:8-14`): `__import__(package)` returns whichever distribution is first on `sys.path`. `pyproject.toml:19-21` only pins ranges (`urllib3>=1.26,<3`, `idna>=2.5,<4`). So `requests.packages.urllib3` could be urllib3 1.26.x or 2.x, and its `poolmanager.PoolManager` comes from that version. `compat.py:25-30` shows the code already has to handle both major versions.\n- **`chardet`** (`packages.py:16-23`): this is the least determinable case. `compat.py:39-49` tries `chardet` first, then `charset_normalizer`, and uses the first that imports. `pyproject.toml:19` requires `charset_normalizer`, and `chardet` is only an optional extra (`use_chardet_on_py3`, line 56). So `requests.packages.chardet` is the real `chardet` package if it is installed. Otherwise it is `charset_normalizer` under the name `chardet`. The `mod.replace(target, \"chardet\")` on line 22 is what registers that second name. If neither is importable, `chardet` is `None` and the alias is never created. `test_can_access_chardet_attribute` would then fail with an `AttributeError`.\n- **Submodules**: the loop only aliases the `sys.modules` entries that exist when `packages.py` runs. For the `from requests.packages.urllib3.poolmanager import ...` case, whether `poolmanager` is aliased depends on urllib3 having already loaded it by then.\n\nSo the exact module (which distribution, which version) is set by the installed environment and the import order at runtime. The repo's source only says which names will be aliased.\n\nI didn't run anything, so this is from reading the source only.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies src/requests/__init__.py as the static importer with the exact import line, names both test files accessing dynamic aliases, and accurately explains that these aliases are created at runtime by copying sys.modules entries, making their targets dependent on the installed environment rather than determinable from reading the repo's source.",
+    "status": "ok"
+  },
+  {
+    "taskId": "py-semantic-basicauth-header",
+    "corpusId": "py-requests",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "5db599ea233c",
+    "inputTokens": 4,
+    "outputTokens": 218,
+    "cacheReadTokens": 22897,
+    "cacheCreationTokens": 6436,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 1,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 32,
+        "cacheReadTokens": 8390,
+        "cacheCreationTokens": 6117
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 124,
+        "cacheReadTokens": 14507,
+        "cacheCreationTokens": 319
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 417,
+        "args": "{\"symbol_name\":\"HTTPBasicAuth\",\"include_source\":false}",
+        "argsChars": 54,
+        "paths": [
+          "src/requests/auth.py"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.8.0",
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4395,
+    "costUsd": 0.0335004,
+    "judgeCostUsd": 0,
+    "resultText": "The class is `HTTPBasicAuth`, defined in `src/requests/auth.py` (lines 85–113, subclassing `AuthBase`). Its docstring reads \"Attaches HTTP Basic Authentication to the given Request object.\"\n\nI identified it from the class definition and docstring returned by the index. I didn't open the file to read the `__call__` body that sets the header.",
+    "oraclePassed": true,
+    "status": "ok"
+  },
+  {
+    "taskId": "py-semantic-basicauth-header",
+    "corpusId": "py-requests",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-21T01:21:55.560Z",
+    "model": "claude-sonnet-5",
+    "category": "semantic-search",
+    "expectedWinner": "gmesh",
+    "taskDefHash": "5db599ea233c",
+    "inputTokens": 4,
+    "outputTokens": 197,
+    "cacheReadTokens": 9662,
+    "cacheCreationTokens": 957,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 4434,
+        "cacheCreationTokens": 794
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 114,
+        "cacheReadTokens": 5228,
+        "cacheCreationTokens": 163
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Grep",
+        "chars": 56,
+        "args": "{\"pattern\":\"class HTTPBasicAuth\",\"output_mode\":\"content\"}",
+        "argsChars": 57,
+        "paths": [
+          "src/requests/auth.py"
+        ]
+      }
+    ],
+    "corpusRevision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "durationMs": 4017,
+    "costUsd": 0.0087274,
+    "judgeCostUsd": 0,
+    "resultText": "The class is `HTTPBasicAuth`, defined in `src/requests/auth.py` at line 85. It subclasses `AuthBase`.\n\nI found it by searching for the class name and didn't open the file. I haven't confirmed that its `__call__` sets the `Authorization` header, but the name and the `AuthBase` parent match what you described.",
+    "oraclePassed": true,
+    "status": "ok"
+  }
+]

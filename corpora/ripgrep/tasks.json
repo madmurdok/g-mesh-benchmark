@@ -1,0 +1,153 @@
+[
+  {
+    "id": "rs-find-impl-sink-trait",
+    "kind": "find_implementations",
+    "category": "lookup",
+    "revealsLocation": false,
+    "expectedWinner": "baseline",
+    "target": {
+      "symbol": "Sink",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, the searcher crate defines a `Sink` trait - types implement it to receive search results as a search proceeds. Find every implementation of this trait anywhere in the codebase, including any blanket or generic implementations that satisfy the trait for a whole family of types at once (not just one named struct), and report the total count along with a short description of each implementor.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is the complete set of implementations of the Sink trait (declared crates/searcher/src/sink.rs) anywhere in the ripgrep repository, including blanket/generic impls. Ground truth, confirmed by grepping `impl.*Sink for` across the whole pinned checkout and cross-checked against g-mesh's own find_callers output for Sink::matched (which surfaces the blanket impls as callers even though g-mesh's find_implementations tool does not list them): there are exactly 9 implementations, in two crates. In grep-searcher (crates/searcher/src/sink.rs): (1) `impl<'a, S: Sink> Sink for &'a mut S` - a blanket impl forwarding to any Sink behind a mutable reference; (2) `impl<S: Sink + ?Sized> Sink for Box<S>` - a blanket impl forwarding to any boxed Sink; (3-5) three generic wrapper types in the `sinks` submodule of the same file: `UTF8<F>`, `Lossy<F>`, `Bytes<F>`. Also in grep-searcher, (6) crates/searcher/src/testutil.rs has a test-only `KitchenSink`. In grep-printer, one implementor per file: (7) `JSONSink` (crates/printer/src/json.rs), (8) `StandardSink` (crates/printer/src/standard.rs), (9) `SummarySink` (crates/printer/src/summary.rs). PASS only if the answer's total count is 9 (or it explicitly enumerates all 9 without stating a wrong total) AND it explicitly names both blanket impls - the impl for a mutable reference (`&mut S` / `&'a mut S`) and the impl for `Box<S>` - worded either way, as being among the implementors. These two are the specific completeness gap this task exists to detect: g-mesh's own find_implementations tool omits exactly these two from its result list (they satisfy the trait for a whole family of types rather than one named struct), while a plain text search for `impl.*Sink for` finds all 9 trivially. FAIL if the answer's count is 7 or fewer, if it omits both blanket impls, or if it omits only one of the two without otherwise showing awareness that impls beyond the 7 concrete named types exist. Correctly naming the wrapper types and the three printer sinks is expected but not sufficient by itself - missing the two blanket impls is what fails the answer."
+    }
+  },
+  {
+    "id": "rs-ambiguous-regexmatcher",
+    "kind": "find_definition",
+    "category": "ambiguous-name",
+    "revealsLocation": false,
+    "expectedWinner": "baseline",
+    "target": {
+      "symbol": "RegexMatcher",
+      "file": "crates/regex/src/matcher.rs"
+    },
+    "prompt": "In this repository, more than one type is named `RegexMatcher`. Two of the crates that provide ripgrep's actual pattern-matching engines - selected at runtime by which engine (the default Rust regex engine, or PCRE2) the user chose - each expose their own public `RegexMatcher` type as that crate's main matcher, and both are wired into the CLI's own matcher enum. Separately, at least one other, completely unrelated `RegexMatcher` exists purely as a private test helper somewhere else in the repository. Find and report: (a) the two production `RegexMatcher` types, with the crate and file each lives in, and (b) whether the bare name `RegexMatcher` is ambiguous enough that a plain lookup by that name alone risks landing on one of the private test helpers instead of either production type.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, confirmed by grepping `struct RegexMatcher` across the pinned checkout: the name RegexMatcher is declared FOUR times. Two are genuine production matchers, both referenced from crates/core/search.rs's PatternMatcher enum (`RustRegex(grep::regex::RegexMatcher)` and `PCRE2(grep::pcre2::RegexMatcher)`): crates/regex/src/matcher.rs (`pub struct RegexMatcher`, the grep-regex crate, used when the default Rust regex engine is selected) and crates/pcre2/src/matcher.rs (`pub struct RegexMatcher`, the grep-pcre2 crate, used when --pcre2 is passed). The other two are private (`pub(crate)`) test-only helpers, each with a doc comment saying so: crates/searcher/src/testutil.rs and crates/matcher/tests/util.rs. Independently confirmed against g-mesh's own find_definition('RegexMatcher') on this exact pinned revision: it resolves silently (resolvedBy: 'qualifiedName', no ambiguous flag) to crates/matcher/tests/util.rs - the private test fixture - because the other three declarations carry module-qualified names internally and only this one's qualified name equals the bare string 'RegexMatcher'. PASS only if the answer (a) names BOTH crates/regex/src/matcher.rs and crates/pcre2/src/matcher.rs as production RegexMatcher types (crate names grep-regex/grep_regex and grep-pcre2/grep_pcre2 or equivalent are acceptable phrasing), and (b) explicitly states that the name is ambiguous / that multiple declarations exist / that a naive single lookup could return a test-only helper instead of a production type. FAIL if the answer names only one of the two production matchers without acknowledging the other, if it presents a test-helper file (testutil.rs or matcher/tests/util.rs) as if it were a or the production matcher, or if it does not address the ambiguity question at all."
+    }
+  },
+  {
+    "id": "rs-deps-json-printer-workspace-crates",
+    "kind": "get_dependencies",
+    "category": "lookup",
+    "revealsLocation": false,
+    "expectedWinner": "parity",
+    "target": {
+      "symbol": "",
+      "file": "crates/printer/src/json.rs"
+    },
+    "prompt": "In this repository, ripgrep's JSON output printer lives in its own module within one of this cargo workspace's crates. This workspace is made up of several separately-versioned grep-* crates (grep-searcher, grep-matcher, grep-regex, grep-printer, grep-pcre2, and more), each its own compilation unit. Find the JSON printer's source module, then find every OTHER workspace crate (not third-party crates like serde_json or std, and not this file's own crate's other submodules) that it directly depends on / pulls types from at the module level - i.e. walk this module's OUTGOING dependency edges. Name each such crate.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The answer must name BOTH workspace crates that crates/printer/src/json.rs pulls types from at module level: grep-searcher and grep-matcher. Either spelling is correct - the Cargo crate name (grep-searcher) and the Rust module identifier (grep_searcher) name the same thing, and the prompt itself uses the hyphenated form.\n\nThe answer must NOT claim grep-regex is one of them. It is a [dev-dependencies] entry of grep-printer and is imported only inside json.rs's `#[cfg(test)] mod tests`, so it is not a module-level dependency, which is what the prompt asks for. An answer that names it and explains that it is test-only is correct; an answer that lists it alongside the other two as a module-level dependency is not.\n\nThird-party and standard-library crates (serde_json, std) and grep-printer's own submodules (counter, jsont, stats, util) are out of scope either way - mentioning them is neither required nor disqualifying."
+    }
+  },
+  {
+    "id": "rs-deps-sink-module-incoming",
+    "kind": "get_dependencies",
+    "category": "lookup",
+    "revealsLocation": false,
+    "expectedWinner": "baseline",
+    "target": {
+      "symbol": "",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, the searcher crate's `sink` module (crates/searcher/src/sink.rs) defines the Sink trait and the types passed to it - Sink implementors receive search results through it. Walking the INCOMING side of the dependency graph this time: find every other file within the searcher crate itself (not other crates, not sink.rs itself) that imports from this module. List each file.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "crates/searcher/src/testutil.rs",
+        "crates/searcher/src/searcher/core.rs",
+        "crates/searcher/src/searcher/glue.rs",
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/searcher/src/lib.rs"
+      ],
+      "minMatches": 3
+    }
+  },
+  {
+    "id": "rs-callers-sink-matched",
+    "kind": "find_callers",
+    "category": "lookup",
+    "revealsLocation": false,
+    "expectedWinner": "gmesh",
+    "target": {
+      "symbol": "matched",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, the `Sink` trait (used to receive search results as a search proceeds) declares a `matched` method, called whenever a match is found. Find every real call site that invokes THIS specific trait method - not any of the several other, unrelated methods elsewhere in the codebase that also happen to be named `matched` on completely different types (for example, path/glob-matching helpers in the ignore crate, or a color-lookup method in the printer crate). List every file with a genuine call site.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question is which call sites invoke the Sink trait's matched method specifically (declared crates/searcher/src/sink.rs), distinct from several unrelated methods elsewhere in the repo also named 'matched' (e.g. Gitignore::matched and Types::matched in crates/ignore, Override::matched, ColorSpecs::matched in crates/printer/src/color.rs). Ground truth, confirmed both by reading crates/searcher/src source directly and independently via g-mesh's find_callers anchored on the resolved Sink::matched symbol id on this exact pinned revision: there are exactly 3 real call sites, in 2 files. Two are trait-delegation forwards inside crates/searcher/src/sink.rs itself - `impl<'a, S: Sink> Sink for &'a mut S` and `impl<S: Sink + ?Sized> Sink for Box<S>` each forward their own `matched` call straight to the inner Sink. The third and only non-delegating call site is crates/searcher/src/searcher/core.rs's `Core::matched`, which does `self.sink.matched(&self.searcher, &SinkMatch {...})`. A close decoy exists: crates/searcher/src/searcher/glue.rs contains `self.core.matched(self.slice, range)`, which LOOKS like another call site under a naive text search for '.matched(' but is actually a call to a different, unrelated inherent method (`Core::matched` takes different arguments and is one step earlier in the pipeline than `Core::sink_matched` which calls it) - not a call to the Sink trait method at all. PASS only if the answer names crates/searcher/src/sink.rs and crates/searcher/src/searcher/core.rs as (or among) the real call sites, AND does not confidently present crates/searcher/src/searcher/glue.rs as a genuine call site of Sink::matched (mentioning it while correctly noting it's a different method is fine). FAIL if the answer misses both of the two correct files, or confidently lists glue.rs as calling Sink::matched."
+    }
+  },
+  {
+    "id": "rs-references-sinkfinish",
+    "kind": "find_references",
+    "category": "lookup",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "SinkFinish",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, the searcher crate defines a `SinkFinish` struct, passed to a `Sink` implementor's `finish` method once a search completes (carrying, among other things, the total byte count read). Find every file - other than where it's declared - that references it.",
+    "oracle": {
+      "mode": "pool",
+      "candidatePool": [
+        "crates/printer/src/json.rs",
+        "crates/printer/src/standard.rs",
+        "crates/printer/src/summary.rs",
+        "crates/searcher/src/searcher/core.rs",
+        "crates/searcher/src/testutil.rs",
+        "crates/searcher/src/lib.rs"
+      ],
+      "minMatches": 4
+    }
+  },
+  {
+    "id": "rs-outline-sink-vs-lines",
+    "kind": "get_file_outline",
+    "category": "lookup",
+    "revealsLocation": true,
+    "target": {
+      "symbol": "",
+      "file": "crates/searcher/src/sink.rs"
+    },
+    "prompt": "In this repository, list the public/exported items declared in crates/searcher/src/sink.rs, then contrast it with crates/searcher/src/lines.rs (a much smaller, internal-only file with no public API of its own beyond a couple of iterator types). Report both lists.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": [
+        "SinkMatch",
+        "SinkFinish",
+        "LineStep",
+        "LineIter"
+      ]
+    }
+  },
+  {
+    "id": "rs-semantic-detect-binary-content",
+    "kind": "search_code",
+    "category": "semantic-search",
+    "revealsLocation": false,
+    "expectedWinner": "gmesh",
+    "target": {
+      "symbol": "detect_binary",
+      "file": "crates/searcher/src/searcher/core.rs"
+    },
+    "prompt": "In this repository, find the internal method that - while scanning through a chunk of already-read search data - decides whether that data looks like it isn't human-readable text, by checking for a single configured marker byte, so the searcher can either abort scanning this file or transparently convert those bytes and keep going, depending on how the caller configured that behavior. Report the function name and the file it's defined in.",
+    "oracle": {
+      "mode": "substring",
+      "mustMentionSymbols": [
+        "detect_binary"
+      ],
+      "mustMentionFiles": [
+        "crates/searcher/src/searcher/core.rs"
+      ]
+    }
+  }
+]

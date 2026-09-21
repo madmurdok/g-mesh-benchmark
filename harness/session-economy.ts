@@ -3,7 +3,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  GMESH_CONFIGURED_CLAUDE_MD,
   MAX_BUDGET_USD,
   MODEL,
   SERENA_CONFIGURED_SETTINGS_JSON,
@@ -11,6 +10,7 @@ import {
   armMcpConfig,
   armPrompt,
   armTools,
+  gmeshConfiguredClaudeMd,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import { mapWithConcurrency } from "./lib/concurrency.js";
@@ -571,7 +571,7 @@ async function main() {
     // One clone per corpus, reused across every repetition's kungfu chain.
     const kungfuCwd = arms.includes("kungfu") ? await resolveFresh(corpus) : undefined;
     const gmeshConfiguredCwd = arms.includes("gmesh-configured")
-      ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
+      ? await resolveConfigured(corpus, gmeshConfiguredClaudeMd(corpus.language))
       : undefined;
     if (gmeshConfiguredCwd !== undefined) {
       console.log(`[${corpus.id}] warming g-mesh index for the gmesh-configured chain...`);

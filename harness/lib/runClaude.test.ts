@@ -532,6 +532,31 @@ test("finds paths in a grep-shaped result too, not just a JSON one", () => {
   assert.deepEqual(parsed.toolResults[0]?.paths, ["packages/math/src/point.ts"]);
 });
 
+test("GMB-164: extracts a .go path, closing the gap where rust/python were recognized but go was not", () => {
+  const stdout = [
+    assistantLine([toolUseWithInput("Grep", "toolu_1", { pattern: "NewEngine" })]),
+    // One line covering all three non-JS/TS single-extension languages this
+    // regex recognizes, so a regression in any one of them shows up here.
+    // Space-joined rather than newline-joined: a real newline round-trips
+    // through this event's own JSON.stringify as a two-character "\n" escape,
+    // and the bare "n" right after it is a \w character with no boundary
+    // before it, which the path regex would wrongly fold onto the next path
+    // ("nsrc/lib.rs") — an artifact of this fixture's double-encoding, not of
+    // pathsIn's actual behavior on a real grep-shaped result.
+    toolResultLine(
+      "toolu_1",
+      "pkg/gin/gin.go:42:func NewEngine() *Engine { " +
+        "src/lib.rs:10:pub fn new_engine() {} " +
+        "requests/api.py:5:def new_engine():",
+    ),
+    resultLine(),
+  ].join("\n");
+
+  const parsed = parseStreamJson(stdout);
+
+  assert.deepEqual(parsed.toolResults[0]?.paths, ["pkg/gin/gin.go", "src/lib.rs", "requests/api.py"]);
+});
+
 test("omits args and paths rather than inventing them", () => {
   // An unattributable result has no call to read arguments off, and a result
   // naming no file must not carry an empty array that reads as "searched and

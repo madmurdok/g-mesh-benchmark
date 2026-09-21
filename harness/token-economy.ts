@@ -5,8 +5,6 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import {
-  GMESH_CONFIGURED_CLAUDE_MD,
-  GMESH_MAP_CONFIGURED_CLAUDE_MD,
   KUNGFU_CONFIGURED_CLAUDE_MD,
   MAX_BUDGET_USD,
   MODEL,
@@ -15,6 +13,8 @@ import {
   armMcpConfig,
   armPrompt,
   armTools,
+  gmeshConfiguredClaudeMd,
+  gmeshMapConfiguredClaudeMd,
 } from "./lib/armConfig.js";
 import { applyArmIncludeOverrides, loadBenchConfig } from "./lib/benchConfig.js";
 import { mapWithConcurrency } from "./lib/concurrency.js";
@@ -40,7 +40,7 @@ import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
 import { runAcceptanceTest } from "./lib/testRunner.js";
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
-import type { Arm, BenchTask, CorpusEntry, ExpectedWinner, TaskCategory } from "./lib/types.js";
+import type { Arm, BenchTask, CorpusEntry, CorpusLanguage, ExpectedWinner, TaskCategory } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 /**
@@ -521,14 +521,21 @@ interface GradingOutcome {
  * cwd, every other mode by text-checking the answer. The two produce
  * deliberately different shapes — see lib/testRunner.ts for why they aren't one
  * function — so they're normalized here, at the single point runArm consumes.
+ *
+ * `corpusLanguage` is this task's corpus's own declared `CorpusEntry.language`
+ * (GMB-164) — threaded through to `runAcceptanceTest` so it recognizes the
+ * right testCommand path extensions for this corpus instead of a TS/JS-shaped
+ * guess.
  */
-async function gradeRun(cwd: string, resultText: string, task: BenchTask): Promise<GradingOutcome> {
+async function gradeRun(cwd: string, resultText: string, task: BenchTask, corpusLanguage: CorpusLanguage): Promise<GradingOutcome> {
   if (taskEditsCode(task)) {
     // Timed as its own phase because this is not a cheap assertion check: it
     // installs the corpus's dependencies into the throwaway clone before the
     // test runner starts (excalidraw's `yarn install` alone is ~58s on a cold
     // clone), which is real sweep wall-clock spent outside every arm call.
-    const verdict = await timePhase("grade.test", () => runAcceptanceTest(cwd, task.oracle, task.seedFiles));
+    const verdict = await timePhase("grade.test", () =>
+      runAcceptanceTest(cwd, task.oracle, task.seedFiles, corpusLanguage),
+    );
     return { passed: verdict.passed, reason: verdict.reason, judgeCostUsd: 0 };
   }
   const verdict = await checkOracle(resultText, task.oracle);
@@ -544,6 +551,7 @@ async function runArm(
   cwd: string,
   task: BenchTask,
   corpusId: string,
+  corpusLanguage: CorpusLanguage,
   arm: Arm,
   repetition: number,
   timestamp: string,
@@ -573,7 +581,7 @@ async function runArm(
   // reason minus the money: an agent that errored out or ran out of budget
   // mid-edit may well have left the corpus half-edited, and grading that says
   // nothing about the arm.
-  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task) : undefined;
+  const oracle = result.status === "ok" ? await gradeRun(cwd, result.resultText, task, corpusLanguage) : undefined;
   const judgeCostUsd = oracle?.judgeCostUsd ?? 0;
   const status = combinedBudgetStatus(result.status, result.costUsd, judgeCostUsd);
   if (status === "budget_exceeded" && result.status === "ok") {
@@ -709,7 +717,7 @@ function shouldIncludeBareGmeshArm(): boolean {
 /**
  * G_MESH_BENCH_INCLUDE_GMESH_MAP=yes|no gates the `gmesh-configured-map` arm —
  * `gmesh-configured` plus g-mesh's pushed repo map (see types.ts's Arm doc and
- * armConfig.ts's GMESH_MAP_CONFIGURED_CLAUDE_MD). Same opt-in-only pattern as
+ * armConfig.ts's gmeshMapConfiguredClaudeMd()). Same opt-in-only pattern as
  * every other should*Arm gate: a default run's output stays exactly what it was
  * before this arm existed.
  *
@@ -818,7 +826,7 @@ async function resolveMapConfigured(
   seedFiles?: Record<string, string>,
   deps: RunCwdDeps = defaultRunCwdDeps,
 ): Promise<string> {
-  const dest = await resolveConfigured(corpus, GMESH_MAP_CONFIGURED_CLAUDE_MD);
+  const dest = await resolveConfigured(corpus, gmeshMapConfiguredClaudeMd(corpus.language));
   await copyFixtureFiles(dest, seedFiles);
   console.log(`[${corpus.id}] warming g-mesh index for the gmesh-configured-map checkout...`);
   await deps.warmGmeshIndex(dest);
@@ -856,7 +864,7 @@ export async function resolveRunCwd(
     // needs the corpus back in its unfixed state. Warming here pays a real
     // g-mesh init walk every rep, front-loaded into setup instead of leaking
     // into the measured call's turn count.
-    const dest = await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD);
+    const dest = await resolveConfigured(corpus, gmeshConfiguredClaudeMd(corpus.language));
     await copyFixtureFiles(dest, task.seedFiles);
     console.log(`  [${task.id}] warming g-mesh index for this rep's edit sandbox...`);
     await deps.warmGmeshIndex(dest);
@@ -1275,7 +1283,12 @@ async function main() {
     const warmupCwd = await resolveWarm(firstCorpus);
     await warmCache(arms, warmupCwd, {
       kungfu: includeKungfu ? await resolveFresh(firstCorpus) : undefined,
-      "gmesh-configured": await resolveConfigured(firstCorpus, GMESH_CONFIGURED_CLAUDE_MD),
+      // `firstCorpus.language`, not a fixed doc: since GMB-165 the guidance
+      // text differs between a TypeScript corpus and a Go/Rust/Python one, so
+      // the prefix this warms is the first corpus's. A run spanning several
+      // languages therefore warms one of them — the same single-corpus
+      // approximation this warm-up already made, now visible.
+      "gmesh-configured": await resolveConfigured(firstCorpus, gmeshConfiguredClaudeMd(firstCorpus.language)),
       // Its own prefix again, and for a stronger reason than gmesh-configured's:
       // the repo map *is* system-level context, so a map arm warmed from the
       // plain configured cwd would warm a prefix it never uses.
@@ -1360,7 +1373,7 @@ async function main() {
     // the live, registry-registered checkout, so it gets its own fresh clone
     // with the trust snippet appended to (or creating) a CLAUDE.md there.
     const configuredCwd = hasReadOnlyTask && arms.includes("gmesh-configured")
-      ? await resolveConfigured(corpus, GMESH_CONFIGURED_CLAUDE_MD)
+      ? await resolveConfigured(corpus, gmeshConfiguredClaudeMd(corpus.language))
       : undefined;
     // This clone is brand-new every corpus (resolveConfigured() always
     // mkdtemp()s), so g-mesh's own index for it is cold every time - warm it
@@ -1470,7 +1483,7 @@ async function main() {
         try {
           await mapWithConcurrency(lanes, armConcurrency, async (lane) => {
             for (const i of lane) {
-              groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, arms[i] as Arm, rep, timestamp, {
+              groupRuns[i] = await runArm(armCwds[i] as string, task, corpus.id, corpus.language, arms[i] as Arm, rep, timestamp, {
                 serena: serenaRevision,
                 corpus: corpusRevision,
                 gmesh: gmeshVersion,

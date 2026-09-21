@@ -10,6 +10,31 @@ import { promisify } from "node:util";
 import { regressionPathsIn, runAcceptanceTest } from "./testRunner.js";
 
 /**
+ * GMB-164: `regressionPathsIn`'s extension check is derived from the corpus's
+ * declared language (lib/language.ts) instead of a TS/JS-shaped constant with
+ * nowhere to grow. `language` defaults to "ts", which is what keeps every
+ * other test in this file passing unchanged.
+ */
+test("regressionPathsIn: recognizes each non-TS language's own testCommand path only when told that language", () => {
+  assert.deepEqual(regressionPathsIn("go test ./... pkg/server/server_test.go", [], "go"), [
+    "pkg/server/server_test.go",
+  ]);
+  assert.deepEqual(
+    regressionPathsIn("cargo test --test integration tests/integration_test.rs", [], "rust"),
+    ["tests/integration_test.rs"],
+  );
+  assert.deepEqual(regressionPathsIn("pytest tests/test_api.py -v", [], "python"), ["tests/test_api.py"]);
+
+  // The same three commands under the ts/js default (what every caller got
+  // before GMB-164, and still gets if `language` is omitted) recognize none
+  // of them — proving the two arms actually differ rather than both quietly
+  // accepting everything.
+  assert.deepEqual(regressionPathsIn("go test ./... pkg/server/server_test.go", []), []);
+  assert.deepEqual(regressionPathsIn("cargo test --test integration tests/integration_test.rs", []), []);
+  assert.deepEqual(regressionPathsIn("pytest tests/test_api.py -v", []), []);
+});
+
+/**
  * Any file that's guaranteed to exist in this repo and is cheap to read — the
  * point of these tests is the copy/spawn plumbing, not the fixture's contents.
  */

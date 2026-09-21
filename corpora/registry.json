@@ -12,5 +12,28 @@
     "path": "/Users/Valentin_Taiurskii/Projects/excalidraw",
     "revision": "1acf66edabc2ac5bbd4aed0714aed7dca7cc2aab",
     "language": "ts"
+  },
+  {
+    "id": "gin",
+    "kind": "git",
+    "repoUrl": "https://github.com/gin-gonic/gin.git",
+    "ref": "v1.12.0",
+    "revision": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+    "language": "go"
+  },
+  {
+    "id": "ripgrep",
+    "kind": "git",
+    "repoUrl": "https://github.com/BurntSushi/ripgrep.git",
+    "ref": "15.2.0",
+    "revision": "e89fff89ac9af12e8d4ce9d5fd07beb408ca730f",
+    "language": "rust"
+  },
+  {
+    "id": "py-requests",
+    "kind": "git",
+    "repoUrl": "https://github.com/psf/requests.git",
+    "revision": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "language": "python"
   }
 ]

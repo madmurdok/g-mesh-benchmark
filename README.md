@@ -406,7 +406,14 @@ A default `token-economy` run compares three arms:
 
 - **`gmesh-configured`** — g-mesh's MCP tools plus the CLAUDE.md guidance an
   actual project would have, written into a throwaway clone and auto-loaded by
-  Claude Code.
+  Claude Code. On a `ts`/`js` corpus that is g-mesh's shipped snippet verbatim;
+  on a Go, Rust or Python corpus it is the same document with its two
+  TypeScript-scoping spans removed and nothing else changed, because the
+  scoping ones suppressed the tool under test in 11 of 16 psf/requests runs
+  (`harness/lib/armConfig.ts`'s `gmeshConfiguredClaudeMd`, and
+  `docs/results/v0.23.0-gmb165-what-the-scope-line-does.md` for the numbers).
+  **Any write-up of a non-TypeScript run should say the arm ran that de-scoped
+  derivative rather than g-mesh's shipped text.**
 - **`serena-configured`** — Serena's MCP tools plus the Claude Code hooks
   Serena itself ships, written into its own throwaway clone as
   `.claude/settings.json` (see
@@ -804,6 +811,32 @@ blended into the aggregate (see `docs/results/v0.2.0-realistic-tasks-findings.md
 "Stale run-record contamination" section for the bug this fixes). Pass
 `npm run report -- --all` to include every run regardless of staleness,
 reproducing the old unscoped behavior.
+
+## Which categories a corpus can use, by language
+
+Every read-only category works on every registered corpus: `lookup`,
+`multi-hop`, `scenario`, `feature-request`, `semantic-search`,
+`ambiguous-name`, `control`. They are graded on what the agent *says*, so the
+harness never has to build anything.
+
+`implementation` is the exception, and it is **TypeScript-only today**. It is
+graded by `oracle.mode: "test"` — the corpus's own suite plus a held-out
+acceptance test — and `lib/testRunner.ts`'s dependency prep is npm's. A
+corpus names its own `testCommand`, so `go test ./...`, `cargo test` and
+`pytest` would be spawned correctly; nothing creates the Go module cache,
+cargo registry or virtualenv they need, and nothing keeps one warm between
+runs.
+
+So the three corpora added in 0.23.0 — `gin` (Go), `ripgrep` (Rust),
+`py-requests` (Python) — are read-only **by construction**. That costs
+something worth naming: `implementation` is the only category that measures
+an agent changing code, and three of the four languages g-mesh supports
+cannot host one.
+
+The failure mode if you try anyway is the reason this is written down: the
+command runs, exits non-zero for want of dependencies it was never given, and
+the run is graded as the agent having failed to fix the bug. See
+`lib/testRunner.ts`'s own header for the two shapes a fix could take.
 
 ## Authoring `mode: "pool"` oracle tasks
 
