@@ -22,7 +22,12 @@ import {
   stopTrackedGmeshDaemons,
   warmGmeshIndex,
 } from "./lib/corpusResolver.js";
-import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import {
+  SERENA_LAUNCHER_COMMAND,
+  assertGmeshBinaryUsable,
+  gmeshBinaryPath,
+  kungfuBinaryPath,
+} from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
 import { buildTranscriptLabel, runClaude } from "./lib/runClaude.js";
@@ -466,12 +471,10 @@ function sessionArmConcurrency(): number {
 }
 
 async function main() {
-  if (!existsSync(gmeshBinaryPath())) {
-    console.error(
-      `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
-        `  cd ../g-mesh/core && cargo build --release\n` +
-        `  cd ../g-mesh/plugins/js-ts && npm install && npm run build`,
-    );
+  try {
+    assertGmeshBinaryUsable();
+  } catch (err) {
+    console.error((err as Error).message);
     process.exit(1);
   }
 

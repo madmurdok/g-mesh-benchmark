@@ -43,7 +43,7 @@ Follow these in order the first time; after that, jumping straight to
 
 2. **Clone this repo as a sibling of `g-mesh`, not nested inside it.**
    `harness/lib/mcpConfig.ts`'s default binary path
-   (`gmeshBinaryPath()`) resolves to `../../../g-mesh/core/target/release/g-mesh`
+   (`gmeshBinaryPath()`) resolves to `../../../g-mesh/target/release/g-mesh`
    relative to this file — i.e. it expects `g-mesh` and `g-mesh-bench` to sit
    side by side under the same parent directory:
    ```
@@ -58,8 +58,8 @@ Follow these in order the first time; after that, jumping straight to
 3. **Build the g-mesh binary** (only needed once, and again after pulling a
    newer `g-mesh`):
    ```bash
-   cd ../g-mesh/core && cargo build --release
-   cd ../g-mesh/plugins/js-ts && npm install && npm run build
+   cd ../g-mesh && cargo build --release -p g-mesh
+   cd ../g-mesh/plugins/typescript && npm ci && npm run build
    ```
 
 4. **Install this repo's own dependencies:**
@@ -143,7 +143,7 @@ that Windows won't give you for free:
 
 - **The g-mesh binary needs an explicit `.exe` path.**
   `harness/lib/mcpConfig.ts`'s `gmeshBinaryPath()` defaults to
-  `../../../g-mesh/core/target/release/g-mesh`, with no extension. On
+  `../../../g-mesh/target/release/g-mesh`, with no extension. On
   Windows, `cargo build --release` produces `g-mesh.exe`, so that default
   path won't resolve — set `G_MESH_BENCH_BINARY` explicitly:
   ```powershell
