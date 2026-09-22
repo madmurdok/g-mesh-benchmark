@@ -16,6 +16,9 @@ import {
   computeStaleSummary,
   computeTaskTable,
   formatDurationSeconds,
+  formatSpreadComparison,
+  formatTokenSpread,
+  formatTokenValues,
   formatTurnsWithToolCalls,
   loadRuns,
   pairedTokenTotals,
@@ -246,23 +249,32 @@ async function reportTokenEconomy(): Promise<void> {
 
   const taskTable = computeTaskTable(runs);
 
+  // GMB-117: "Tokens spread" and "Per-rep tokens" replace the old bare
+  // "Tokens best"/"Tokens worst" pair — those two columns already carried
+  // min/max but with nothing to stop a single-repetition group (bestTokens
+  // === worstTokens) from reading as a real, if narrow, interval. "Verdict"
+  // is task-level (same text on every arm row of a task, same convention as
+  // "Expected winner") and states whether primary-vs-baseline is a
+  // spread-distinguishable difference, within noise, or n=1-on-both-sides —
+  // see compareArmSpreads.
   console.log("# Token economy report\n");
-  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
-  console.log("|---|---|---|---|---|---|---|---|---|---|---|");
+  console.log("| Task | Expected winner | Verdict | Arm | Reps (ok/total) | Tokens mean | Tokens spread | Per-rep tokens | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
+  console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");
 
   // Iterates whichever arms the loaded runs actually contain (see
   // reportData.ts's armsPresent) — 2-arm history prints exactly as before,
   // and a run set that includes gmesh-trusted grows a third row per task.
   for (const row of taskTable) {
+    const verdict = formatSpreadComparison(row.comparison);
     for (const { arm, agg, groupLength: group } of row.cells) {
       if (!agg) {
         if (group > 0) {
-          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
+          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${verdict} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
         }
         continue;
       }
       console.log(
-        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
+        `| ${row.taskId} | ${row.expectedWinner} | ${verdict} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${formatTokenSpread(agg.tokenSpread)} | ${formatTokenValues(agg.tokenSpread)} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
       );
     }
   }
