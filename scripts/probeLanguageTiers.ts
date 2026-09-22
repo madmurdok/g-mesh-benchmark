@@ -257,10 +257,35 @@ function summarise(body: Record<string, unknown> | null, raw: unknown): string {
 // lib/judge.ts's rubric grading here, which is exactly the harness behaviour
 // GMB-175 was told not to smuggle in.
 
-const SEMANTIC_ENGINE_BINARY: Record<string, string> = {
-  go: "go",
-  rust: "rust-analyzer",
-  python: "npx", // pyright's own binary is absent on this machine; npx is its last-resort route (plugins/python/plugin.toml)
+/**
+ * Every binary a language's plugin can reach its semantic engine THROUGH -
+ * not just the engine's own name. A list rather than a string because of what
+ * GMB-180 measured on Rust, which is the whole reason this comment is long:
+ *
+ * `plugins/rust/plugin.toml` says `command = "rust-analyzer"`, and its own
+ * comment spells out a second route - "a `PATH` lookup, with `rustup which
+ * rust-analyzer` as the fallback". Hiding only `rust-analyzer` leaves `rustup`
+ * on the shadow PATH, `rustup which rust-analyzer` answers
+ * `~/.rustup/toolchains/stable-x86_64-apple-darwin/bin/rust-analyzer`, and the
+ * plugin starts the engine anyway. So every GMB-175 "structural" arm for
+ * ripgrep ran WITH rust-analyzer, and its finding that ripgrep needs the
+ * semantic tier for 0 of 8 tasks was not a fact about Rust - it was two
+ * identical arms.
+ *
+ * The cross-check that says which of those two it is, and that this list
+ * restores: `provenance.semanticTier == "absent"` (GM-382) appears on a
+ * structural-arm response to one of the four edge-walking tools and on
+ * nothing else. The gin and py-requests structural arms carried it on every
+ * such call; the ripgrep structural arm carried it on none, in either arm -
+ * which is the daemon itself saying its Rust semantic pass had contributed.
+ * `rustup` is hidden; `cargo` deliberately is not - it is a rustup proxy that
+ * works by argv[0] and needs no `rustup` on PATH, and the structural
+ * extractor still has to read the workspace.
+ */
+const SEMANTIC_ENGINE_BINARIES: Record<string, string[]> = {
+  go: ["go"],
+  rust: ["rust-analyzer", "rustup"],
+  python: ["npx"], // pyright's own binary is absent on this machine; npx is its last-resort route (plugins/python/plugin.toml)
 };
 
 async function dirOfBinary(bin: string): Promise<string | undefined> {
@@ -293,8 +318,8 @@ async function dirOfBinary(bin: string): Promise<string | undefined> {
  */
 const shadowDirCache = new Map<string, Promise<string>>();
 
-async function shadowDirWithout(realDir: string, hideName: string): Promise<string> {
-  const cacheKey = `${realDir}::${hideName}`;
+async function shadowDirWithout(realDir: string, hideNames: Set<string>): Promise<string> {
+  const cacheKey = `${realDir}::${[...hideNames].sort().join(",")}`;
   const cached = shadowDirCache.get(cacheKey);
   if (cached !== undefined) return cached;
   const promise = (async () => {
@@ -302,7 +327,7 @@ async function shadowDirWithout(realDir: string, hideName: string): Promise<stri
     const shadow = await fs.promises.mkdtemp(path.join("/tmp/gmb175", "shadow-"));
     const entries = await fs.promises.readdir(realDir);
     for (const entry of entries) {
-      if (entry === hideName) continue;
+      if (hideNames.has(entry)) continue;
       try {
         await fs.promises.symlink(path.join(realDir, entry), path.join(shadow, entry));
       } catch {
@@ -317,15 +342,29 @@ async function shadowDirWithout(realDir: string, hideName: string): Promise<stri
   return promise;
 }
 
-/** This process's real PATH with `language`'s semantic-engine binary hidden — every other binary in the same directory still resolves. */
+/**
+ * This process's real PATH with every route to `language`'s semantic engine
+ * hidden — each affected directory replaced by a shadow of itself, so every
+ * other binary in it still resolves. Several binaries can live in one
+ * directory (`rust-analyzer` and `rustup` both sit in `~/.cargo/bin`), so the
+ * names are grouped per directory and each directory gets exactly one shadow.
+ */
 async function structuralPath(language: string): Promise<string> {
-  const bin = SEMANTIC_ENGINE_BINARY[language];
-  if (bin === undefined) throw new Error(`no known semantic-engine binary for language "${language}"`);
-  const realDir = await dirOfBinary(bin);
-  if (realDir === undefined) return process.env.PATH ?? ""; // already absent from PATH — nothing to shadow
-  const shadow = await shadowDirWithout(realDir, bin);
+  const bins = SEMANTIC_ENGINE_BINARIES[language];
+  if (bins === undefined) throw new Error(`no known semantic-engine binaries for language "${language}"`);
+  const hidePerDir = new Map<string, Set<string>>();
+  for (const bin of bins) {
+    const realDir = await dirOfBinary(bin);
+    if (realDir === undefined) continue; // already absent from PATH — nothing to shadow
+    const names = hidePerDir.get(realDir) ?? new Set<string>();
+    names.add(bin);
+    hidePerDir.set(realDir, names);
+  }
+  if (hidePerDir.size === 0) return process.env.PATH ?? "";
+  const shadows = new Map<string, string>();
+  for (const [realDir, names] of hidePerDir) shadows.set(realDir, await shadowDirWithout(realDir, names));
   const entries = (process.env.PATH ?? "").split(path.delimiter);
-  return entries.map((entry) => (entry === realDir ? shadow : entry)).join(path.delimiter);
+  return entries.map((entry) => shadows.get(entry) ?? entry).join(path.delimiter);
 }
 
 interface TieredCall {
@@ -417,11 +456,128 @@ const TAGGED_CORPORA: CorpusUnderTest[] = [
   { id: "py-requests", language: "python" },
 ];
 
+/**
+ * One call as `runOneArm` executes it, already bound to the task (or, in
+ * `--calls` mode, the draft) it is evidence for. Flattening tasks to calls
+ * before the arm starts is what lets `--calls` reuse this function verbatim:
+ * a draft task that does not exist in tasks.json yet has no `BenchTask` to
+ * map, but it does have the one call whose two arms decide its tier.
+ */
+interface ArmCall {
+  taskId: string;
+  kind: string;
+  callLabel: string;
+  tool: string;
+  args: Record<string, unknown>;
+  /**
+   * The file the task's own `target` says the anchor is declared in, when the
+   * call is one of the four edge-walking tools. See `resolveAnchorArgs`.
+   */
+  anchorFile?: string;
+}
+
+/**
+ * The four tools whose completeness the semantic tier changes, and so the four
+ * whose responses carry `provenance.semanticTier` at all (GM-382's
+ * `core/src/mcp/provenance.rs`, "Why the disclosure is conditional, and scoped
+ * to four tools"). Also exactly the four where a bare ambiguous `symbol_name`
+ * must be disambiguated before the answer means anything - see
+ * `resolveAnchorArgs`.
+ */
+const EDGE_WALKING_TOOLS = new Set([
+  "find_references",
+  "find_callers",
+  "find_callees",
+  "find_implementations",
+]);
+
+function armCallsForTask(task: BenchTask): ArmCall[] {
+  const target = task.target as { symbol?: string; file?: string };
+  return callsForTask(task).map((call) => ({
+    taskId: task.id,
+    kind: task.kind,
+    callLabel: call.label,
+    tool: call.tool,
+    args: call.args,
+    anchorFile: EDGE_WALKING_TOOLS.has(call.tool) ? target.file : undefined,
+  }));
+}
+
+/**
+ * GMB-180. A bare `symbol_name` that resolves to more than one declaration
+ * never reaches a graph walk at all: g-mesh answers on its disambiguation
+ * rung, with `ambiguous: true` and a ranked candidate list, and its own
+ * guidance tells the caller to re-query by a candidate's `id`. GMB-175 hit
+ * this on two tasks and disambiguated them by hand; leaving it out of the
+ * script is what let `gin-find-impl-render` be tagged `structural` on the
+ * strength of an answer that is not an implementations answer at all - 19
+ * declarations that merely share the name `Render`, one of which
+ * (`Context.Render`) does not implement the interface and one of which is the
+ * interface.
+ *
+ * So the probe resolves the anchor first, the same way a caller following the
+ * guidance would: `find_definition(symbol_name)`, and when that comes back
+ * ambiguous, the candidate declared in the task's own `target.file` - which
+ * the task already states, so nothing new has to be written down per task and
+ * no opaque index-internal id is pinned into `tasks.json`.
+ *
+ * Scoped to `EDGE_WALKING_TOOLS` deliberately: for a `find_definition` task
+ * (`gin-ambiguous-binding`, `rs-ambiguous-regexmatcher`,
+ * `py-ambiguous-close-session`) the ambiguity *is* the answer, and
+ * disambiguating it would measure a different task than the one shipped.
+ */
+async function resolveAnchorArgs(
+  client: McpClient,
+  call: ArmCall,
+): Promise<{ args: Record<string, unknown>; note: string }> {
+  const symbolName = call.args.symbol_name;
+  if (call.anchorFile === undefined || typeof symbolName !== "string") {
+    return { args: call.args, note: "" };
+  }
+  const { result } = await callWithIndexRetry(client, "find_definition", { symbol_name: symbolName });
+  const body = bodyOf(result);
+  // Two rungs mean "this is a candidate list, not an answer": `nameAmbiguous`
+  // (several declarations carry the name) and `semanticNeighbours` (nothing
+  // structural matched at all, so these are the nearest declarations by
+  // meaning). Both have to be re-anchored, and the second is the one that
+  // bites on Rust: `Flag::name_long` is not any declaration's qualifiedName -
+  // the plugin's is `flags::Flag::name_long` - so a probe that took the
+  // neighbour list at face value would be reporting on whichever of 105
+  // same-named declarations happened to rank first.
+  const rung = body?.resolvedBy;
+  if (rung !== "nameAmbiguous" && rung !== "semanticNeighbours") return { args: call.args, note: "" };
+  const candidates = (body?.results ?? []) as { id?: string; filePath?: string; qualifiedName?: string }[];
+  const inFile = candidates.filter((c) => c.filePath === call.anchorFile);
+  // Two candidates can sit in the anchor file and mean different things, and
+  // picking by rank alone silently picks a different one in each arm. In gin's
+  // render/render.go the semantic index carries both `Render` (the interface
+  // type) and `Render.Render` (the interface's own method declaration, which
+  // only `go/types` produces); the structural index carries only the first.
+  // Ranked-first therefore resolved the structural arm to the interface and
+  // the semantic arm to the method - two different questions, an empty answer
+  // from each, and a task that reads as `structural` because neither arm
+  // answered. The exact-name preference is what keeps both arms on the
+  // declaration the task actually names.
+  const picked = inFile.find((c) => c.qualifiedName === symbolName) ?? inFile[0];
+  if (picked?.id === undefined) {
+    return {
+      args: call.args,
+      note: ` [${rung} (${candidates.length} candidates); NO candidate in ${call.anchorFile} - left on symbol_name]`,
+    };
+  }
+  const { symbol_name: _dropped, ...rest } = call.args;
+  return {
+    args: { ...rest, symbol_id: picked.id },
+    note: ` [${rung} (${candidates.length}); re-anchored on ${picked.qualifiedName ?? symbolName} @ ${call.anchorFile}]`,
+  };
+}
+
 async function runOneArm(
   corpus: CorpusUnderTest,
   arm: "semantic" | "structural",
-  tasks: BenchTask[],
+  calls: ArmCall[],
   outDir: string,
+  outName: string = corpus.id,
 ): Promise<void> {
   const registry = await loadRegistry();
   const entry = registry.find((e) => e.id === corpus.id);
@@ -450,22 +606,19 @@ async function runOneArm(
     await warmGmeshIndex(cwd);
     const client = await connectMcpClient(cwd);
     try {
-      for (const task of tasks) {
-        const calls = callsForTask(task);
-        for (const call of calls) {
-          const label = `${task.id} :: ${call.tool}(${JSON.stringify(call.args)})`;
-          try {
-            const { result, elapsedMs } = await callWithIndexRetry(client, call.tool, call.args);
-            const body = bodyOf(result);
-            const provenance = body?.provenance;
-            console.log(
-              `  ${label}  [${elapsedMs.toFixed(0)}ms]  provenance=${JSON.stringify(provenance ?? null)}`,
-            );
-            out.push({ taskId: task.id, kind: task.kind, callLabel: call.label, tool: call.tool, args: call.args, elapsedMs, body });
-          } catch (err) {
-            console.log(`  ${label}  ERROR: ${(err as Error).message}`);
-            out.push({ taskId: task.id, kind: task.kind, callLabel: call.label, tool: call.tool, args: call.args, error: (err as Error).message });
-          }
+      for (const call of calls) {
+        try {
+          const { args, note } = await resolveAnchorArgs(client, call);
+          const label = `${call.taskId} :: ${call.callLabel} :: ${call.tool}(${JSON.stringify(args)})${note}`;
+          const { result, elapsedMs } = await callWithIndexRetry(client, call.tool, args);
+          const body = bodyOf(result);
+          const provenance = body?.provenance;
+          console.log(`  ${label}  [${elapsedMs.toFixed(0)}ms]  provenance=${JSON.stringify(provenance ?? null)}`);
+          console.log(`      ${summarise(body, result)}`);
+          out.push({ ...call, args, anchorNote: note, elapsedMs, body });
+        } catch (err) {
+          console.log(`  ${call.taskId} :: ${call.callLabel} :: ${call.tool}  ERROR: ${(err as Error).message}`);
+          out.push({ ...call, error: (err as Error).message });
         }
       }
     } finally {
@@ -483,47 +636,124 @@ async function runOneArm(
     else process.env.G_MESH_HOME = originalHome;
   }
 
-  const outFile = path.join(outDir, `${corpus.id}-${arm}.json`);
+  const outFile = path.join(outDir, `${outName}-${arm}.json`);
   await fs.promises.writeFile(outFile, JSON.stringify(out, null, 2));
   console.log(`  wrote ${outFile}`);
 }
 
-async function runTagTasks(outDir: string, corpusIdFilter?: string, armFilter?: "semantic" | "structural"): Promise<void> {
+async function runTagTasks(
+  outDir: string,
+  corpusIdFilter?: string,
+  armFilter?: "semantic" | "structural",
+  taskIdFilter?: Set<string>,
+): Promise<void> {
   await fs.promises.mkdir(outDir, { recursive: true });
   const corpora = TAGGED_CORPORA.filter((c) => corpusIdFilter === undefined || c.id === corpusIdFilter);
   if (corpora.length === 0) throw new Error(`no tagged corpus matches "${corpusIdFilter}"`);
   const arms: ("semantic" | "structural")[] = armFilter ? [armFilter] : ["structural", "semantic"];
   for (const corpus of corpora) {
-    const tasks = await loadTasks(corpus.id);
-    if (tasks.length === 0) throw new Error(`corpus ${corpus.id} has no tasks.json entries`);
+    const all = await loadTasks(corpus.id);
+    if (all.length === 0) throw new Error(`corpus ${corpus.id} has no tasks.json entries`);
+    const tasks = taskIdFilter === undefined ? all : all.filter((t) => taskIdFilter.has(t.id));
+    if (tasks.length === 0) continue;
+    const calls = tasks.flatMap(armCallsForTask);
     for (const arm of arms) {
-      await runOneArm(corpus, arm, tasks, outDir);
+      await runOneArm(corpus, arm, calls, outDir);
+    }
+  }
+}
+
+/**
+ * GMB-180's exploration mode, and the reason it is in this file rather than a
+ * scratch script: authoring a semantic-tier task is iterative (the brief's own
+ * warning is that a first draft is structural by default), and the only thing
+ * that settles a draft's tier is running its intended call in these exact two
+ * arms. `--tag-tasks` can only run a call a task in `tasks.json` already
+ * implies, so using it to *find* a shape means committing a draft first and
+ * deleting it when the probe rejects it. `--calls` runs the same two arms over
+ * an arbitrary list, so a draft is measured before it is written down.
+ *
+ * File format - a JSON array of blocks, each naming the corpus and language
+ * whose shadow PATH the structural arm builds:
+ *
+ *   [{ "corpus": "gin", "language": "go", "out": "gin-drafts",
+ *      "calls": [{ "label": "draft-1", "tool": "find_callers",
+ *                  "args": { "symbol_name": "Context.Next" } }] }]
+ */
+interface CallsFileBlock {
+  corpus: string;
+  language: string;
+  /** Output basename, so an exploration run does not overwrite `--tag-tasks`'s own files. */
+  out?: string;
+  calls: { label: string; tool: string; args: Record<string, unknown>; anchorFile?: string }[];
+}
+
+async function runCallsFile(file: string, outDir: string, armFilter?: "semantic" | "structural"): Promise<void> {
+  await fs.promises.mkdir(outDir, { recursive: true });
+  const blocks: CallsFileBlock[] = JSON.parse(await fs.promises.readFile(file, "utf8"));
+  const arms: ("semantic" | "structural")[] = armFilter ? [armFilter] : ["structural", "semantic"];
+  for (const block of blocks) {
+    const calls: ArmCall[] = block.calls.map((c) => ({
+      taskId: c.label,
+      kind: c.tool,
+      callLabel: c.label,
+      tool: c.tool,
+      args: c.args,
+      anchorFile: c.anchorFile,
+    }));
+    for (const arm of arms) {
+      await runOneArm({ id: block.corpus, language: block.language }, arm, calls, outDir, block.out ?? `${block.corpus}-calls`);
     }
   }
 }
 
 async function main(): Promise<void> {
+  if (process.argv[2] === "--calls") {
+    const rest = process.argv.slice(3);
+    const fileArg = rest.find((a) => a.startsWith("--file="));
+    const outArg = rest.find((a) => a.startsWith("--out="));
+    const armArg = rest.find((a) => a.startsWith("--arm="));
+    if (fileArg === undefined || outArg === undefined) {
+      console.error("usage: probeLanguageTiers.ts --calls --file=<calls.json> --out=<dir> [--arm=semantic|structural]");
+      process.exitCode = 1;
+      return;
+    }
+    await runCallsFile(
+      fileArg.slice("--file=".length),
+      outArg.slice("--out=".length),
+      armArg?.slice("--arm=".length) as "semantic" | "structural" | undefined,
+    );
+    return;
+  }
+
   if (process.argv[2] === "--tag-tasks") {
     const rest = process.argv.slice(3);
     const outArg = rest.find((a) => a.startsWith("--out="));
     const corpusArg = rest.find((a) => a.startsWith("--corpus="));
     const armArg = rest.find((a) => a.startsWith("--arm="));
+    const tasksArg = rest.find((a) => a.startsWith("--tasks="));
     if (outArg === undefined) {
-      console.error("usage: probeLanguageTiers.ts --tag-tasks --out=<dir> [--corpus=<id>] [--arm=semantic|structural]");
+      console.error(
+        "usage: probeLanguageTiers.ts --tag-tasks --out=<dir> [--corpus=<id>] [--arm=semantic|structural] [--tasks=<id,id>]",
+      );
       process.exitCode = 1;
       return;
     }
+    const taskIds = tasksArg === undefined ? undefined : new Set(tasksArg.slice("--tasks=".length).split(","));
     const outDir = outArg.slice("--out=".length);
     const corpusId = corpusArg?.slice("--corpus=".length);
     const arm = armArg?.slice("--arm=".length) as "semantic" | "structural" | undefined;
-    await runTagTasks(outDir, corpusId, arm);
+    await runTagTasks(outDir, corpusId, arm, taskIds);
     return;
   }
 
   const probeDir = process.argv[2];
   if (!probeDir) {
     console.error("usage: probeLanguageTiers.ts <probeDir>");
-    console.error("   or: probeLanguageTiers.ts --tag-tasks --out=<dir> [--corpus=<id>] [--arm=semantic|structural]");
+    console.error(
+      "   or: probeLanguageTiers.ts --tag-tasks --out=<dir> [--corpus=<id>] [--arm=semantic|structural] [--tasks=<id,id>]",
+    );
+    console.error("   or: probeLanguageTiers.ts --calls --file=<calls.json> --out=<dir> [--arm=semantic|structural]");
     process.exitCode = 1;
     return;
   }
