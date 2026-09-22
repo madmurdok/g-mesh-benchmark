@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { TokenEconomyRun } from "../token-economy.js";
-import { ARM_ORDER, type Arm } from "./types.js";
+import { ARM_ORDER, type Arm, type Tier } from "./types.js";
 
 /**
  * GMB-117: a spread measure for a (task, arm) group's token totals, shaped so
@@ -681,6 +681,137 @@ export function computeCategoryTokenBreakdown(runs: TokenEconomyRun[]): Category
     });
   }
   return rows;
+}
+
+/**
+ * Sentinel for a task with no `tier` tag at all (BenchTask.tier is optional —
+ * see its doc in types.ts). Kept as its own bucket, distinct from
+ * `"structural"`/`"semantic"`, so a corpus added later without tags shows up
+ * as visibly untagged rather than being silently counted as `"structural"` —
+ * that miscount is exactly what GMB-179 was asked not to produce, since
+ * `"structural"` would otherwise read as "measured and found structural"
+ * rather than "never tagged at all". Mirrors UNCATEGORIZED's role for
+ * `category` above.
+ */
+export const UNTAGGED_TIER = "untagged (no tier tag)";
+
+/**
+ * GMB-179: how many distinct tasks a tier bucket needs before its
+ * primary-arm-vs-baseline token comparison is shown as a number instead of a
+ * refusal. This is GMB-117's rule ("a bucket too small to support a verdict
+ * says so instead of printing one") applied on the task-count axis rather
+ * than the repetition-count axis: TokenSpread refuses a spread at n=1
+ * repetition, this refuses a tier comparison below n=3 tasks. Today's
+ * `semantic` bucket has exactly 2 tasks (see corpora/*.json) — a
+ * savings % averaged over 2 tasks is a point estimate dressed as a trend, the
+ * same defect GMB-117 exists to stop. 3 is the smallest count this file
+ * treats as more than "two data points and a coin flip".
+ */
+export const MIN_TIER_TASKS_FOR_VERDICT = 3;
+
+/**
+ * A tier bucket's comparison, or the explicit refusal when the bucket can't
+ * support one — see MIN_TIER_TASKS_FOR_VERDICT. Mirrors CategoryTokenRow's
+ * shape for the `"comparable"` case; the tier axis additionally carries
+ * `taskCount` because unlike a category (whose row simply doesn't appear when
+ * there are zero qualifying pairs) a tier bucket is always shown, since its
+ * task count alone is part of what the table is reporting.
+ */
+export type TierComparison =
+  | { kind: "insufficient-tasks"; taskCount: number }
+  | {
+      kind: "comparable";
+      arm: Arm;
+      gmeshMeanTokens: number;
+      baselineMeanTokens: number;
+      savingsPct: number;
+      pairCount: number;
+      taskCount: number;
+    };
+
+export interface TierRow {
+  tier: string;
+  /** Distinct tasks tagged into this tier in the current registry — computed from tierByTaskId, not from which tasks happen to have runs, so a bucket's size is a fact about the corpus rather than about what has been run so far. */
+  taskCount: number;
+  /**
+   * `null` when the bucket has enough tasks (>= MIN_TIER_TASKS_FOR_VERDICT)
+   * but no (taskId, repetition) pair where both arms ran ok and passed oracle
+   * — the tier-level version of TaskRow.comparison's null ("nothing to
+   * compare yet"), distinct from the `"insufficient-tasks"` refusal above
+   * ("not enough tasks to ever compare").
+   */
+  comparison: TierComparison | null;
+}
+
+/**
+ * Per-tier aggregate beside the per-category ones above (computeCategoryTokenTable).
+ * `tierByTaskId` is supplied by the caller (report.ts's buildTierByTaskId(),
+ * mirroring buildCurrentHashByTaskId()) rather than loaded here, because a
+ * task's tier lives in corpora/*.json, not on TokenEconomyRun — unlike
+ * `category`, which token-economy.ts copies onto every run at write time,
+ * `tier` was added after that field existed and isn't recorded on runs (see
+ * types.ts's BenchTask.tier doc), so it has to be looked up from the current
+ * task definitions instead of read off the run.
+ *
+ * Every task the registry currently knows about is placed into a bucket
+ * (`"structural"`, `"semantic"`, or UNTAGGED_TIER for a task tierByTaskId has
+ * no tier for) whether or not it has any recorded runs, so a bucket's
+ * `taskCount` — and therefore whether MIN_TIER_TASKS_FOR_VERDICT is met — is
+ * a fact about the corpus, not about which tasks happened to be run. Only
+ * after that gate is passed does this filter `runs` down to the bucket's task
+ * ids and pair primary-arm-vs-baseline the same way computeCategoryTokenTable
+ * does.
+ */
+export function computeTierTable(runs: TokenEconomyRun[], tierByTaskId: Map<string, Tier | undefined>): TierRow[] {
+  const tasksByTier = new Map<string, Set<string>>();
+  for (const [taskId, tier] of tierByTaskId) {
+    const label = tier ?? UNTAGGED_TIER;
+    if (!tasksByTier.has(label)) tasksByTier.set(label, new Set());
+    tasksByTier.get(label)!.add(taskId);
+  }
+
+  const arm = primaryArmOr(runs);
+  const tiers = [...tasksByTier.keys()].sort();
+
+  const rows: TierRow[] = [];
+  for (const tier of tiers) {
+    const taskIds = tasksByTier.get(tier)!;
+    const taskCount = taskIds.size;
+    if (taskCount < MIN_TIER_TASKS_FOR_VERDICT) {
+      rows.push({ tier, taskCount, comparison: { kind: "insufficient-tasks", taskCount } });
+      continue;
+    }
+
+    const tierRuns = runs.filter((r) => taskIds.has(r.taskId));
+    const paired = pairedArmsTokenTotals(tierRuns, arm, "baseline");
+    if (paired.pairCount === 0) {
+      rows.push({ tier, taskCount, comparison: null });
+      continue;
+    }
+    rows.push({
+      tier,
+      taskCount,
+      comparison: {
+        kind: "comparable",
+        arm,
+        gmeshMeanTokens: paired.totalA / paired.pairCount,
+        baselineMeanTokens: paired.totalB / paired.pairCount,
+        savingsPct: paired.totalB > 0 ? ((paired.totalB - paired.totalA) / paired.totalB) * 100 : 0,
+        pairCount: paired.pairCount,
+        taskCount,
+      },
+    });
+  }
+  return rows;
+}
+
+/** Renders a TierRow's comparison for both report.ts's markdown table and htmlReport.ts's HTML one, so they can't drift apart on the refusal wording. */
+export function formatTierComparison(comparison: TierComparison | null): string {
+  if (comparison === null) return "no (task, rep) pair where both arms ran ok and passed oracle yet";
+  if (comparison.kind === "insufficient-tasks") {
+    return `insufficient tasks (n=${comparison.taskCount}, need >= ${MIN_TIER_TASKS_FOR_VERDICT}) — refusing to compare`;
+  }
+  return `${comparison.savingsPct.toFixed(1)}% savings (${comparison.arm} ${comparison.gmeshMeanTokens.toFixed(0)} vs baseline ${comparison.baselineMeanTokens.toFixed(0)}, pairs=${comparison.pairCount})`;
 }
 
 /**
