@@ -3,6 +3,7 @@
     "id": "rs-find-impl-sink-trait",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -19,6 +20,7 @@
     "id": "rs-ambiguous-regexmatcher",
     "kind": "find_definition",
     "category": "ambiguous-name",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -35,6 +37,7 @@
     "id": "rs-deps-json-printer-workspace-crates",
     "kind": "get_dependencies",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "parity",
     "target": {
@@ -51,6 +54,7 @@
     "id": "rs-deps-sink-module-incoming",
     "kind": "get_dependencies",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -74,6 +78,7 @@
     "id": "rs-callers-sink-matched",
     "kind": "find_callers",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "gmesh",
     "target": {
@@ -90,6 +95,7 @@
     "id": "rs-references-sinkfinish",
     "kind": "find_references",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "target": {
       "symbol": "SinkFinish",
@@ -113,6 +119,7 @@
     "id": "rs-outline-sink-vs-lines",
     "kind": "get_file_outline",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": true,
     "target": {
       "symbol": "",
@@ -133,6 +140,7 @@
     "id": "rs-semantic-detect-binary-content",
     "kind": "search_code",
     "category": "semantic-search",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "gmesh",
     "target": {
