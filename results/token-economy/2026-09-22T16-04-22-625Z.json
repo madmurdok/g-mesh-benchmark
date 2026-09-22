@@ -1,0 +1,1627 @@
+[
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 4,
+    "outputTokens": 341,
+    "cacheReadTokens": 32306,
+    "cacheCreationTokens": 13019,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11690
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 21998,
+        "cacheCreationTokens": 1329
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-O8Soim/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 4675,
+    "costUsd": 0.0630522,
+    "judgeCostUsd": 0.0086415,
+    "resultText": "Found it: `severityFor` (line 34-38) returns `\"urgent\"` on line 35, but that string is not a member of the `AuditSeverity` union type (`\"ok\" | \"warning\" | \"critical\"`, defined at line 12). The function's declared return type is `AuditSeverity`, so TypeScript rejects the literal `\"urgent\"` as not assignable to it — the code assumes `\"urgent\"` is a valid severity label, but the type only permits `\"critical\"` for the high-overrun case.\n\nThe error sits specifically on the `return \"urgent\";` expression on line 35, inside `severityFor`.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies `severityFor` returning `\"urgent\"` on line 35 as the offending code, and correctly explains the cause: `\"urgent\"` is not a member of the `AuditSeverity` union type and thus not assignable to the function's declared return type.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 6,
+    "outputTokens": 778,
+    "cacheReadTokens": 32444,
+    "cacheCreationTokens": 8101,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6158
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 12429,
+        "cacheCreationTokens": 1315
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 13744,
+        "cacheCreationTokens": 628
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-OvEjhl/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 627,
+        "args": "{\"pattern\":\"lock_expires_at\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-OvEjhl/src/domain/tasks.ts\",\"output_mode\":\"content\"}",
+        "argsChars": 175
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 8029,
+    "costUsd": 0.0477868,
+    "judgeCostUsd": 0.0083575,
+    "resultText": "That confirms `Task.lock_expires_at` is `string | null`, so `minutesPastLease` (src/domain/epicAudit.ts:28-32) is fine as-is — that's not the error.\n\n**The error is in `severityFor`, src/domain/epicAudit.ts:35:**\n\n```ts\nfunction severityFor(minutesPastLease: number): AuditSeverity {\n  if (minutesPastLease >= CRITICAL_OVERRUN_MINUTES) return \"urgent\";\n  ...\n```\n\n`severityFor` is declared to return `AuditSeverity`, which is defined (line 12) as the union `\"ok\" | \"warning\" | \"critical\"`. The `return \"urgent\";` on line 35 assumes `\"urgent\"` is a valid member of that union — but it isn't; `\"critical\"` is the actual severity name used everywhere else (the type, the doc comment's \"hard finding\" language, and `EpicAuditEntry.severity`). TypeScript rejects the string literal `\"urgent\"` as not assignable to `AuditSeverity`, since it's not one of the three allowed literals.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `\"urgent\"` return in `severityFor` on line 35 and explains it's not assignable to the `AuditSeverity` union type (which only includes `\"ok\" | \"warning\" | \"critical\"`).",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 4,
+    "outputTokens": 707,
+    "cacheReadTokens": 32312,
+    "cacheCreationTokens": 13012,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11696
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 22004,
+        "cacheCreationTokens": 1316
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-Iy9GT9/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 7246,
+    "costUsd": 0.06668539999999999,
+    "judgeCostUsd": 0.0081865,
+    "resultText": "Found it — the error is in `severityFor` at `src/domain/epicAudit.ts:35`.\n\n**Location:** `severityFor(minutesPastLease: number): AuditSeverity`, on the `return \"urgent\";` statement (line 35).\n\n**Why it's an error:** The function's declared return type is `AuditSeverity`, which is defined at line 12 as the union `\"ok\" | \"warning\" | \"critical\"`. But when `minutesPastLease >= CRITICAL_OVERRUN_MINUTES`, the function returns the string literal `\"urgent\"` — a value that isn't a member of that union. TypeScript's strict checking rejects the literal `\"urgent\"` as not assignable to `AuditSeverity` (the comment above `CRITICAL_OVERRUN_MINUTES` and the field name `minutes_past_lease`/`EpicAuditEntry.severity` clearly intend this branch to map to `\"critical\"`, but the code literally returns `\"urgent\"` instead).\n\nEverything else in the file (the `db.prepare(...).all(...) as Task[]` cast, the `minutesPastLease` helper, `auditEpicLeases`) type-checks cleanly — this mismatched string literal is the sole error `tsc --noEmit` reports.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `\"urgent\"` return in `severityFor` as the error and explains that it's not assignable to the `AuditSeverity` union type.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 4,
+    "outputTokens": 540,
+    "cacheReadTokens": 18700,
+    "cacheCreationTokens": 7480,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6158
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 12429,
+        "cacheCreationTokens": 1322
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-JhEkwu/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 5662,
+    "costUsd": 0.040165000000000006,
+    "judgeCostUsd": 0.0085915,
+    "resultText": "The error is on `src/domain/epicAudit.ts:35`, in the `severityFor` function:\n\n```ts\nfunction severityFor(minutesPastLease: number): AuditSeverity {\n  if (minutesPastLease >= CRITICAL_OVERRUN_MINUTES) return \"urgent\";\n  ...\n```\n\n`severityFor` is declared to return `AuditSeverity`, which is defined at line 12 as the union `\"ok\" | \"warning\" | \"critical\"`. The critical-overrun branch returns the string literal `\"urgent\"`, which is not one of those three members — it's not assignable to `AuditSeverity`. This is a mismatch between the declared return type and the string literal actually returned (likely just a naming slip; the type calls it `\"critical\"` but the code returns `\"urgent\"`).\n\nTS error: `Type '\"urgent\"' is not assignable to type 'AuditSeverity'.` on the `return \"urgent\";` statement (line 35).",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `severityFor` function's `return \"urgent\"` statement on line 35 as the offending code, and clearly explains that `\"urgent\"` is not a member of the `AuditSeverity` union type (`\"ok\" | \"warning\" | \"critical\"`), which is the exact cause of the type mismatch error.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 4,
+    "outputTokens": 707,
+    "cacheReadTokens": 32309,
+    "cacheCreationTokens": 13032,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11693
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22001,
+        "cacheCreationTokens": 1339
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-5xjjR5/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 7390,
+    "costUsd": 0.06676979999999999,
+    "judgeCostUsd": 0.0079885,
+    "resultText": "Found it — the error is in `severityFor` (src/domain/epicAudit.ts:35).\n\n```ts\nfunction severityFor(minutesPastLease: number): AuditSeverity {\n  if (minutesPastLease >= CRITICAL_OVERRUN_MINUTES) return \"urgent\";\n  ...\n```\n\n`AuditSeverity` is defined as `\"ok\" | \"warning\" | \"critical\"` (epicAudit.ts:12), but the critical-overrun branch returns the string literal `\"urgent\"`, which is not a member of that union. TypeScript infers the return type from the declared `AuditSeverity` annotation, so it rejects the `\"urgent\"` literal as not assignable to `AuditSeverity` — this is a `TS2322`-class error on the `return \"urgent\";` statement. The code assumes `\"urgent\"` is a valid severity value, but the actual union only allows `\"critical\"` for that case (the doc comment at the top of the file even calls it a \"hard finding,\" i.e. `\"critical\"`, not `\"urgent\"`).",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the offending `\"urgent\"` return inside `severityFor` and explains that it is not a member of the `AuditSeverity` union (`\"ok\" | \"warning\" | \"critical\"`), making it unassignable to the function's declared return type.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-local-literal-severity",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "c3a8f5a822d7",
+    "inputTokens": 4,
+    "outputTokens": 393,
+    "cacheReadTokens": 18700,
+    "cacheCreationTokens": 7473,
+    "numTurns": 2,
+    "searchToolCalls": 1,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6158
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 12429,
+        "cacheCreationTokens": 1315
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2567,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-hvAgxU/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 4456,
+    "costUsd": 0.038667,
+    "judgeCostUsd": 0.0078495,
+    "resultText": "The error is in `severityFor` (src/domain/epicAudit.ts:34-38), on line 35:\n\n```ts\nif (minutesPastLease >= CRITICAL_OVERRUN_MINUTES) return \"urgent\";\n```\n\n`severityFor` is declared to return `AuditSeverity`, which is the union type `\"ok\" | \"warning\" | \"critical\"` (src/domain/epicAudit.ts:12). But this branch returns the string literal `\"urgent\"`, which is not a member of that union — the code assumes `\"urgent\"` is a valid severity value, but the actual `AuditSeverity` type only has `\"ok\" | \"warning\" | \"critical\"`. TypeScript rejects `\"urgent\"` as not assignable to `AuditSeverity`, which is the one typecheck error.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `\"urgent\"` return in `severityFor` as the error and clearly explains that it is not assignable to the `AuditSeverity` union type.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 943,
+    "cacheReadTokens": 55651,
+    "cacheCreationTokens": 14470,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11696
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 22004,
+        "cacheCreationTokens": 1335
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 23339,
+        "cacheCreationTokens": 1439
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-JBaDkZ/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 9682,
+    "costUsd": 0.07955419999999999,
+    "judgeCostUsd": 0.009690500000000001,
+    "resultText": "Found it. `requireEpic` takes three arguments `(db, projectId, ref)`, but `auditEpicLeases` calls it with only two: `requireEpic(db, epicRef)` at src/domain/epicAudit.ts:51.\n\n**Error location:** `auditEpicLeases` (src/domain/epicAudit.ts:45-74), on the call `requireEpic(db, epicRef)` at line 51.\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — epics are scoped by project, so lookup requires both the project id and the epic ref. The code in `epicAudit.ts` assumes a two-argument signature `(db, epicRef)`, i.e. that an epic can be resolved from the database and a bare reference alone, omitting the `projectId` parameter entirely. TypeScript's strict mode flags this as a missing-argument error (expected 3 arguments, got 2) — `ref` would be `undefined` and `projectId` would incorrectly receive `epicRef`'s value if the call were otherwise allowed, but the arity mismatch itself is what `tsc` reports.\n\nThe fix (not applied, per instructions) would presumably be `requireEpic(db, project.id, epicRef)`, using the `project` already resolved on line 50 — note the call already happens after `requireProject`, so the needed value is in scope, just not passed.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the requireEpic call at line 51 in auditEpicLeases as passing 2 arguments when 3 are required, and explicitly names the missing projectId parameter as the cause.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 833,
+    "cacheReadTokens": 32455,
+    "cacheCreationTokens": 8342,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6158
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 12429,
+        "cacheCreationTokens": 1326
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 13755,
+        "cacheCreationTokens": 858
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-LbBi8m/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1098,
+        "args": "{\"pattern\":\"export function requireEpic|export function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-LbBi8m/src/domain\",\"output_mode\":\"",
+        "argsChars": 217,
+        "paths": [
+          "src/domain/projects.ts",
+          "nsrc/domain/projects.ts",
+          "nsrc/domain/epics.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 9007,
+    "costUsd": 0.049298,
+    "judgeCostUsd": 0.0201405,
+    "resultText": "Found it. `requireEpic` actually takes three arguments `(db, projectId, ref)`, but `epicAudit.ts` calls it with only two.\n\n**Location:** `auditEpicLeases` in `src/domain/epicAudit.ts:51`, on the call `requireEpic(db, epicRef)`.\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — it needs the project id to scope the epic lookup (it delegates to `getEpic(db, projectId, ref)`). The audit code assumes `requireEpic` has the same two-argument shape as `requireProject(db, ref)` (used just above it) and passes `epicRef` as if it were the second (`projectId`) parameter, omitting the actual `ref` argument entirely. TypeScript flags this as \"Expected 3 arguments, but got 2\" (missing the `ref` argument, since `epicRef` gets bound to the `projectId` slot instead).\n\nThe fix (not applied, per instructions) would be to call `requireEpic(db, project.id, epicRef)`, using the `project` already resolved on line 50.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `requireEpic(db, epicRef)` call inside `auditEpicLeases` at line 51 as the error, and clearly establishes that the cause is passing too few arguments (2 instead of 3) with the projectId argument specifically omitted.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 760,
+    "cacheReadTokens": 55627,
+    "cacheCreationTokens": 14388,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11696
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 22004,
+        "cacheCreationTokens": 1311
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 23315,
+        "cacheCreationTokens": 1381
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-lxp7Ll/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 7744,
+    "costUsd": 0.0773914,
+    "judgeCostUsd": 0.0081925,
+    "resultText": "Found it. `requireEpic` takes three arguments — `(db, projectId, ref)` — but `auditEpicLeases` at src/domain/epicAudit.ts:51 calls it with only two: `requireEpic(db, epicRef)`.\n\n- **Where:** `auditEpicLeases` (src/domain/epicAudit.ts:45-51), on the call `requireEpic(db, epicRef)` at line 51.\n- **Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic`, requiring a `projectId` to scope the epic lookup (epics are resolved per-project, mirroring `getEpic`'s signature). The code in `epicAudit.ts` assumes a two-argument form `(db, ref)` — treating `epicRef` as if it were the sole lookup key, the same shape as `requireProject(db, projectRef)` just above it. Since `project.id` (already resolved on line 50) is available but never passed through, TypeScript's strict checking flags this as a missing required argument: the call supplies 2 arguments where 3 are expected.",
+    "oraclePassed": true,
+    "judgeReason": "Answer precisely identifies the `requireEpic(db, epicRef)` call at line 51 as the error and correctly attributes it to the missing `projectId` argument that `requireEpic`'s declared signature requires.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 761,
+    "cacheReadTokens": 32444,
+    "cacheCreationTokens": 8403,
+    "numTurns": 3,
+    "searchToolCalls": 2,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6160
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12431,
+        "cacheCreationTokens": 1311
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 13742,
+        "cacheCreationTokens": 932
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-7f8Vm4/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 1324,
+        "args": "{\"pattern\":\"export function requireEpic|export function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-7f8Vm4/src/domain\",\"output_mode\":\"",
+        "argsChars": 217,
+        "paths": [
+          "src/domain/epics.ts",
+          "nsrc/domain/epics.ts",
+          "nsrc/domain/projects.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 15206,
+    "costUsd": 0.0488198,
+    "judgeCostUsd": 0.0077065,
+    "resultText": "Found it.\n\nThe error is in `auditEpicLeases` (src/domain/epicAudit.ts:51), on the call `requireEpic(db, epicRef)`.\n\n`requireEpic` is declared in `src/domain/epics.ts:67` as:\n```ts\nexport function requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic\n```\ni.e. it takes **three** arguments — `db`, `projectId`, and `ref` — and scopes the epic lookup to a specific project.\n\n`epicAudit.ts` calls it with only two arguments: `requireEpic(db, epicRef)`. The code assumes `requireEpic` has the same two-argument shape as `requireProject(db, ref)` (src/domain/projects.ts:101), treating epic lookup as project-independent, but epics are actually looked up scoped to a project, so the call is missing the required `projectId` argument. TypeScript reports this as \"Expected 3 arguments, but got 2.\" The fix (not applied, per instructions) would be to pass `project.id` as the second argument: `requireEpic(db, project.id, epicRef)`.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly identifies the requireEpic call in auditEpicLeases as the error and correctly attributes it to missing the projectId argument.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 844,
+    "cacheReadTokens": 55620,
+    "cacheCreationTokens": 14377,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11693
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 22001,
+        "cacheCreationTokens": 1310
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 23311,
+        "cacheCreationTokens": 1374
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-rsQSgz/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 8836,
+    "costUsd": 0.078186,
+    "judgeCostUsd": 0.0086205,
+    "resultText": "Found it. `requireEpic` actually takes three parameters — `(db, projectId, ref)` — but `auditEpicLeases` calls it with only two: `requireEpic(db, epicRef)` (epicAudit.ts:51). That's a TS2554 \"Expected 3 arguments, but got 2\" error, since `requireEpic`'s signature is `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` in `src/domain/epics.ts:66`, not the two-argument `(db, ref)` shape the code assumed (mirroring `requireProject`'s signature instead, which really is two args).\n\n**Where:** `auditEpicLeases` in `src/domain/epicAudit.ts:51`, on the call `requireEpic(db, epicRef)`.\n\n**Why:** The code assumes `requireEpic` resolves an epic the same way `requireProject` does — by `db` and a single ref string. But `requireEpic` is scoped to a project and requires the resolved `project.id` as its second argument before the epic ref (`requireEpic(db, projectId, ref)`), per its definition in `src/domain/epics.ts:66-72`. The call is missing that middle `projectId` argument (which is available here as `project.id`, since `project` is resolved on the line above), so `epicRef` ends up passed positionally as `projectId` and the third required argument is simply absent — TypeScript reports this as \"Expected 3 arguments, but got 2.\"",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `requireEpic(db, epicRef)` call on line 51 as the error and precisely pinpoints the cause as the missing `projectId` argument that `requireEpic`'s three-parameter signature requires.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-requireepic",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "7210b30c41e9",
+    "inputTokens": 6,
+    "outputTokens": 1054,
+    "cacheReadTokens": 32455,
+    "cacheCreationTokens": 9972,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6158
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12429,
+        "cacheCreationTokens": 1326
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 13755,
+        "cacheCreationTokens": 2488
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-gOkSGS/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 219,
+        "args": "{\"pattern\":\"export function requireEpic|export function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-gOkSGS/src\",\"output_mode\":\"content",
+        "argsChars": 212,
+        "paths": [
+          "src/domain/projects.ts",
+          "nsrc/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 3921,
+        "args": "{\"pattern\":\"lock_expires_at\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-gOkSGS/src\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 169,
+        "paths": [
+          "src/domain/board.ts",
+          "nsrc/domain/tasks.ts",
+          "nsrc/domain/status.ts",
+          "nsrc/db/schema.ts",
+          "nsrc/domain/epicAudit.ts",
+          "nsrc/domain/lifecycle.ts",
+          "nsrc/mcp/tools/lifecycle.ts",
+          "nsrc/mcp/toolResult.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 10887,
+    "costUsd": 0.058028,
+    "judgeCostUsd": 0.0090295,
+    "resultText": "Found it: `requireEpic` takes three parameters `(db, projectId, ref)`, but the call at line 51 passes only two.\n\n**Where:** `src/domain/epicAudit.ts`, in `auditEpicLeases`, on the call `const epic = requireEpic(db, epicRef);` (line 51).\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` as\n\n```ts\nexport function requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic\n```\n\nIt needs the containing project's id as well as the epic reference (presumably to scope the lookup/disambiguate epic numbers within a project, similar to how tasks are scoped). `auditEpicLeases` already resolves `project` via `requireProject(db, projectRef)` on the line above, but never passes `project.id` into `requireEpic` — it calls it with just `(db, epicRef)`, supplying an argument for `projectId` where `ref: string` is expected and omitting the third required argument entirely. TypeScript reports this as \"Expected 3 arguments, but got 2\" (arity mismatch), since `requireEpic` has no optional/default parameters to cover the missing `ref` argument.\n\nThe fix (not applied, per instructions) would be `requireEpic(db, project.id, epicRef)`.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the `requireEpic(db, epicRef)` call at line 51 in `auditEpicLeases` as the error and correctly attributes it to missing the project id argument that the three-parameter signature requires.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 6,
+    "outputTokens": 1398,
+    "cacheReadTokens": 55684,
+    "cacheCreationTokens": 14450,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11683
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 21991,
+        "cacheCreationTokens": 1394
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 23385,
+        "cacheCreationTokens": 1373
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-cF8TEP/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 14067,
+    "costUsd": 0.0840048,
+    "judgeCostUsd": 0.0086175,
+    "resultText": "Found it.\n\n**File:** `src/domain/epicAudit.ts`\n**Function:** `auditEpicLeases` (line 51)\n**Expression:** the call `requireEpic(db, epicRef)`\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` with signature `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — it requires three arguments, because (unlike `requireProject`, which resolves a project by itself) an epic reference must be resolved scoped to its project. `epicAudit.ts` calls it with only two arguments, `requireEpic(db, epicRef)`, omitting the `projectId`. The code assumes `requireEpic` has the same shape as `requireProject` (project already resolved above it, on line 50, is not threaded through), but the actual signature needs that project's id as the middle argument. `tsc` reports this as an arity mismatch: *\"Expected 3 arguments, but got 2.\"*\n\nThe likely intended fix (not applied, per instructions) would be `requireEpic(db, project.id, epicRef)`.",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly names src/domain/epicAudit.ts, identifies the requireEpic(...) call in auditEpicLeases as the offending code, and explains the cause as omitting the projectId argument that requireEpic's three-parameter signature requires.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 1,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 8,
+    "outputTokens": 1496,
+    "cacheReadTokens": 47601,
+    "cacheCreationTokens": 9233,
+    "numTurns": 6,
+    "searchToolCalls": 5,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6148
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 3,
+        "cacheReadTokens": 12419,
+        "cacheCreationTokens": 1512
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 13931,
+        "cacheCreationTokens": 1049
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "cacheReadTokens": 14980,
+        "cacheCreationTokens": 524
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-FlLiYk/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Glob",
+        "chars": 36,
+        "args": "{\"pattern\":\"tsconfig*.json\"}",
+        "argsChars": 28,
+        "paths": [
+          "tsconfig.build.json",
+          "ntsconfig.json"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 655,
+        "args": "{\"pattern\":\"lock_expires_at|interface Task\\\\b\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-FlLiYk/src/domain/tasks.ts\",\"output_mode\":\"content\",\"-n\":tr",
+        "argsChars": 203
+      },
+      {
+        "name": "Grep",
+        "chars": 219,
+        "args": "{\"pattern\":\"function requireEpic|function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-FlLiYk/src/domain\",\"output_mode\":\"content\",\"-n\":",
+        "argsChars": 205,
+        "paths": [
+          "src/domain/projects.ts",
+          "nsrc/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 449,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-FlLiYk/src/domain/epics.ts\",\"offset\":60,\"limit\":15}",
+        "argsChars": 151
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 19956,
+    "costUsd": 0.06249420000000001,
+    "judgeCostUsd": 0.0085815,
+    "resultText": "## Diagnosis\n\n**File:** `src/domain/epicAudit.ts`\n**Location:** line 51, inside `auditEpicLeases`, on the call `requireEpic(db, epicRef)`\n\n**Why it's an error:**\n\n`requireEpic` is declared in `src/domain/epics.ts:67` as:\n\n```ts\nexport function requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic\n```\n\nIt requires three arguments — `db`, `projectId`, and `ref` — because epics are looked up scoped to a project (via `getEpic(db, projectId, ref)`, which matches by id or by name-within-project).\n\n`epicAudit.ts` assumes a two-argument signature `requireEpic(db, ref)` (mirroring `requireProject`, which only takes `db` and a ref). It calls `requireEpic(db, epicRef)` on line 51, omitting `projectRef`/`project.id` entirely. TypeScript reports this as \"Expected 3 arguments, but got 2\" — the `epicRef` string is bound to the `projectId` parameter and the required `ref` parameter is missing.\n\nThis is the single `tsc --noEmit` failure; the fix (not applied, per instructions) would be to pass the project id, e.g. `requireEpic(db, project.id, epicRef)`.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly names the file, identifies the exact offending call, and explains the cause as omitting the required projectId argument.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 6,
+    "outputTokens": 896,
+    "cacheReadTokens": 55712,
+    "cacheCreationTokens": 14512,
+    "numTurns": 5,
+    "searchToolCalls": 4,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 3,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11683
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 21991,
+        "cacheCreationTokens": 1422
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 23413,
+        "cacheCreationTokens": 1407
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-H6LWXM/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 9083,
+    "costUsd": 0.0792384,
+    "judgeCostUsd": 0.0085575,
+    "resultText": "Found it. `requireEpic` takes 3 parameters `(db, projectId, ref)`, but `epicAudit.ts` calls it with only 2: `requireEpic(db, epicRef)` at line 51.\n\nThe TS build error is in **`src/domain/epicAudit.ts`**, in the function **`auditEpicLeases`**, on the call expression:\n\n```ts\nconst epic = requireEpic(db, epicRef);   // line 51\n```\n\n`requireEpic` is declared in `src/domain/epics.ts:66` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — it requires a `projectId` argument to scope the epic lookup, plus the `ref` to look up. `epicAudit.ts` assumes the two-argument shape `requireEpic(db, ref)` (mirroring `requireProject`'s signature), omitting `projectId`. That's an arity mismatch: too few arguments supplied (2 given, 3 required), specifically missing the `projectId` argument — `project.id` (already computed on the prior line from `requireProject`) is never passed through. `tsc` reports this as \"Expected 3 arguments, but got 2.\"",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly identifies src/domain/epicAudit.ts, the requireEpic call in auditEpicLeases at line 51, and pinpoints the missing projectId argument as the cause of the arity mismatch.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 2,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 6,
+    "outputTokens": 1139,
+    "cacheReadTokens": 32551,
+    "cacheCreationTokens": 10025,
+    "numTurns": 4,
+    "searchToolCalls": 3,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 7,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6148
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 12419,
+        "cacheCreationTokens": 1442
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 13861,
+        "cacheCreationTokens": 2435
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-6FQcVt/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 219,
+        "args": "{\"pattern\":\"export function requireEpic|export function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-6FQcVt/src/domain\",\"output_mode\":\"",
+        "argsChars": 219,
+        "paths": [
+          "src/domain/epics.ts",
+          "nsrc/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 3921,
+        "args": "{\"pattern\":\"lock_expires_at\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-6FQcVt/src\",\"output_mode\":\"content\",\"-n\":true}",
+        "argsChars": 169,
+        "paths": [
+          "src/domain/board.ts",
+          "nsrc/domain/tasks.ts",
+          "nsrc/domain/epicAudit.ts",
+          "nsrc/domain/status.ts",
+          "nsrc/domain/lifecycle.ts",
+          "nsrc/mcp/toolResult.ts",
+          "nsrc/db/schema.ts",
+          "nsrc/mcp/tools/lifecycle.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 10541,
+    "costUsd": 0.059078200000000004,
+    "judgeCostUsd": 0.0095315,
+    "resultText": "Found it.\n\n**File:** `src/domain/epicAudit.ts`, in `auditEpicLeases` (line 51):\n\n```ts\nconst epic = requireEpic(db, epicRef);\n```\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` as:\n\n```ts\nexport function requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic\n```\n\nIt takes three parameters — `db`, `projectId`, and `ref` — because epics are scoped/looked up within a project. `epicAudit.ts` calls it with only two arguments (`db, epicRef`), assuming a two-arg signature like `requireProject(db, ref)` (from `src/domain/projects.ts:101`, which really does take just two). The code conflates the two lookup helpers' signatures. TypeScript reports \"Expected 3 arguments, but got 2\" at that call.\n\nThe `project` variable resolved on the line above (`requireProject(db, projectRef)`) is never even passed through — the fix would need to thread `project.id` in as the second argument to `requireEpic`.",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly identifies src/domain/epicAudit.ts, the requireEpic(...) call at line 51, and explains the error as passing only 2 arguments when 3 are required, with the missing argument being the projectId parameter.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "gmesh-configured",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 10,
+    "outputTokens": 1897,
+    "cacheReadTokens": 109815,
+    "cacheCreationTokens": 17493,
+    "numTurns": 10,
+    "searchToolCalls": 9,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [
+      {
+        "name": "g-mesh",
+        "status": "connected"
+      }
+    ],
+    "mcpToolCalls": 5,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 10308,
+        "cacheCreationTokens": 11686
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 5,
+        "cacheReadTokens": 21994,
+        "cacheCreationTokens": 2292
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 24286,
+        "cacheCreationTokens": 1632
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 6,
+        "cacheReadTokens": 25918,
+        "cacheCreationTokens": 1391
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 8,
+        "cacheReadTokens": 27309,
+        "cacheCreationTokens": 492
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Glob",
+        "chars": 1126,
+        "args": "{\"pattern\":\"**/*.ts\"}",
+        "argsChars": 21,
+        "paths": [
+          "src/cli/status.ts",
+          "nsrc/dashboard/openBrowser.ts",
+          "nsrc/dashboard/server.ts",
+          "nsrc/db/connection.ts",
+          "nsrc/domain/budget.ts",
+          "nsrc/domain/epics.ts",
+          "nsrc/domain/projects.ts",
+          "nsrc/index.ts",
+          "nsrc/mcp/toolResult.ts",
+          "nsrc/mcp/tools/epics.ts",
+          "nsrc/mcp/tools/projects.ts",
+          "ntests/budget.test.ts",
+          "ntests/create-tasks.test.ts",
+          "ntests/dashboard-server.test.ts",
+          "ntests/dependencies.test.ts",
+          "ntests/doc-sync.test.ts",
+          "ntests/open-browser.test.ts",
+          "ntests/projects.test.ts",
+          "ntests/split.test.ts",
+          "nsrc/db/schema.ts",
+          "nsrc/domain/board.ts",
+          "nsrc/domain/dependencies.ts",
+          "nsrc/domain/handoffNotes.ts",
+          "nsrc/domain/lifecycle.ts",
+          "nsrc/domain/releases.ts",
+          "nsrc/domain/status.ts",
+          "nsrc/domain/tasks.ts",
+          "nsrc/domain/verification.ts",
+          "nsrc/mcp/server.ts",
+          "nsrc/mcp/tools/dependencies.ts",
+          "nsrc/mcp/tools/lifecycle.ts",
+          "nsrc/mcp/tools/releases.ts",
+          "nsrc/mcp/tools/status.ts",
+          "nsrc/mcp/tools/tasks.ts",
+          "ntests/board.test.ts",
+          "ntests/cli.test.ts",
+          "ntests/db.test.ts",
+          "ntests/epics.test.ts",
+          "ntests/lifecycle.test.ts",
+          "ntests/mcp-smoke.test.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-KSc0Dr/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 663,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 868,
+        "args": "{\"symbol_name\":\"requireProject\"}",
+        "argsChars": 32,
+        "paths": [
+          "src/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_definition",
+        "chars": 893,
+        "args": "{\"symbol_name\":\"Task\"}",
+        "argsChars": 22,
+        "paths": [
+          "src/domain/tasks.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 313,
+        "args": "{\"symbol_name\":\"auditEpicLeases\"}",
+        "argsChars": 33,
+        "paths": [
+          "src/domain/epicAudit.ts"
+        ]
+      },
+      {
+        "name": "mcp__g-mesh__find_references",
+        "chars": 1622,
+        "args": "{\"symbol_name\":\"requireEpic\"}",
+        "argsChars": 29,
+        "paths": [
+          "src/domain/epics.ts",
+          "src/domain/tasks.ts",
+          "tests/epics.test.ts",
+          "src/domain/status.ts",
+          "src/domain/epicAudit.ts"
+        ]
+      },
+      {
+        "name": "Glob",
+        "chars": 36,
+        "args": "{\"pattern\":\"tsconfig*.json\"}",
+        "argsChars": 28,
+        "paths": [
+          "tsconfig.build.json",
+          "ntsconfig.json"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 517,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-KSc0Dr/tsconfig.json\"}",
+        "argsChars": 122
+      }
+    ],
+    "gmeshVersion": "g-mesh 3.10.0",
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 19448,
+    "costUsd": 0.11199100000000001,
+    "judgeCostUsd": 0.0084785,
+    "resultText": "`tsconfig.json` includes all of `src`, so this untracked file is type-checked even though nothing imports it yet — confirming this is the error `tsc` reports.\n\n## Finding\n\n**File:** `src/domain/epicAudit.ts`\n**Function:** `auditEpicLeases` (line 51)\n**Expression:** `requireEpic(db, epicRef)`\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — it takes three parameters (a project scope plus the epic reference), matching how every other call site in the codebase uses it (e.g. `src/domain/status.ts`, `src/domain/tasks.ts`, both pass `db, projectId, ref`). `epicAudit.ts` calls it with only two arguments, `db` and `epicRef`, omitting the required `projectId` argument (even though `projectRef`/`project` are already in scope in the same function from the preceding `requireProject` call, just above). TypeScript reports this as an arity mismatch: `Expected 3 arguments, but got 2.`",
+    "oraclePassed": true,
+    "judgeReason": "The answer correctly identifies the file (src/domain/epicAudit.ts), the specific call (requireEpic(db, epicRef) in auditEpicLeases), and the cause (missing the required projectId argument), with accurate supporting details about the function signature and call sites.",
+    "status": "ok"
+  },
+  {
+    "taskId": "tt-diag-crossfile-arity-unlocated",
+    "corpusId": "task-tracker-mcp",
+    "arm": "baseline",
+    "repetition": 3,
+    "timestamp": "2026-09-22T16:04:22.625Z",
+    "model": "claude-sonnet-5",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "taskDefHash": "aa313bebfab8",
+    "inputTokens": 8,
+    "outputTokens": 1789,
+    "cacheReadTokens": 49818,
+    "cacheCreationTokens": 10964,
+    "numTurns": 7,
+    "searchToolCalls": 6,
+    "editToolCalls": 0,
+    "otherToolCalls": 0,
+    "mcpServers": [],
+    "mcpToolCalls": 0,
+    "perTurnUsage": [
+      {
+        "inputTokens": 2,
+        "outputTokens": 4,
+        "cacheReadTokens": 6271,
+        "cacheCreationTokens": 6148
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 12419,
+        "cacheCreationTokens": 2229
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 10,
+        "cacheReadTokens": 14648,
+        "cacheCreationTokens": 1832
+      },
+      {
+        "inputTokens": 2,
+        "outputTokens": 2,
+        "cacheReadTokens": 16480,
+        "cacheCreationTokens": 755
+      }
+    ],
+    "toolResults": [
+      {
+        "name": "Read",
+        "chars": 2557,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-ppxCxm/src/domain/epicAudit.ts\"}",
+        "argsChars": 132,
+        "paths": [
+          "../db/connection.js",
+          "epics.js",
+          "projects.js",
+          "tasks.js"
+        ]
+      },
+      {
+        "name": "Glob",
+        "chars": 1126,
+        "args": "{\"pattern\":\"**/*.ts\"}",
+        "argsChars": 21,
+        "paths": [
+          "src/cli/status.ts",
+          "nsrc/dashboard/openBrowser.ts",
+          "nsrc/dashboard/server.ts",
+          "nsrc/db/connection.ts",
+          "nsrc/domain/budget.ts",
+          "nsrc/domain/epics.ts",
+          "nsrc/domain/projects.ts",
+          "nsrc/index.ts",
+          "nsrc/mcp/toolResult.ts",
+          "nsrc/mcp/tools/epics.ts",
+          "nsrc/mcp/tools/projects.ts",
+          "ntests/budget.test.ts",
+          "ntests/create-tasks.test.ts",
+          "ntests/dashboard-server.test.ts",
+          "ntests/dependencies.test.ts",
+          "ntests/doc-sync.test.ts",
+          "ntests/open-browser.test.ts",
+          "ntests/projects.test.ts",
+          "ntests/split.test.ts",
+          "nsrc/db/schema.ts",
+          "nsrc/domain/board.ts",
+          "nsrc/domain/dependencies.ts",
+          "nsrc/domain/handoffNotes.ts",
+          "nsrc/domain/lifecycle.ts",
+          "nsrc/domain/releases.ts",
+          "nsrc/domain/status.ts",
+          "nsrc/domain/tasks.ts",
+          "nsrc/domain/verification.ts",
+          "nsrc/mcp/server.ts",
+          "nsrc/mcp/tools/dependencies.ts",
+          "nsrc/mcp/tools/lifecycle.ts",
+          "nsrc/mcp/tools/releases.ts",
+          "nsrc/mcp/tools/status.ts",
+          "nsrc/mcp/tools/tasks.ts",
+          "ntests/board.test.ts",
+          "ntests/cli.test.ts",
+          "ntests/db.test.ts",
+          "ntests/epics.test.ts",
+          "ntests/lifecycle.test.ts",
+          "ntests/mcp-smoke.test.ts"
+        ]
+      },
+      {
+        "name": "Grep",
+        "chars": 627,
+        "args": "{\"pattern\":\"lock_expires_at\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-ppxCxm/src/domain/tasks.ts\",\"output_mode\":\"content\"}",
+        "argsChars": 175
+      },
+      {
+        "name": "Grep",
+        "chars": 1324,
+        "args": "{\"pattern\":\"export function requireEpic|export function requireProject\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-ppxCxm/src\",\"output_mode\":\"content",
+        "argsChars": 210,
+        "paths": [
+          "src/domain/epics.ts",
+          "nsrc/domain/epics.ts",
+          "nsrc/domain/projects.ts"
+        ]
+      },
+      {
+        "name": "Read",
+        "chars": 517,
+        "args": "{\"file_path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-ppxCxm/tsconfig.json\"}",
+        "argsChars": 122
+      },
+      {
+        "name": "Grep",
+        "chars": 473,
+        "args": "{\"pattern\":\"requireEpic\\\\(\",\"path\":\"/private/var/folders/ps/r478n82d1zb82phf7k1dsy6w0000gp/T/gmesh-bench-task-tracker-mcp-ppxCxm/src\",\"output_mode\":\"content\"}",
+        "argsChars": 158,
+        "paths": [
+          "src/domain/tasks.ts",
+          "nsrc/domain/epics.ts",
+          "nsrc/domain/epicAudit.ts",
+          "nsrc/domain/status.ts"
+        ]
+      }
+    ],
+    "corpusRevision": "35237c8bab17c6b9bf1939d0a06e9e5d1c36bf4f",
+    "durationMs": 22914,
+    "costUsd": 0.0727916,
+    "judgeCostUsd": 0.0089125,
+    "resultText": "Found the error.\n\n**File:** `src/domain/epicAudit.ts`, line 51, inside `auditEpicLeases`.\n\n**Expression:** `requireEpic(db, epicRef)`\n\n**Why it's an error:** `requireEpic` is declared in `src/domain/epics.ts:67` as `requireEpic(db: DatabaseInstance, projectId: string, ref: string): Epic` — it needs the project ID plus the epic ref to scope the lookup (every other caller, e.g. `src/domain/tasks.ts:114` and `src/domain/status.ts:183,263`, passes all three arguments). `epicAudit.ts` calls it with only two arguments (`db`, `epicRef`), omitting `projectId` even though `auditEpicLeases` already has `project.id` available from the preceding `requireProject` call. This is a strict arity mismatch — TS2554: \"Expected 3 arguments, but got 2.\"",
+    "oraclePassed": true,
+    "judgeReason": "Answer correctly names src/domain/epicAudit.ts, identifies the requireEpic(...) call inside auditEpicLeases as the error, and explains that it's missing the projectId argument that requireEpic's signature requires.",
+    "status": "ok"
+  }
+]

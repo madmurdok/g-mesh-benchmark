@@ -299,5 +299,81 @@
       },
       "testCommand": "npm ci --no-audit --no-fund --silent && npx vitest run tests/lifecycle.test.ts tests/releases.test.ts tests/tasks.test.ts tests/split.test.ts tests/__bench_holdout__/split-cancelled-release.test.ts"
     }
+  },
+  {
+    "id": "tt-diag-local-literal-severity",
+    "kind": "diagnose",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "revealsLocation": true,
+    "target": {
+      "symbol": "severityFor",
+      "file": "src/domain/epicAudit.ts"
+    },
+    "prompt": "A module was added to this repository at src/domain/epicAudit.ts, and the project's TypeScript build (`npm run typecheck`, i.e. `tsc --noEmit` under the repo's own strict tsconfig) now reports exactly one error, in that file. Work out what that error is. Report where in the file it is — the function, and the expression or call it sits on — and precisely why it is an error: what the code assumes, and what is actually the case. Diagnosis only; do not change any files.",
+    "seedFiles": {
+      "src/domain/epicAudit.ts": "corpora/task-tracker-mcp/fixtures/tt-diag-local-literal-severity/epicAudit.ts"
+    },
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: what is the single TypeScript error in src/domain/epicAudit.ts in this repository. Ground truth, verified by running `tsc --noEmit` under the repository's own tsconfig against exactly this file: the compiler emits exactly one diagnostic, `src/domain/epicAudit.ts(35,53): error TS2322: Type '\"urgent\"' is not assignable to type 'AuditSeverity'.` The cause is entirely inside that one file: the local helper function `severityFor` is declared to return `AuditSeverity`, a union type declared a few lines above it in the same file as `\"ok\" | \"warning\" | \"critical\"`, but its first branch returns the string literal `\"urgent\"`, which is not a member of that union. PASS only if the answer (a) identifies the offending code as the `\"urgent\"` return inside `severityFor` (naming `severityFor`, or unambiguously pointing at that return statement or that string literal), AND (b) gives the cause as `\"urgent\"` not being one of the permitted members of the `AuditSeverity` union / not assignable to the function's declared return type. FAIL if the answer blames a different symbol, call or line, reports some other problem as the build error, offers several candidate problems without committing to this one as the error, or concludes the file has no type error. Wording, whether the TypeScript error code is quoted, and any additional correct observations about the file do not matter."
+    }
+  },
+  {
+    "id": "tt-diag-crossfile-arity-requireepic",
+    "kind": "diagnose",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "revealsLocation": true,
+    "target": {
+      "symbol": "auditEpicLeases",
+      "file": "src/domain/epicAudit.ts"
+    },
+    "prompt": "A module was added to this repository at src/domain/epicAudit.ts, and the project's TypeScript build (`npm run typecheck`, i.e. `tsc --noEmit` under the repo's own strict tsconfig) now reports exactly one error, in that file. Work out what that error is. Report where in the file it is — the function, and the expression or call it sits on — and precisely why it is an error: what the code assumes, and what is actually the case. Diagnosis only; do not change any files.",
+    "seedFiles": {
+      "src/domain/epicAudit.ts": "corpora/task-tracker-mcp/fixtures/tt-diag-crossfile-arity-requireepic/epicAudit.ts"
+    },
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: what is the single TypeScript error in src/domain/epicAudit.ts in this repository. Ground truth, verified by running `tsc --noEmit` under the repository's own tsconfig against exactly this file: the compiler emits exactly one diagnostic, `src/domain/epicAudit.ts(51,16): error TS2554: Expected 3 arguments, but got 2.` The cause is not visible inside src/domain/epicAudit.ts alone: inside the exported function `auditEpicLeases`, the call `requireEpic(db, epicRef)` passes two arguments, but `requireEpic` is declared in another file, src/domain/epics.ts, as `requireEpic(db: DatabaseInstance, projectId: string, ref: string)` — three parameters, because an epic's name is unique only within a project and the lookup must therefore be scoped by project id. The correct call is `requireEpic(db, project.id, epicRef)`. There is a deliberate decoy: the immediately preceding line calls `requireProject(db, projectRef)` with two arguments, and that call is correct, so the surrounding file positively suggests the two-argument shape. PASS only if the answer (a) identifies the offending code as the `requireEpic(...)` call inside `auditEpicLeases`, AND (b) gives the cause as that call passing too few arguments — specifically omitting the project id argument that `requireEpic`'s declared signature requires. FAIL if the answer blames a different symbol, call or line, reports some other problem as the build error, offers several candidate problems without committing to this one as the error, names the missing argument as something other than the project id, or concludes the file has no type error. Wording, whether the TypeScript error code is quoted, and any additional correct observations about the file do not matter."
+    }
+  },
+  {
+    "id": "tt-diag-crossfile-arity-unlocated",
+    "kind": "diagnose",
+    "category": "scenario",
+    "expectedWinner": "parity",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "auditEpicLeases",
+      "file": "src/domain/epicAudit.ts"
+    },
+    "prompt": "The project's TypeScript build (`npm run typecheck`, i.e. `tsc --noEmit` under the repo's own strict tsconfig) is failing on this repository with exactly one error, and nobody recorded where it is. Find it. Report the file it is in, where in that file it is — the function, and the expression or call it sits on — and precisely why it is an error: what the code assumes, and what is actually the case. Diagnosis only; do not change any files.",
+    "seedFiles": {
+      "src/domain/epicAudit.ts": "corpora/task-tracker-mcp/fixtures/tt-diag-crossfile-arity-requireepic/epicAudit.ts"
+    },
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: where is the single TypeScript error in this repository, and what is it. Ground truth, verified by running `tsc --noEmit` under the repository's own tsconfig: the compiler emits exactly one diagnostic, `src/domain/epicAudit.ts(51,16): error TS2554: Expected 3 arguments, but got 2.` The cause: inside the exported function `auditEpicLeases` in src/domain/epicAudit.ts, the call `requireEpic(db, epicRef)` passes two arguments, but `requireEpic` is declared in src/domain/epics.ts as `requireEpic(db: DatabaseInstance, projectId: string, ref: string)` — three parameters, because an epic's name is unique only within a project and the lookup must therefore be scoped by project id. The correct call is `requireEpic(db, project.id, epicRef)`. PASS only if the answer (a) names src/domain/epicAudit.ts as the file containing the error, AND (b) identifies the offending code as the `requireEpic(...)` call inside `auditEpicLeases`, AND (c) gives the cause as that call passing too few arguments — specifically omitting the project id argument that `requireEpic`'s declared signature requires. FAIL if the answer names a different file, blames a different symbol or call, reports some other problem as the build error, offers several candidate files or problems without committing to this one, names the missing argument as something other than the project id, or concludes it could not find the error. Wording, whether the TypeScript error code is quoted, and any additional correct observations do not matter."
+    }
+  },
+  {
+    "id": "tt-diag-clean-no-error",
+    "kind": "diagnose",
+    "category": "control",
+    "expectedWinner": "parity",
+    "revealsLocation": true,
+    "target": {
+      "symbol": "auditEpicLeases",
+      "file": "src/domain/epicAudit.ts"
+    },
+    "prompt": "A module was added to this repository at src/domain/epicAudit.ts, and the project's TypeScript build (`npm run typecheck`, i.e. `tsc --noEmit` under the repo's own strict tsconfig) now reports exactly one error, in that file. Work out what that error is. Report where in the file it is — the function, and the expression or call it sits on — and precisely why it is an error: what the code assumes, and what is actually the case. Diagnosis only; do not change any files.",
+    "seedFiles": {
+      "src/domain/epicAudit.ts": "corpora/task-tracker-mcp/fixtures/tt-diag-clean-no-error/epicAudit.ts"
+    },
+    "oracle": {
+      "mode": "judge",
+      "rubric": "The question: what is the single TypeScript error in src/domain/epicAudit.ts in this repository. This is a NEGATIVE CONTROL, and the prompt being answered contains a false premise: it asserts that the build reports exactly one error in that file. Ground truth, verified by running `tsc --noEmit` under the repository's own tsconfig against exactly this file: the compiler reports NO errors at all and exits 0. The file is the clean version of the same module the corpus's other diagnostics tasks seed a broken copy of: `severityFor` returns only members of the `AuditSeverity` union it declares, and `auditEpicLeases` calls `requireEpic(db, project.id, epicRef)` with all three arguments that `requireEpic`'s declaration in src/domain/epics.ts requires. PASS only if the answer's conclusion is that the file has no type error - that it type-checks cleanly, or that whatever is failing the build is not in this file - i.e. it refuses the prompt's false premise. FAIL if the answer names any specific type error in the file as real (in particular any claim that `severityFor` returns a value outside its union, or that the `requireEpic` call has the wrong number or kind of arguments), or if it never reaches a conclusion either way. Noting stylistic, runtime or robustness concerns while still concluding there is no type error is a PASS. Wording does not matter."
+    }
   }
 ]

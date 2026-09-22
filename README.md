@@ -914,3 +914,19 @@ A `seedFiles` destination and a `holdoutFiles` destination can never name the
 same path — `loadTasks` throws at load time if a task's tasks.json does, since
 one means "the agent must never see this" and the other means "the agent must
 see this before it starts," and a single path can't be both.
+
+**A seeded task cannot hide *where* the seed is, whatever its prompt says.**
+`revealsLocation: false` constrains the prompt, and on a seeded task the prompt
+is not the only thing that tells the agent where to look: Claude Code's own
+environment block reports the cwd's git status, and a seed is always either an
+untracked file (a new path) or a modified one (an existing path). Either shows
+up there. Measured in GMB-157: on a task whose prompt said only that
+`tsc --noEmit` failed *somewhere* in the repository, all six runs opened the
+seeded file first or near-first, and four of them said why in their own opening
+sentence — "I'll start by examining the new untracked file", "I'll look at the
+untracked file first", "starting with the recently added/changed files". None
+of them searched. So a seeded task can measure whether an agent can *diagnose*
+a file it has been pointed at; it cannot measure whether an agent can *find*
+the broken file, and a task written to measure the latter will report a pass
+rate that belongs to the former. See
+`docs/results/v0.24.0-gmb157-the-diagnostics-upper-bound.md`.
