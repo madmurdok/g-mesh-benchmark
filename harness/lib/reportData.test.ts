@@ -6,6 +6,7 @@ import { ROOT } from "./benchConfig.js";
 import type { TokenEconomyRun } from "../token-economy.js";
 import {
   aggregateGroup,
+  compareArmSpreads,
   computeAggregate,
   computeAnalysis,
   computeCategoryTokenBreakdown,
@@ -14,6 +15,10 @@ import {
   computeMcpUnavailableSummary,
   computeSilentMcpArms,
   computeTaskTable,
+  computeTokenSpread,
+  formatSpreadComparison,
+  formatTokenSpread,
+  formatTokenValues,
   pairedTokenTotals,
   partitionByMcpAvailability,
   primaryComparisonArm,
@@ -336,8 +341,14 @@ test("a baseline-only run set degrades exactly as before: zeros, labelled gmesh,
 
 test("the expected-winner and parity bullets pair against the primary arm", () => {
   const runs = [
-    run({ taskId: "t1", arm: "gmesh-configured", expectedWinner: "gmesh", cacheReadTokens: 1000 }),
-    run({ taskId: "t1", arm: "baseline", expectedWinner: "gmesh", cacheReadTokens: 4000 }),
+    // t1 carries two repetitions per arm (GMB-117: the expected-winner bullet
+    // is now spread-gated — see compareArmSpreads — and refuses to judge a
+    // single-repetition-per-arm task as insufficient-n, so this fixture needs
+    // n>=2 with non-overlapping ranges to exercise a real "matched" verdict).
+    run({ taskId: "t1", repetition: 1, arm: "gmesh-configured", expectedWinner: "gmesh", cacheReadTokens: 1000 }),
+    run({ taskId: "t1", repetition: 2, arm: "gmesh-configured", expectedWinner: "gmesh", cacheReadTokens: 1200 }),
+    run({ taskId: "t1", repetition: 1, arm: "baseline", expectedWinner: "gmesh", cacheReadTokens: 4000 }),
+    run({ taskId: "t1", repetition: 2, arm: "baseline", expectedWinner: "gmesh", cacheReadTokens: 4200 }),
     run({ taskId: "t2", arm: "gmesh-configured", expectedWinner: "parity", cacheReadTokens: 1000 }),
     run({ taskId: "t2", arm: "baseline", expectedWinner: "parity", cacheReadTokens: 4000 }),
   ];
@@ -496,4 +507,173 @@ test("a busy TypeScript corpus does not average away a silent Go corpus of the s
     undefined,
   );
   assert.equal(silent.length, 1);
+});
+
+// --- GMB-117: report spread, not just medians -------------------------------
+
+test("computeTokenSpread: a single repetition is single-run, never a zero-width range", () => {
+  // The central trap: min===max for n=1 is exactly what a real, if narrow,
+  // range looks like. A reader must be told "we only ran once", not handed a
+  // number that looks like a measured (and suspiciously precise) interval.
+  const spread = computeTokenSpread([1000]);
+  assert.deepEqual(spread, { kind: "single-run", n: 1, value: 1000 });
+});
+
+test("computeTokenSpread: n>=2 is a range, sorted ascending, carrying every raw value", () => {
+  const spread = computeTokenSpread([1480, 860, 1155]);
+  assert.deepEqual(spread, { kind: "range", n: 3, min: 860, max: 1480, values: [860, 1155, 1480] });
+});
+
+test("formatTokenSpread/formatTokenValues render the n=1 case as an explicit statement, not a number", () => {
+  // This is the discriminating case: before GMB-117, report.ts printed
+  // `agg.bestTokens` and `agg.worstTokens` directly, and for n=1 those are
+  // both `Math.min([1000]) === Math.max([1000]) === 1000` — a real report
+  // row read "| 1000 | 1000 |", indistinguishable from a genuine
+  // zero-variance measurement. See the GMB-117 handoff report for the actual
+  // before/after row text captured from a git-worktree control build of the
+  // pre-change code (git HEAD 7cd0b4c) against this exact fixture.
+  const single = computeTokenSpread([1000]);
+  assert.equal(formatTokenSpread(single), "n=1 (single run — no spread)");
+  assert.equal(formatTokenValues(single), "1000");
+  // Never contains what a zero-width interval would look like.
+  assert.ok(!formatTokenSpread(single).includes("1000–1000"));
+
+  const range = computeTokenSpread([860, 1155, 1480]);
+  assert.equal(formatTokenSpread(range), "860–1480 (n=3)");
+  assert.equal(formatTokenValues(range), "860, 1155, 1480");
+});
+
+test("aggregateGroup: an ok run with only one repetition carries tokenSpread.kind 'single-run'", () => {
+  const agg = aggregateGroup("t1", "gmesh-configured", [
+    run({ taskId: "t1", arm: "gmesh-configured", cacheReadTokens: 1000 }),
+  ])!;
+  assert.deepEqual(agg.tokenSpread, { kind: "single-run", n: 1, value: 1000 });
+});
+
+test("aggregateGroup: multiple ok runs carry a range built from tokensSpent(), not just cacheReadTokens", () => {
+  const agg = aggregateGroup("t1", "gmesh-configured", [
+    run({ taskId: "t1", arm: "gmesh-configured", cacheReadTokens: 860 }),
+    run({ taskId: "t1", arm: "gmesh-configured", cacheReadTokens: 1480 }),
+    run({ taskId: "t1", arm: "gmesh-configured", cacheReadTokens: 1155 }),
+  ])!;
+  assert.equal(agg.tokenSpread.kind, "range");
+  assert.deepEqual(agg.tokenSpread, { kind: "range", n: 3, min: 860, max: 1480, values: [860, 1155, 1480] });
+});
+
+/** Builds an ArmAggregate-shaped object with just the fields compareArmSpreads reads, for tests that only care about the spread logic. */
+function agg(arm: Arm, tokens: number[], meanTokens?: number): { arm: Arm; meanTokens: number; tokenSpread: ReturnType<typeof computeTokenSpread> } {
+  return {
+    arm,
+    meanTokens: meanTokens ?? tokens.reduce((a, b) => a + b, 0) / tokens.length,
+    tokenSpread: computeTokenSpread(tokens),
+  };
+}
+
+test("compareArmSpreads: both arms at n=1 is refused as insufficient-n, regardless of the gap size", () => {
+  // REPS=low, both arms: exactly the case the ticket's trap #1 names — "never
+  // for before/after token numbers". A 10x-looking gap on a single run each
+  // is still not evidence, because neither run's own variability is known.
+  assert.deepEqual(compareArmSpreads(agg("gmesh-configured", [7112]) as any, agg("baseline", [3562]) as any), {
+    kind: "insufficient-n",
+  });
+});
+
+test("compareArmSpreads: a bimodal split with overlapping per-arm ranges reads as within noise (the feature-request '2x gap' shape, GMB-117 task #194)", () => {
+  // Reconstructs task #194's finding: 12 measurements split 3/3 INSIDE each
+  // arm between a low cluster (~245-1364) and a high cluster (~2996-5001),
+  // so each arm's own range already spans both clusters and the two arms'
+  // ranges overlap almost entirely — a mean/median difference here is a
+  // coin-flip artifact, not a real gap.
+  const gmesh = agg("gmesh-configured", [300, 1200, 1300, 3000, 4200, 5001]);
+  const baseline = agg("baseline", [245, 1000, 1364, 2996, 3800, 4900]);
+  assert.deepEqual(compareArmSpreads(gmesh as any, baseline as any), { kind: "within-noise" });
+});
+
+test("compareArmSpreads: a single-run value entirely outside the other arm's multi-rep range still reads as real (the ambiguous-name win shape)", () => {
+  // 684 (one rep) vs 3982/4438 (two reps), separated by an order of
+  // magnitude — GMB-117's bar names this exact case as one that "must still
+  // read as real" despite one side having only one repetition: there is a
+  // known range on the baseline side (3982-4438), and the single primary
+  // value never comes close to it, so the separation is real even though the
+  // primary arm's own variability is unmeasured.
+  const primary = agg("gmesh-configured", [684]);
+  const baseline = agg("baseline", [3982, 4438]);
+  const result = compareArmSpreads(primary as any, baseline as any);
+  assert.deepEqual(result, { kind: "separated", winner: "gmesh-configured" });
+});
+
+test("compareArmSpreads: two non-overlapping multi-rep ranges read as real (the high-fanout improvement shape)", () => {
+  // 1618-1939 -> 468-741, non-overlapping — GMB-117's bar names this as a
+  // case that "must still read as real". gmesh-configured is the improved
+  // (lower-token) side, baseline the higher one.
+  const primary = agg("gmesh-configured", [468, 600, 741]);
+  const baseline = agg("baseline", [1618, 1780, 1939]);
+  const result = compareArmSpreads(primary as any, baseline as any);
+  assert.deepEqual(result, { kind: "separated", winner: "gmesh-configured" });
+});
+
+test("compareArmSpreads: order of arguments doesn't change the verdict", () => {
+  const a = agg("gmesh-configured", [1618, 1939]);
+  const b = agg("baseline", [468, 741]);
+  assert.deepEqual(compareArmSpreads(a as any, b as any), compareArmSpreads(b as any, a as any));
+});
+
+test("formatSpreadComparison renders all four states distinctly, never a bare number", () => {
+  assert.equal(formatSpreadComparison(null), "-");
+  assert.equal(formatSpreadComparison({ kind: "insufficient-n" }), "n=1 vs n=1 — not enough reps to tell from noise");
+  assert.equal(formatSpreadComparison({ kind: "within-noise" }), "within noise (ranges overlap)");
+  assert.equal(formatSpreadComparison({ kind: "separated", winner: "gmesh-configured" }), "gmesh-configured lower (real gap)");
+});
+
+test("computeTaskTable wires a spread-aware comparison per task from the primary-vs-baseline cells", () => {
+  const runs = [
+    run({ taskId: "t-noise", arm: "gmesh-configured", repetition: 1, cacheReadTokens: 300 }),
+    run({ taskId: "t-noise", arm: "gmesh-configured", repetition: 2, cacheReadTokens: 5001 }),
+    run({ taskId: "t-noise", arm: "baseline", repetition: 1, cacheReadTokens: 245 }),
+    run({ taskId: "t-noise", arm: "baseline", repetition: 2, cacheReadTokens: 4900 }),
+    run({ taskId: "t-real", arm: "gmesh-configured", repetition: 1, cacheReadTokens: 468 }),
+    run({ taskId: "t-real", arm: "gmesh-configured", repetition: 2, cacheReadTokens: 741 }),
+    run({ taskId: "t-real", arm: "baseline", repetition: 1, cacheReadTokens: 1618 }),
+    run({ taskId: "t-real", arm: "baseline", repetition: 2, cacheReadTokens: 1939 }),
+    run({ taskId: "t-single", arm: "gmesh-configured", repetition: 1, cacheReadTokens: 900 }),
+    run({ taskId: "t-single", arm: "baseline", repetition: 1, cacheReadTokens: 100 }),
+    run({ taskId: "t-gmesh-only", arm: "gmesh-configured", repetition: 1, cacheReadTokens: 900 }),
+  ];
+  const table = computeTaskTable(runs);
+
+  const noise = table.find((t) => t.taskId === "t-noise")!;
+  assert.deepEqual(noise.comparison, { kind: "within-noise" });
+
+  const real = table.find((t) => t.taskId === "t-real")!;
+  assert.deepEqual(real.comparison, { kind: "separated", winner: "gmesh-configured" });
+
+  const single = table.find((t) => t.taskId === "t-single")!;
+  assert.deepEqual(single.comparison, { kind: "insufficient-n" });
+
+  // No baseline cell at all for this task — nothing to compare, and that must
+  // read as "not compared", not as any of the three real verdicts.
+  const gmeshOnly = table.find((t) => t.taskId === "t-gmesh-only")!;
+  assert.equal(gmeshOnly.comparison, null);
+});
+
+test("computeAnalysis's expected-winner bullet excludes within-noise and insufficient-n tasks from the match/mismatch tally instead of judging them", () => {
+  const runs = [
+    // t-real: non-overlapping ranges, gmesh-configured lower — matches expectedWinner "gmesh".
+    run({ taskId: "t-real", arm: "gmesh-configured", expectedWinner: "gmesh", repetition: 1, cacheReadTokens: 468 }),
+    run({ taskId: "t-real", arm: "gmesh-configured", expectedWinner: "gmesh", repetition: 2, cacheReadTokens: 741 }),
+    run({ taskId: "t-real", arm: "baseline", expectedWinner: "gmesh", repetition: 1, cacheReadTokens: 1618 }),
+    run({ taskId: "t-real", arm: "baseline", expectedWinner: "gmesh", repetition: 2, cacheReadTokens: 1939 }),
+    // t-noise: overlapping ranges — must be excluded from the tally, not counted as a mismatch even though the mean favors baseline.
+    run({ taskId: "t-noise", arm: "gmesh-configured", expectedWinner: "gmesh", repetition: 1, cacheReadTokens: 300 }),
+    run({ taskId: "t-noise", arm: "gmesh-configured", expectedWinner: "gmesh", repetition: 2, cacheReadTokens: 5001 }),
+    run({ taskId: "t-noise", arm: "baseline", expectedWinner: "gmesh", repetition: 1, cacheReadTokens: 245 }),
+    run({ taskId: "t-noise", arm: "baseline", expectedWinner: "gmesh", repetition: 2, cacheReadTokens: 4900 }),
+  ];
+  const aggregate = computeAggregate(runs);
+  const taskTable = computeTaskTable(runs);
+  const bullets = computeAnalysis(runs, computeCorrectnessTable(runs), taskTable, aggregate, pairedTokenTotals(runs));
+
+  const bullet = bullets.find((b) => b.startsWith("Expected-winner check:"))!;
+  assert.ok(bullet.startsWith("Expected-winner check: 1/1 tasks"), bullet);
+  assert.ok(bullet.includes("1 further task(s) excluded as within noise"), bullet);
 });

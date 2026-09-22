@@ -8,6 +8,9 @@ import {
   computeCorrectnessTable,
   computeTaskTable,
   formatDurationSeconds,
+  formatSpreadComparison,
+  formatTokenSpread,
+  formatTokenValues,
   formatTurnsWithToolCalls,
   pairedTokenTotals,
   type Aggregate,
@@ -213,23 +216,33 @@ function categoryTokenBreakdownTableHtml(rows: CategoryTokenBreakdownRow[]): str
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+/**
+ * GMB-117: "Tokens spread"/"Per-rep tokens" replace the old bare
+ * "Tokens best"/"Tokens worst" columns — those carried min/max with nothing
+ * to mark a single-repetition group's identical min/max as a non-interval
+ * (see formatTokenSpread). "Verdict" is task-level, repeated on every arm row
+ * of a task exactly like "Expected winner" already is, and states whether
+ * primary-vs-baseline is a spread-distinguishable difference, within noise,
+ * or n=1-on-both-sides — see compareArmSpreads/formatSpreadComparison.
+ */
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
     if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
-    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
+    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${escapeHtml(formatTokenSpread(agg.tokenSpread))}</td><td>${escapeHtml(formatTokenValues(agg.tokenSpread))}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
   };
   const body = rows
-    .map((r) =>
-      r.cells
+    .map((r) => {
+      const verdict = escapeHtml(formatSpreadComparison(r.comparison));
+      return r.cells
         .filter((c) => c.agg || c.groupLength > 0)
         .map(
           (c) =>
-            `<tr><td>${escapeHtml(r.taskId)}</td><td>${escapeHtml(r.expectedWinner)}</td><td>${escapeHtml(c.arm)}</td>${cells(c.agg, c.groupLength)}</tr>`,
+            `<tr><td>${escapeHtml(r.taskId)}</td><td>${escapeHtml(r.expectedWinner)}</td><td>${verdict}</td><td>${escapeHtml(c.arm)}</td>${cells(c.agg, c.groupLength)}</tr>`,
         )
-        .join(""),
-    )
+        .join("");
+    })
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Verdict</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens spread</th><th>Per-rep tokens</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function statTile(label: string, value: string): string {

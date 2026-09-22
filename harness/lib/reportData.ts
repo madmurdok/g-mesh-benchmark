@@ -3,6 +3,56 @@ import path from "node:path";
 import type { TokenEconomyRun } from "../token-economy.js";
 import { ARM_ORDER, type Arm } from "./types.js";
 
+/**
+ * GMB-117: a spread measure for a (task, arm) group's token totals, shaped so
+ * a caller cannot accidentally treat one repetition as a measured interval.
+ *
+ * Chosen over a confidence interval: this registry runs 1-5 repetitions per
+ * (task, arm), and a CI computed as though that were a large sample (assuming
+ * normality, applying a t/z multiplier) is a well-formed number asserting
+ * precision the sample cannot carry — the exact defect class GMB-117 exists to
+ * stop (see docs/results/v0.22.0-gmb150-the-five-rep-sweep.md and the task
+ * #194/#195 findings quoted in the ticket). Chosen over IQR: quartiles need an
+ * interpolation convention that is itself a judgment call at n=3-5, and this
+ * project's own findings docs already report spread as a raw min-max range by
+ * hand (e.g. "860/1155/1480 ... a 620-token spread around the median" in the
+ * doc above) — range matches existing practice instead of inventing a new
+ * statistic. `values` carries every per-rep number too, not just the two
+ * endpoints, because a range alone can hide a bimodal split (GMB-117's task
+ * #194 case: two tight clusters with nothing between them look identical to a
+ * uniform spread once collapsed to min/max).
+ *
+ * `n` is carried on both variants (rather than only being `values.length`) so
+ * a caller can branch on sample size without a `kind` check first.
+ */
+export type TokenSpread =
+  | { kind: "single-run"; n: 1; value: number }
+  | { kind: "range"; n: number; min: number; max: number; values: number[] };
+
+/**
+ * A single repetition has no spread to report — reporting `min === max` as a
+ * "range" would print a zero-width interval a reader can mistake for
+ * precision (GMB-117's central trap). `values` is sorted ascending so
+ * formatTokenValues never has to re-sort at render time.
+ */
+export function computeTokenSpread(tokens: number[]): TokenSpread {
+  if (tokens.length === 1) return { kind: "single-run", n: 1, value: tokens[0]! };
+  const sorted = [...tokens].sort((a, b) => a - b);
+  return { kind: "range", n: tokens.length, min: sorted[0]!, max: sorted[sorted.length - 1]!, values: sorted };
+}
+
+/** "1618–1939 (n=3)" for a real sample, or an explicit "single run" statement for n=1 — never a bare number that reads as a point estimate. */
+export function formatTokenSpread(spread: TokenSpread): string {
+  if (spread.kind === "single-run") return "n=1 (single run — no spread)";
+  return `${Math.round(spread.min)}–${Math.round(spread.max)} (n=${spread.n})`;
+}
+
+/** The raw per-rep values behind a TokenSpread — the "per-rep values" half of GMB-117's bar, kept separate from the summary range so a reader can see the actual shape (e.g. a bimodal split a min/max would hide). */
+export function formatTokenValues(spread: TokenSpread): string {
+  if (spread.kind === "single-run") return `${Math.round(spread.value)}`;
+  return spread.values.map((v) => Math.round(v)).join(", ");
+}
+
 export interface ArmAggregate {
   taskId: string;
   arm: Arm;
@@ -10,8 +60,8 @@ export interface ArmAggregate {
   okCount: number;
   passCount: number;
   meanTokens: number;
-  bestTokens: number;
-  worstTokens: number;
+  /** See TokenSpread's doc for why range (not a CI or IQR) and why n=1 is a distinct, explicit case. */
+  tokenSpread: TokenSpread;
   meanCostUsd: number;
   /** Mean wall-clock duration (ms) over the same ok runs as meanTokens/meanCostUsd. */
   meanDurationMs: number;
@@ -159,8 +209,7 @@ export function aggregateGroup(taskId: string, arm: Arm, group: TokenEconomyRun[
     okCount: ok.length,
     passCount: ok.filter((r) => r.oraclePassed).length,
     meanTokens: tokens.reduce((a, b) => a + b, 0) / tokens.length,
-    bestTokens: Math.min(...tokens),
-    worstTokens: Math.max(...tokens),
+    tokenSpread: computeTokenSpread(tokens),
     meanCostUsd: ok.reduce((a, r) => a + r.costUsd, 0) / ok.length,
     meanDurationMs: ok.reduce((a, r) => a + r.durationMs, 0) / ok.length,
     meanNumTurns: ok.reduce((a, r) => a + r.numTurns, 0) / ok.length,
@@ -669,6 +718,60 @@ export function formatDurationSeconds(agg: ArmAggregate): string {
   return `${(agg.meanDurationMs / 1000).toFixed(1)}s`;
 }
 
+/**
+ * GMB-117: whether a (primary arm, baseline) token comparison for one task is
+ * a real, spread-distinguishable difference, or noise presented as a finding.
+ *
+ * - `insufficient-n`: both arms have exactly one repetition. A single run
+ *   carries no information about its own variability, so there is no basis —
+ *   not even a rough one — to call the gap real or noise. This is the
+ *   `REPS=low` case the ticket's trap #1 names explicitly: "never for
+ *   before/after token numbers".
+ * - `within-noise`: both arms' ranges overlap (or, when one side has a single
+ *   run, that single value falls inside the other side's multi-rep range). A
+ *   point that lands inside a range the other arm has already demonstrated it
+ *   can produce is not evidence the arms differ.
+ * - `separated`: the ranges do not overlap. `winner` names whichever arm's
+ *   mean is lower — the same "gmesh"/"baseline" comparison the codebase
+ *   already made, just gated on the ranges actually being distinguishable
+ *   first.
+ */
+export type SpreadComparison =
+  | { kind: "insufficient-n" }
+  | { kind: "within-noise" }
+  | { kind: "separated"; winner: Arm };
+
+/** [min, max] for either TokenSpread variant — a single run is its own degenerate one-point range. */
+function spreadBounds(spread: TokenSpread): [number, number] {
+  return spread.kind === "single-run" ? [spread.value, spread.value] : [spread.min, spread.max];
+}
+
+/**
+ * Compares two arms' token spreads for one task — see SpreadComparison's doc
+ * for the three outcomes and why n=1-on-both-sides is refused rather than
+ * answered. Order of `a`/`b` doesn't affect the result: `within-noise` and
+ * `insufficient-n` are symmetric by construction, and `separated.winner`
+ * names whichever mean is actually lower regardless of argument order.
+ */
+export function compareArmSpreads(a: ArmAggregate, b: ArmAggregate): SpreadComparison {
+  if (a.tokenSpread.kind === "single-run" && b.tokenSpread.kind === "single-run") {
+    return { kind: "insufficient-n" };
+  }
+  const [aMin, aMax] = spreadBounds(a.tokenSpread);
+  const [bMin, bMax] = spreadBounds(b.tokenSpread);
+  const overlap = aMin <= bMax && bMin <= aMax;
+  if (overlap) return { kind: "within-noise" };
+  return { kind: "separated", winner: a.meanTokens < b.meanTokens ? a.arm : b.arm };
+}
+
+/** Renders a SpreadComparison (or `null` — one side had no ok run at all) for the task table's Verdict column and the expected-winner bullet. */
+export function formatSpreadComparison(comparison: SpreadComparison | null): string {
+  if (comparison === null) return "-";
+  if (comparison.kind === "insufficient-n") return "n=1 vs n=1 — not enough reps to tell from noise";
+  if (comparison.kind === "within-noise") return "within noise (ranges overlap)";
+  return `${comparison.winner} lower (real gap)`;
+}
+
 export interface TaskArmCell {
   arm: Arm;
   /**
@@ -687,6 +790,13 @@ export interface TaskRow {
   expectedWinner: string;
   /** One cell per arm present anywhere in the run set, in ARM_ORDER — the single place consumers learn which arms to render. */
   cells: TaskArmCell[];
+  /**
+   * GMB-117: the primary-arm-vs-baseline spread comparison for this task —
+   * see compareArmSpreads. `null` when either arm has no ok run for this task
+   * at all (nothing to compare), which is distinct from `insufficient-n`
+   * (both arms ran, just once each).
+   */
+  comparison: SpreadComparison | null;
 }
 
 /** Convenience lookup for the callers that genuinely need one specific arm (e.g. the gmesh-vs-baseline aggregate). */
@@ -709,15 +819,26 @@ export function computeTaskTable(runs: TokenEconomyRun[]): TaskRow[] {
 
   const taskIds = [...new Set(runs.map((r) => r.taskId))];
   const arms = armsPresent(runs);
+  // Resolved once over the whole run set (same discipline as
+  // computeCategoryTokenTable/computeCategoryTokenBreakdown above) so every
+  // row's comparison names the same arm rather than each task picking
+  // whichever non-baseline arm happens to have a cell.
+  const primaryArm = primaryArmOr(runs);
 
-  return taskIds.map((taskId) => ({
-    taskId,
-    expectedWinner: expectedWinnerByTask.get(taskId) ?? "-",
-    cells: arms.map((arm) => {
+  return taskIds.map((taskId) => {
+    const cells = arms.map((arm) => {
       const group = byTaskArm.get(`${taskId}::${arm}`) ?? [];
       return { arm, agg: aggregateGroup(taskId, arm, group), groupLength: group.length };
-    }),
-  }));
+    });
+    const primaryAgg = cells.find((c) => c.arm === primaryArm)?.agg ?? null;
+    const baselineAgg = cells.find((c) => c.arm === "baseline")?.agg ?? null;
+    return {
+      taskId,
+      expectedWinner: expectedWinnerByTask.get(taskId) ?? "-",
+      cells,
+      comparison: primaryAgg && baselineAgg ? compareArmSpreads(primaryAgg, baselineAgg) : null,
+    };
+  });
 }
 
 export interface Aggregate {
@@ -871,17 +992,34 @@ export function computeAnalysis(
     }
   }
 
+  // GMB-117: gated on t.comparison (compareArmSpreads) rather than a bare mean
+  // comparison — this is the bullet that was declaring wins/losses straight
+  // off a single number, the exact shape task #194/#195 found reporting noise
+  // as a finding. A task whose arms' ranges overlap, or which only has one
+  // repetition per arm, is excluded from the match/mismatch tally and counted
+  // separately instead — dropping it silently would look identical to it
+  // never having been noisy in the first place.
   const winnerTasks = taskTable.filter((t) => t.expectedWinner === "gmesh" || t.expectedWinner === "baseline");
   if (winnerTasks.length > 0) {
     let matches = 0;
     const mismatches: string[] = [];
+    let withinNoise = 0;
+    let insufficientN = 0;
     for (const t of winnerTasks) {
-      const means = perTaskPairedMeans(runs, t.taskId, primaryArm);
-      if (!means) continue;
+      const comparison = t.comparison;
+      if (!comparison) continue; // one arm never produced an ok run for this task at all
+      if (comparison.kind === "insufficient-n") {
+        insufficientN++;
+        continue;
+      }
+      if (comparison.kind === "within-noise") {
+        withinNoise++;
+        continue;
+      }
       // Compared against the literal "gmesh"/"baseline" of ExpectedWinner
       // (types.ts): that field is the task author's hypothesis about g-mesh
       // vs. plain grep/Read, not a claim about one specific g-mesh arm.
-      const observedWinner = means.primaryMean < means.baselineMean ? "gmesh" : "baseline";
+      const observedWinner = comparison.winner === primaryArm ? "gmesh" : "baseline";
       if (observedWinner === t.expectedWinner) {
         matches++;
       } else {
@@ -889,11 +1027,20 @@ export function computeAnalysis(
       }
     }
     const evaluated = matches + mismatches.length;
+    const exclusionNote =
+      (withinNoise > 0 ? ` ${withinNoise} further task(s) excluded as within noise (arms' token ranges overlap).` : "") +
+      (insufficientN > 0
+        ? ` ${insufficientN} further task(s) excluded — one repetition per arm, not enough to tell a real gap from noise.`
+        : "");
     if (evaluated > 0) {
       bullets.push(
-        `Expected-winner check: ${matches}/${evaluated} tasks with a declared expected winner matched the ` +
-          `observed lower-token arm` + (mismatches.length > 0 ? `; mismatches: ${mismatches.join(", ")}.` : "."),
+        `Expected-winner check: ${matches}/${evaluated} tasks with a declared expected winner and a spread-` +
+          `distinguishable result matched the observed lower-token arm` +
+          (mismatches.length > 0 ? `; mismatches: ${mismatches.join(", ")}.` : ".") +
+          exclusionNote,
       );
+    } else if (withinNoise > 0 || insufficientN > 0) {
+      bullets.push(`Expected-winner check: no task could be evaluated —${exclusionNote}`);
     }
   }
 
