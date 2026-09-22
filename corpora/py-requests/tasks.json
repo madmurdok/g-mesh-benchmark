@@ -3,6 +3,7 @@
     "id": "py-ambiguous-close-session",
     "kind": "find_definition",
     "category": "ambiguous-name",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -19,6 +20,7 @@
     "id": "py-find-impl-authbase-transitive",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -35,6 +37,7 @@
     "id": "py-find-impl-supportsread-protocol",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "parity",
     "revealsLocation": false,
     "target": {
@@ -51,6 +54,7 @@
     "id": "py-references-httpbasicauth",
     "kind": "find_references",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -71,6 +75,7 @@
     "id": "py-scenario-callers-httpadapter-send",
     "kind": "find_callers",
     "category": "scenario",
+    "tier": "semantic",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -87,6 +92,7 @@
     "id": "py-callees-session-send",
     "kind": "find_callees",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -111,6 +117,7 @@
     "id": "py-deps-packages-boundary",
     "kind": "get_dependencies",
     "category": "control",
+    "tier": "structural",
     "expectedWinner": "baseline",
     "revealsLocation": true,
     "target": {
@@ -127,6 +134,7 @@
     "id": "py-semantic-basicauth-header",
     "kind": "search_code",
     "category": "semantic-search",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
