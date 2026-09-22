@@ -15,16 +15,20 @@ import {
   computeMcpUnavailableSummary,
   computeSilentMcpArms,
   computeTaskTable,
+  computeTierTable,
   computeTokenSpread,
   formatSpreadComparison,
+  formatTierComparison,
   formatTokenSpread,
   formatTokenValues,
+  MIN_TIER_TASKS_FOR_VERDICT,
   pairedTokenTotals,
   partitionByMcpAvailability,
   primaryComparisonArm,
   UNCATEGORIZED,
+  UNTAGGED_TIER,
 } from "./reportData.js";
-import type { Arm } from "./types.js";
+import type { Arm, Tier } from "./types.js";
 
 /** Loads one of GMB-165's real result files from docs/results/gmb165-raw/ — see the GMB-173 test below for why a real record, not a fixture, is required here. */
 function loadGmb165RawRecords(filename: string): TokenEconomyRun[] {
@@ -676,4 +680,163 @@ test("computeAnalysis's expected-winner bullet excludes within-noise and insuffi
   const bullet = bullets.find((b) => b.startsWith("Expected-winner check:"))!;
   assert.ok(bullet.startsWith("Expected-winner check: 1/1 tasks"), bullet);
   assert.ok(bullet.includes("1 further task(s) excluded as within noise"), bullet);
+});
+
+// --- computeTierTable / formatTierComparison (GMB-179) ---------------------
+
+function tierMap(entries: [string, Tier | undefined][]): Map<string, Tier | undefined> {
+  return new Map(entries);
+}
+
+test("an untagged task is never folded into 'structural' — it gets its own bucket", () => {
+  // Mirrors today's real corpora state: excalidraw/task-tracker-mcp tasks
+  // predate GMB-175's tagging and carry no `tier` at all (see the live
+  // `report.ts` output captured for GMB-179 — 48 such tasks currently land
+  // in this exact bucket, not in "structural").
+  const tiers = tierMap([
+    ["structural-1", "structural"],
+    ["structural-2", "structural"],
+    ["structural-3", "structural"],
+    ["no-tier-task", undefined],
+  ]);
+  const rows = computeTierTable([], tiers);
+
+  const structuralRow = rows.find((r) => r.tier === "structural")!;
+  assert.equal(structuralRow.taskCount, 3, "the untagged task must not inflate the structural bucket's task count");
+
+  const untaggedRow = rows.find((r) => r.tier === UNTAGGED_TIER)!;
+  assert.equal(untaggedRow.taskCount, 1);
+  assert.notEqual(UNTAGGED_TIER, "structural");
+});
+
+test("MIN_TIER_TASKS_FOR_VERDICT is 3 — today's real semantic bucket (2 tasks) sits just below it", () => {
+  // Documents the exact number the GMB-179 ticket calls out: with the
+  // corpora as they stand today, `semantic` has 2 tagged tasks (see
+  // corpora/gin/tasks.json and corpora/py-requests/tasks.json), one below the
+  // floor this file enforces.
+  assert.equal(MIN_TIER_TASKS_FOR_VERDICT, 3);
+});
+
+test("a tier bucket below MIN_TIER_TASKS_FOR_VERDICT refuses a comparison even when it has qualifying runs to compare", () => {
+  // Exactly today's semantic-bucket shape: 2 tagged tasks, each with a
+  // clean gmesh-configured/baseline pair that would otherwise average to a
+  // real (if thin) savings % — the refusal has to win regardless of whether
+  // data happens to exist, because the problem is the task count, not the
+  // run count.
+  const tiers = tierMap([
+    ["sem-1", "semantic"],
+    ["sem-2", "semantic"],
+  ]);
+  const runs = [
+    run({ taskId: "sem-1", arm: "gmesh-configured", cacheReadTokens: 500 }),
+    run({ taskId: "sem-1", arm: "baseline", cacheReadTokens: 900 }),
+    run({ taskId: "sem-2", arm: "gmesh-configured", cacheReadTokens: 400 }),
+    run({ taskId: "sem-2", arm: "baseline", cacheReadTokens: 800 }),
+  ];
+
+  const rows = computeTierTable(runs, tiers);
+  assert.equal(rows.length, 1);
+  const [semanticRow] = rows;
+  assert.equal(semanticRow!.taskCount, 2);
+  assert.deepEqual(semanticRow!.comparison, { kind: "insufficient-tasks", taskCount: 2 });
+});
+
+test("a tier bucket at or above MIN_TIER_TASKS_FOR_VERDICT with qualifying pairs renders a real comparison", () => {
+  const tiers = tierMap([
+    ["str-1", "structural"],
+    ["str-2", "structural"],
+    ["str-3", "structural"],
+  ]);
+  const runs = [
+    run({ taskId: "str-1", arm: "gmesh-configured", cacheReadTokens: 1000 }),
+    run({ taskId: "str-1", arm: "baseline", cacheReadTokens: 2000 }),
+    run({ taskId: "str-2", arm: "gmesh-configured", cacheReadTokens: 1000 }),
+    run({ taskId: "str-2", arm: "baseline", cacheReadTokens: 2000 }),
+    run({ taskId: "str-3", arm: "gmesh-configured", cacheReadTokens: 1000 }),
+    run({ taskId: "str-3", arm: "baseline", cacheReadTokens: 2000 }),
+  ];
+
+  const rows = computeTierTable(runs, tiers);
+  assert.equal(rows.length, 1);
+  const [structuralRow] = rows;
+  assert.equal(structuralRow!.taskCount, 3);
+  assert.deepEqual(structuralRow!.comparison, {
+    kind: "comparable",
+    arm: "gmesh-configured",
+    gmeshMeanTokens: 1000,
+    baselineMeanTokens: 2000,
+    savingsPct: 50,
+    pairCount: 3,
+    taskCount: 3,
+  });
+});
+
+test("a tier bucket at or above the task floor with zero qualifying pairs reports null, not a refusal or a zero", () => {
+  // Distinct from "insufficient-tasks": this bucket has enough tagged tasks,
+  // it just has no (taskId, rep) pair where both arms ran ok and passed
+  // oracle yet — the same "nothing to compare" null TaskRow.comparison uses
+  // at task level, not the task-count refusal.
+  const tiers = tierMap([
+    ["str-1", "structural"],
+    ["str-2", "structural"],
+    ["str-3", "structural"],
+  ]);
+  const rows = computeTierTable([], tiers);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]!.comparison, null);
+});
+
+test("formatTierComparison renders the refusal, no-data, and comparable cases as visibly different strings", () => {
+  const refusal = formatTierComparison({ kind: "insufficient-tasks", taskCount: 2 });
+  const noData = formatTierComparison(null);
+  const comparable = formatTierComparison({
+    kind: "comparable",
+    arm: "gmesh-configured",
+    gmeshMeanTokens: 1000,
+    baselineMeanTokens: 2000,
+    savingsPct: 50,
+    pairCount: 3,
+    taskCount: 3,
+  });
+
+  assert.ok(refusal.includes("insufficient tasks"), refusal);
+  assert.ok(refusal.includes("n=2"), refusal);
+  assert.ok(noData.includes("no (task, rep) pair"), noData);
+  assert.ok(comparable.includes("50.0%"), comparable);
+  // The three renderings must never collide — a reader distinguishing "too
+  // few tasks" from "no runs yet" from "here's the number" is the entire
+  // point of this table.
+  assert.notEqual(refusal, noData);
+  assert.notEqual(refusal, comparable);
+  assert.notEqual(noData, comparable);
+});
+
+/**
+ * GMB-179 discrimination test: fails before MIN_TIER_TASKS_FOR_VERDICT's gate
+ * exists (a naive per-tier table would average today's 2-task semantic
+ * bucket into a bare savings % — see this file's comment above for the
+ * verified control: setting the floor to 1 makes this assertion fail,
+ * confirmed by temporarily editing MIN_TIER_TASKS_FOR_VERDICT's definition
+ * and re-running this suite, then restoring it), passes after (the bucket
+ * renders as an explicit refusal instead). Asserts on the actual rendered
+ * string from formatTierComparison — the thing report.ts and htmlReport.ts
+ * both print — not just on the data shape.
+ */
+test("discrimination: today's real semantic-tier shape (2 tasks, real qualifying runs) renders a refusal string, never a bare percentage", () => {
+  const tiers = tierMap([
+    ["gin::multihop-service-registration", "semantic"],
+    ["py-requests::caching-decision", "semantic"],
+  ]);
+  const runs = [
+    run({ taskId: "gin::multihop-service-registration", arm: "gmesh-configured", cacheReadTokens: 1200 }),
+    run({ taskId: "gin::multihop-service-registration", arm: "baseline", cacheReadTokens: 3100 }),
+    run({ taskId: "py-requests::caching-decision", arm: "gmesh-configured", cacheReadTokens: 900 }),
+    run({ taskId: "py-requests::caching-decision", arm: "baseline", cacheReadTokens: 2600 }),
+  ];
+
+  const [semanticRow] = computeTierTable(runs, tiers);
+  const rendered = formatTierComparison(semanticRow!.comparison);
+
+  assert.ok(rendered.startsWith("insufficient tasks"), `expected a refusal, got: "${rendered}"`);
+  assert.ok(!/%/.test(rendered), `refusal text must not contain a stray savings percentage: "${rendered}"`);
 });

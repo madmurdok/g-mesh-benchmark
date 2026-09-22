@@ -15,8 +15,10 @@ import {
   computeSilentMcpArms,
   computeStaleSummary,
   computeTaskTable,
+  computeTierTable,
   formatDurationSeconds,
   formatSpreadComparison,
+  formatTierComparison,
   formatTokenSpread,
   formatTokenValues,
   formatTurnsWithToolCalls,
@@ -29,6 +31,7 @@ import { computeSequenceTokenTable, renderSessionHtmlReport } from "./lib/sessio
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { SessionEconomyRun } from "./session-economy.js";
+import type { Tier } from "./lib/types.js";
 import type { TokenEconomyRun } from "./token-economy.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -47,6 +50,27 @@ async function buildCurrentHashByTaskId(): Promise<Map<string, string>> {
     const tasks = await loadTasks(corpus.id);
     for (const task of tasks) {
       map.set(task.id, computeTaskDefHash(task));
+    }
+  }
+  return map;
+}
+
+/**
+ * Every task currently in the registry mapped to its `tier` tag (or
+ * `undefined` for an untagged one) — the "ground truth" computeTierTable
+ * groups runs by, since `tier` isn't recorded on TokenEconomyRun itself (see
+ * reportData.ts's computeTierTable doc). Modelled directly on
+ * buildCurrentHashByTaskId above: same registry walk, same reason a per-task
+ * lookup has to be built fresh from corpora/*.json rather than read off a
+ * run record.
+ */
+async function buildTierByTaskId(): Promise<Map<string, Tier | undefined>> {
+  const registry = await loadRegistry();
+  const map = new Map<string, Tier | undefined>();
+  for (const corpus of registry) {
+    const tasks = await loadTasks(corpus.id);
+    for (const task of tasks) {
+      map.set(task.id, task.tier);
     }
   }
   return map;
@@ -134,6 +158,30 @@ function printCategoryTokenBreakdown(runs: TokenEconomyRun[]): void {
     console.log(
       `| ${row.category} | ${row.arm} | ${row.meanInputTokens.toFixed(0)} | ${row.meanOutputTokens.toFixed(0)} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanCacheReadTokens.toFixed(0)} | ${row.pairCount} |`,
     );
+  }
+  console.log("");
+}
+
+/**
+ * Per-tier token savings, printed right after the category breakdown — the
+ * per-tier counterpart GMB-179 adds beside the per-category tables above.
+ * Every tier bucket is printed, including a refusal row for one below
+ * MIN_TIER_TASKS_FOR_VERDICT — GMB-117's rule ("a bucket too small to support
+ * a verdict says so instead of printing one") applies here too, and the whole
+ * point of shipping this table now is that it can print that refusal: as of
+ * this writing the `semantic` bucket has 2 tagged tasks (see
+ * corpora/*.json), below the n=3 floor, so this table shows a refusal
+ * rather than a comparison until GMB-180 adds more.
+ */
+function printTierTable(runs: TokenEconomyRun[], tierByTaskId: Map<string, Tier | undefined>): void {
+  const rows = computeTierTable(runs, tierByTaskId);
+  if (rows.length === 0) return;
+
+  console.log("# Token savings by tier (paired, oracle-passed pairs only)\n");
+  console.log("| Tier | Tasks (n) | Comparison |");
+  console.log("|---|---|---|");
+  for (const row of rows) {
+    console.log(`| ${row.tier} | ${row.taskCount} | ${formatTierComparison(row.comparison)} |`);
   }
   console.log("");
 }
@@ -238,9 +286,15 @@ async function reportTokenEconomy(): Promise<void> {
     if (silentKeys.size > 0) runs = runs.filter((r) => !silentKeys.has(`${String(r.arm)}::${r.corpusId}`));
   }
 
+  // Computed unconditionally (unlike currentHashByTaskId, which only the
+  // --all-less staleness filter needs): tier is registry-derived metadata, not
+  // a staleness check, so it applies to both the filtered and --all run sets.
+  const tierByTaskId = await buildTierByTaskId();
+
   printCorrectness(runs);
   printCategoryTokenSavings(runs);
   printCategoryTokenBreakdown(runs);
+  printTierTable(runs, tierByTaskId);
   if (!useAll) {
     printStaleSummary(stale);
     printMcpUnavailableSummary(mcpUnavailable);
@@ -302,7 +356,7 @@ async function reportTokenEconomy(): Promise<void> {
     narrativeText = narrative?.text ?? null;
   }
 
-  const html = renderHtmlReport(runs, { title: "g-mesh-bench cumulative report", narrative: narrativeText });
+  const html = renderHtmlReport(runs, { title: "g-mesh-bench cumulative report", narrative: narrativeText, tierByTaskId });
   const htmlDir = path.join(ROOT, "results/html");
   await mkdir(htmlDir, { recursive: true });
   const htmlPath = path.join(htmlDir, "cumulative.html");

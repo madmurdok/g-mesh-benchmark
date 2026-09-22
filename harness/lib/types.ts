@@ -268,10 +268,39 @@ export interface TaskTarget {
   file: string;
 }
 
+/**
+ * Which g-mesh capability a task's oracle actually exercises, per GMB-175:
+ * `"structural"` for a task a plain graph walk (references/callers/
+ * implementations/definition) can answer, `"semantic"` for one that needs
+ * `search_code`'s similarity ranking because the prompt paraphrases its
+ * target rather than naming it (see TaskCategory's `"semantic-search"` doc —
+ * that's the category framing; this is the capability the oracle checks).
+ * Lets a report slice "does g-mesh's structural graph win look different from
+ * its semantic-search win" instead of only "does g-mesh win", which is what
+ * GMB-160 asked tagging for in the first place.
+ */
+export type Tier = "structural" | "semantic";
+
 export interface BenchTask {
   id: string;
   kind: string;
   category?: TaskCategory;
+  /**
+   * GMB-175 tagged all 23 existing tasks; optional so a task added without a
+   * tier reads as untagged rather than defaulting into either bucket — see
+   * reportData.ts's computeTierTable, which keeps an untagged task in its own
+   * bucket rather than folding it into "structural".
+   *
+   * Compile-time only, same stance as `Arm`/`CorpusLanguage` above: this type
+   * is checked wherever a `BenchTask` object literal is assigned or annotated
+   * (e.g. a test fixture), but taskLoader.ts's `loadTasks()` reads
+   * `corpora/*.json` through `JSON.parse(...) as BenchTask[]`, and `as` casts
+   * from `any` skip TypeScript's excess-property/literal check entirely — so
+   * a malformed `tier` in the JSON itself is not caught by this declaration
+   * at load time, only a malformed `tier` in TypeScript source that names
+   * this type.
+   */
+  tier?: Tier;
   /** false = prompt must not state target's file/symbol location; omitted defaults to true (v1 behavior) */
   revealsLocation?: boolean;
   expectedWinner?: ExpectedWinner;
