@@ -229,6 +229,8 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * names TS/JS, Rust, Python and Go (design:
  * g-mesh/docs/architecture/gm-389-guidance-prefix.md, section 8, "Bench
  * pin"). This constant was re-pinned to it byte for byte.
+ * GM-389's first A/B then restored one bullet (`find_definition` returns the
+ * source), taking the snippet to 2,378 bytes; the pin followed.
  *
  * That retires GMB-165's de-scoping. From 0.23.0 to 0.24.0 a Go/Rust/Python
  * corpus got this text with its two TS/JS-scoping spans rewritten, because the
@@ -250,6 +252,7 @@ export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript,
 - No manual indexing command exists or is needed. The g-mesh daemon bootstraps and indexes a project automatically on its first tool call in that project's directory. On first use in a new project, just issue any g-mesh call (e.g. \`get_file_outline\` on a source file) to trigger indexing, then proceed.
 - When the g-mesh server covers a folder of several projects, call \`select_project\` first. In Claude Code its tools may be deferred: load them (ToolSearch) before the first call.
 - Trust a complete answer from the structural tools (\`find_*\`, \`get_dependencies\`). A response says when it is not complete or not exact (\`hasMore\`, \`truncated\`, \`allUnresolved\`, a \`resolved: false\` row, a \`resolvedBy\` other than \`id\`/\`qualifiedName\`/\`name\`), and its \`hint\`/\`explanation\` says what to do next. Absent those, do not re-check it with grep or Read: that re-verification is the most expensive habit these tools have.
+- \`find_definition\` returns the declaration's source in \`source.text\`: do not Read the file after it unless \`source.omittedLines\` says it was cut.
 - The index serves the checkout it was built on. In a \`git worktree\` on another branch, trust g-mesh for code the branch has not changed and read the changed files directly.
 - When delegating, put this section in the subagent's brief: a subagent does not inherit it, and it may need to load the g-mesh tools too. grep is still right there for one known symbol or for non-code.
 `;
