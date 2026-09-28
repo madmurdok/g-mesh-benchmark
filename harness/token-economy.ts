@@ -1286,11 +1286,10 @@ async function main() {
     const warmupCwd = await resolveWarm(firstCorpus);
     await warmCache(arms, warmupCwd, {
       kungfu: includeKungfu ? await resolveFresh(firstCorpus) : undefined,
-      // `firstCorpus.language`, not a fixed doc: since GMB-165 the guidance
-      // text differs between a TypeScript corpus and a Go/Rust/Python one, so
-      // the prefix this warms is the first corpus's. A run spanning several
-      // languages therefore warms one of them — the same single-corpus
-      // approximation this warm-up already made, now visible.
+      // `firstCorpus.language`, not a fixed doc: the guidance is chosen per
+      // corpus language (GMB-165 made it differ; since GMB-183 every language
+      // gets the same bytes, but the call stays keyed on language so a future
+      // split cannot silently warm the wrong prefix).
       "gmesh-configured": await resolveConfigured(firstCorpus, gmeshConfiguredClaudeMd(firstCorpus.language)),
       // Its own prefix again, and for a stronger reason than gmesh-configured's:
       // the repo map *is* system-level context, so a map arm warmed from the

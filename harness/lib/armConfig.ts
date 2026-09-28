@@ -224,189 +224,47 @@ export const TRUSTED_ARM_PROMPT_SUFFIX =
  * need a human to notice and re-sync by hand. `~/.claude/CLAUDE.md` was last
  * synced 2026-08-15 (backup: `~/.claude/CLAUDE.md.bak-2026-08-15`).
  *
- * The bullet after the `resolved: false` one below (on a `symbol_id`
- * anchoring an already-disambiguated name) was validated here first — a
- * targeted token-economy run against ex-ambiguous-exporttosvg-public-api
- * (turns 19.3->9.0, cost $0.196->$0.099, oracle still 3/3) plus 5 regression
- * tasks with no oracle drop — then ported to `~/.claude/CLAUDE.md` and
- * g-mesh/README.md; all three copies are back in sync as of that port.
+ * GMB-183 — ONE DOCUMENT FOR EVERY LANGUAGE, AND WHAT THAT COST. g-mesh
+ * GM-389 replaced the 13,926-byte snippet with a 2,231-byte one whose heading
+ * names TS/JS, Rust, Python and Go (design:
+ * g-mesh/docs/architecture/gm-389-guidance-prefix.md, section 8, "Bench
+ * pin"). This constant was re-pinned to it byte for byte.
  *
- * GMB-165 — WHY THIS STILL OPENS "(TypeScript/JavaScript projects)", AND WHY
- * NON-TYPESCRIPT CORPORA NO LONGER GET IT. Read `gmeshConfiguredClaudeMd()`
- * below before using this constant directly: from 0.23.0 on it is the
- * TypeScript text, not "the arm's doc". Every call site goes through that
- * function instead, which hands a Go/Rust/Python corpus the same document
- * with its two TS/JS-scoping spans de-scoped and nothing else touched.
+ * That retires GMB-165's de-scoping. From 0.23.0 to 0.24.0 a Go/Rust/Python
+ * corpus got this text with its two TS/JS-scoping spans rewritten, because the
+ * old heading "(TypeScript/JavaScript projects)" measurably suppressed the
+ * tool under test (psf/requests: 5/16 runs called g-mesh scoped, 16/16
+ * de-scoped, Fisher p = 3e-05; docs/results/v0.23.0-gmb165-what-the-scope-line-does.md).
+ * The new heading has no TS-only span, so the derivation — which threw by
+ * design when its spans vanished — is gone, and every corpus reads the shipped
+ * text itself.
  *
- * This constant stays byte-identical because it is not really ours: the
- * drift guard in armConfig.test.ts pins it to g-mesh's shipped
- * `AGENTS_MD_SNIPPET`, which lives in another repo and another tracker
- * project, and `GMESH_MAP_CONFIGURED_CLAUDE_MD` is defined as this text plus
- * one `@AGENTS.md` line — the only reason the `gmesh-configured`/`-map` pair
- * measures the repo map and nothing else. Every historical TypeScript
- * comparison was run against these exact bytes and still is.
- *
- * The measurement that forced the split (full numbers and the raw records:
- * docs/results/v0.23.0-gmb165-what-the-scope-line-does.md). Three arms,
- * differing only in this document's first two lines, `gmesh-configured`
- * throughout, g-mesh 3.7.0:
- *
- *   psf/requests (Python), 16 runs per arm, on the two tasks whose GMB-168
- *   dry runs first recorded `mcpToolCalls: 0`:
- *     this text, unchanged      5/16 runs called g-mesh   (39 greps/reads)
- *     scoping spans removed    16/16 runs called g-mesh   (16 greps/reads)
- *   Fisher exact, one-sided, p = 3e-05. Both arms 16/16 on the oracle; the
- *   de-scoped arm was also slightly cheaper ($0.4462 vs $0.4957) and its tool
- *   counts are identical run to run, where the scoped arm's are erratic.
- *
- * So the suppression is real and it is this text's doing, not the
- * simple-lookup licence in the same bullet that GMB-168 could not tell it
- * apart from: removing *only* the language clause, on the very tasks that
- * raised the question, takes the arm from 5/16 to 16/16. One scoped-arm run
- * said it with no second reason attached — "I used a text search because this
- * is a Python project."
- *
- * Two results that keep this honest rather than tidy:
- *
- * - On gin (Go), 6 runs per arm on two cross-file impact tasks the first
- *   bullet assigns to g-mesh, the two arms were identical: 6/6 and 6/6, zero
- *   greps either way, the same tool counts run for run. The scope line is not
- *   strong enough to suppress there. It is not inert, but it is not uniform.
- * - The control that makes that null readable: a third arm with the scoping
- *   *hardened* ("...projects only — these tools do not apply to any other
- *   language") went to 0/6 on those same Go tasks, 29 greps, and said so —
- *   "I found them with a grep ... because your `CLAUDE.md` limits g-mesh to
- *   TS/JS projects and this is Go." The measurement moves when the scope line
- *   moves; Go's 6/6-vs-6/6 is a real null, not a saturated one.
- *
- * WHAT THE OTHER TWO OPTIONS WOULD HAVE COST. Rewriting this text
- * language-neutral and re-syncing the copies is not an edit in this repo: the
- * drift guard pins it to g-mesh's own shipped constant, so it is a change to
- * `g-mesh/core/src/cli/agent_instructions.rs`, its two tests and README.md —
- * a product decision about what `g-mesh init --agent claude` writes into real
- * users' repos, belonging to the GM project — plus the loss of byte-identity
- * with every historical TypeScript run. Leaving it alone and merely saying so
- * in each write-up is what the numbers above rule out: it does not describe a
- * language it excludes, it changes what the arm does, in 11 of 16 runs.
- *
- * WHAT THIS CHOICE COSTS, stated rather than absorbed. On a non-TypeScript
- * corpus the arm is no longer literally the document `g-mesh init` ships. It
- * is a two-span derivation of it, computed here rather than hand-maintained,
- * so the drift guard still covers every word — but any write-up of a
- * non-TypeScript run has to say the arm ran a de-scoped derivative, not
- * g-mesh's shipped text.
- *
- * AND ONE HAZARD THIS CHOICE MAKES WORSE, deliberately not fixed here.
- * GMB-163 measured that the `get_dependencies` bullet below — "an `Incoming`
- * walk already answers every file that imports this" — is true only on
- * TypeScript: elsewhere a module is not a file, and a file-anchored
- * `Incoming` walk returns a confident `results: []`. The TS/JS heading was an
- * accidental warning about that, and de-scoping removes it. Correcting the
- * bullet is a change to g-mesh's shipped guidance, not to this benchmark's
- * framing, and putting the benchmark ahead of the product here would leave
- * two documents nobody could reconcile — so it is filed upstream (see the
- * findings note) rather than patched into the derivation, which stays
- * strictly the one variable that was measured.
+ * Deliberately lost: byte-identity with every historical TypeScript
+ * `gmesh-configured` run. Runs before this pin used the old 13,926-byte text
+ * (and the non-TS ones a de-scoped derivation of it); a comparison across the
+ * pin compares two different documents and has to say so.
  */
-export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript projects)
+export const GMESH_CONFIGURED_CLAUDE_MD = `# Code search (TypeScript/JavaScript, Rust, Python, Go projects)
 
-- In TS/JS projects, prefer g-mesh (\`mcp__g-mesh__*\`) for cross-file impact analysis, ambiguous naming (same symbol name declared in different scopes/files), and call-graph/multi-hop questions (callers, implementations, transitive dependencies) — grep can't resolve these reliably and has real unbounded cost (many round-trips, occasionally very expensive) when it tries. For simple, unambiguous single-symbol lookups, grep/\`Explore\`/manual reading is often just as fast and cheaper — g-mesh's tool schema adds fixed overhead per turn that doesn't pay for itself on easy questions (measured: g-mesh costs *more* tokens than grep on simple lookups, both isolated and in a long session — see \`g-mesh-bench/docs/results/v0.2.0-session-economy-findings.md\`). Fall back to grep when g-mesh returns no result, errors, or the target isn't something it tracks (non-code files, config, CSS, etc.).
+- Prefer g-mesh (\`mcp__g-mesh__*\`) for cross-file impact analysis, ambiguous naming (same symbol name declared in different scopes/files), and call-graph/multi-hop questions (callers, implementations, transitive dependencies) — grep can't resolve these reliably and has real unbounded cost (many round-trips, occasionally very expensive) when it tries. For simple, unambiguous single-symbol lookups, grep/\`Explore\`/manual reading is often just as fast and cheaper — g-mesh's tool schema adds fixed overhead per turn that doesn't pay for itself on easy questions (measured: g-mesh costs *more* tokens than grep on simple lookups, both isolated and in a long session — see \`g-mesh-bench/docs/results/v0.2.0-session-economy-findings.md\`). Fall back to grep when g-mesh returns no result, errors, or the target isn't something it tracks (non-code files, config, CSS, etc.).
 - No manual indexing command exists or is needed. The g-mesh daemon bootstraps and indexes a project automatically on its first tool call in that project's directory. On first use in a new project, just issue any g-mesh call (e.g. \`get_file_outline\` on a source file) to trigger indexing, then proceed.
-- How to use the tools:
-  - \`get_file_outline(file_path)\` — list a file's top-level symbols before reading it in full, or to find the right symbol name to query next.
-  - \`find_definition(symbol_name)\` or \`find_definition(file_path, position)\` — resolve a symbol to its definition and get its \`symbol_id\`. **The response carries the declaration's own source in \`source.text\`, so do not follow it with a Read or Grep of that file — the code you were about to look at is already in the answer.** A long declaration is cut at a line/char cap and says so in \`source.omittedLines\`; only then is reading the file worth a turn. Pass \`include_source: false\` if you genuinely want coordinates alone. Not required before the tools below — they accept \`symbol_name\` directly, skip this call when the name is likely unambiguous, and their response's \`anchor\` field ({id, qualifiedName, kind, filePath, startLine}) already gives the declaration site. Call \`find_definition\` first only when you expect ambiguity.
-  - \`find_references(symbol_name or symbol_id)\` — every usage of a symbol across the project; use before renaming or removing something.
-  - \`find_callers(symbol_name or symbol_id)\` / \`find_callees(...)\` — walk the call graph up or down from a function.
-  - \`find_implementations(symbol_name or symbol_id)\` — concrete types implementing an interface/abstract class.
-  - \`get_dependencies(file_path, direction: Outgoing|Incoming)\` — walk the import graph (what a file imports / what imports it); use for impact analysis before changing a shared module.
-  - \`search_code(query)\` — free-text semantic search over doc comments and signatures, ranked by similarity. Default to this as your *first* move on a "find the function/bug that does X" prompt when no symbol name is given — not something to reach for only after Grep has already failed a few times. Measured: on a bug-hunt task with no named symbol, reps that called \`search_code\` first converged in 8-11 turns; the one rep that skipped it and grep-guessed regex patterns from turn 1 took 15 turns for the same final answer (g-mesh-bench, \`ex-implement-mutateelement-elbow-zero-position\`). Skip it only for a symbol whose name you already know — \`find_definition\`/\`find_references\` are cheaper and exact there. Needs the project's embedding model available; if it errors saying semantic search is unavailable, fall back to grep or the structural tools instead.
-  - If a \`symbol_name\` turns out ambiguous, the result carries \`ambiguous: true\` with a ranked candidate list — re-query using a candidate's \`id\` as \`symbol_id\`, not its \`qualifiedName\` (the same qualifiedName can name more than one declaration).
-  - **Read \`resolvedBy\` before trusting a result.** \`id\`/\`qualifiedName\`/\`name\` mean the symbol was resolved exactly. \`nameAmbiguous\`/\`fileName\`/\`semanticNeighbours\` mean the answer is *candidates* — pick one by \`id\` and re-query. \`semanticNeighbours\` is the weakest: nothing structural matched, so these are the nearest declarations *by meaning*, and a closely-related-but-wrong one can score as high as the right one (measured: \`AppState\` returns \`createAppState\` at 0.845). Check the candidate before you build on it. Getting candidates back is still cheaper than the tool refusing and you re-asking another way, which is why they are offered at all.
-- Typical flow: call \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` directly with \`symbol_name\` when it's likely unique — their \`anchor\` field already carries the declaration site, so only call \`find_definition\` first if you expect ambiguity. Use \`get_file_outline\` first if you don't already know the right symbol name.
-- A \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` result is complete for the question it answers when: it was anchored by \`symbol_id\` or an unambiguous \`symbol_name\` (same guarantee either way), every row shows \`resolved: true\`, and the response has no \`allUnresolved: true\` flag — don't re-verify that with grep/Read. As of g-mesh 0.8.x, \`resolved: false\` is a narrow, accurate signal (only edges whose target is in another file g-mesh couldn't confirm — same-file edges are always \`resolved: true\`, matched against declarations actually in scope), not a blanket disclaimer, so still check: a row that shows \`resolved: false\` (check that row, not the whole list), a response with \`allUnresolved: true\` (the whole page is unconfirmed), or anything the result doesn't claim to cover at all — e.g. whether other, similarly-named symbols exist elsewhere, or a method call reached through a variable receiver (\`x.foo()\`, which produces no edge by design). Measured on real g-mesh-bench runs after the 0.8.x same-file-resolution fix: mean cost dropped ~38% and mean turns ~35% on the task this was tested on, with the remaining tool calls answering things g-mesh genuinely doesn't cover rather than re-checking it (see g-mesh's README "Reducing self-verification cost" section) — but grep/Read still earn their keep on the cases above, so don't suppress those.
-- Resolving an ambiguous name (the bullet above on \`ambiguous: true\` candidates) to a specific \`symbol_id\` doesn't reopen the completeness question: a \`find_references\`/\`find_callers\`/\`find_callees\`/\`find_implementations\` page anchored by that \`symbol_id\` carries the exact same \`resolved: true\`/no-\`allUnresolved\` guarantee as an unambiguous \`symbol_name\` query. Once you've picked the right candidate, treat its result as final — don't grep/Read each returned call site file-by-file to reconfirm it's "really" that symbol and not the same-named other one, and don't run a second, broad text search across the repo to check for anything the query might have missed. Both duplicate work the tool has already resolved, the same way re-verifying a plain unambiguous result would.
-- \`find_callers\`/\`find_callees\` only ever walk \`CALLS\` edges, and a \`CALLS\` edge only exists when the call site sits lexically inside a *named, tracked* function or method. A call written at a file's top level, or inside an anonymous/inline callback that isn't itself extracted as its own symbol (exactly the shape of \`it("...", () => { requireTask(...) })\` in a test file), gets a \`REFERENCES\` edge instead — which \`find_callers\` never sees, even on an otherwise complete, \`resolved: true\`, \`hasMore: false\` page. That's not a hole in its own guarantee (it's complete for \`CALLS\` edges specifically), but it's narrower than "every place this is called" when the prompt implies that — use \`find_references\` *instead of* \`find_callers\` whenever the task needs an exhaustive caller list (before a rename/removal, or anything that should include test files). Instead of, not as well as: for the same anchor \`find_references\` returns a strict superset of \`find_callers\`' rows (every \`CALLS\` edge, plus the \`REFERENCES\`/\`SUPERTYPE_OF\` ones), and each row's own \`referenceKind\` separates them inside that one page — asking both tools is two round-trips for one answer. A usage that sits outside any tracked symbol comes back as a whole-file row — \`kind: File\`, with no \`qualifiedName\`/\`startLine\`/\`startCol\` — because the graph has no smaller unit to point at there, not because the position went missing from an otherwise complete row. When the task asks which *files* are affected (a rename, an impact list), that row is already the answer at the granularity it claims: take it and move on, rather than grepping the file for the exact lines it deliberately doesn't carry.
-- When the question is about which *files* are affected — a rename, a signature change, "list every file that calls X" — read the response's \`files\` array and answer from it. \`find_references\`/\`find_callers\` attach \`files\` exactly when the rows don't already answer at that granularity (the page is incomplete, or several rows share one file), and unlike \`results\` it is computed over the *whole* edge set rather than the page: on excalidraw's \`pointFrom\`, a \`limit: 200\` call returns 51 rows spanning 46 files and still says \`hasMore: true\`, while the same response's \`files\` lists all 81 referencing files with a per-file count in a quarter of the bytes. So it is both the cheaper answer and the *more complete* one — deduplicating the rows by hand produces a shorter file list than the tally already holds, and paging the cursor to repair that spends round-trips on something already in hand. Use \`results\` when you need the calling symbol or its line; use \`files\` for "what do I have to touch". When \`files\` is absent the page is complete and its rows already sit one per file, so there is nothing to deduplicate — the \`filePath\` column is the list.
-- A \`get_dependencies\` result's completeness is signaled by \`truncated\`/\`truncatedBy\`, not a per-row \`resolved\` flag — there isn't one; a multi-hop path can't be summarized by one boolean the way a single edge can. \`truncated: false\` means the walk reached everything within its depth/fanout bounds — trust it fully, don't re-verify with grep. \`truncated: true\` needs a follow-up keyed off \`truncatedBy\`, not a blanket re-query: on \`maxDepth\`, re-call anchored on the returned \`frontierNodes\` to go further; on \`maxFanout\`, that one node had more imports/importers than the fanout cap, so re-query just that node with the single-hop tools' own pagination; on \`explorationBudget\`/\`responseSize\`, call again with the returned \`resumeToken\`. The default \`max_depth\` is only 2 (shallower than a single-hop tool's own completeness bar), so check \`truncated\` before treating one result as the whole *transitive* tree — but a depth bound limits only how far the walk goes, never how completely it walked the levels it did reach: \`truncated: false\` with an empty \`frontierNodes\` is the entire answer for the depth you asked for, and at \`max_depth: 1\` that is exactly the complete set of direct importers (\`Incoming\`) or direct imports (\`Outgoing\`).
-- Which imports produce those rows is the other half of trusting one. A row is a *file*, not an import statement, and its edge comes from a parsed module specifier: \`import ... from\`, type-only \`import type ...\`, \`export ... from\`, and \`import()\`/\`require()\` whose specifier is a static string or folds to one. Type-only imports sit in the graph exactly like value imports, so an \`Incoming\` walk already answers "every file that imports this, both kinds" — measured on g-mesh-bench's \`tt-deps-incoming-db-connection\`, one \`Incoming\`, \`max_depth: 1\` call on \`src/db/connection.ts\` returned all 21 importing \`src/\` files (18 of them \`import type\`-only), exactly the task's ground-truth set, and the follow-up greps three separate runs ran to check it found nothing it had missed. So don't re-derive that list with a \`from ["'].*<module path>\` grep: it is the most expensive habit on this tool, a whole extra round-trip that reproduces an answer already in hand. What a row genuinely doesn't carry is which names the importing file binds, whether that particular import was type-only, and on what line — \`IMPORTS\` edges have no position in the schema. When the task needs that for some file, Read that one file; don't grep the tree for all of them. The only importer that can be missing is one whose specifier no static fold can compute (built from a runtime value, \`process.env\`, or another file's constant).
-- \`search_code\` is similarity-ranked, not a resolved graph query — its top hit isn't automatically "the answer" the way a \`find_definition\` hit is. A response carrying a \`noMatch\` block is the tool itself saying this page is not a match: don't do the confirming read and don't reword the query — go to grep or a structural tool. Its absence is the normal case, and means at least one hit cleared the floor for its language. But once a hit's \`qualifiedName\`/\`kind\`/\`filePath\` plausibly match what the prompt describes, one targeted confirming read (the exact lines, or \`get_file_outline\`) is enough — check the doc comment/signature there, then stop. Don't keep re-issuing \`search_code\` with reworded queries hunting for a "better" match, and don't follow a confirmed hit with a broad grep sweep across the repo "just in case" — that's the same wasted re-verification the bullet above warns against for the structural tools, just dressed up as more searching instead of more reading.
-- \`find_implementations\` only returns direct implementors/extenders by default — a class extending a class that implements the anchor interface won't show up in a \`hasMore: false\` page. For the whole hierarchy, re-call with \`transitive: true\` (walks the same edges transitively, up to a bounded depth, resumable via \`resume_token\`).
+- When the g-mesh server covers a folder of several projects, call \`select_project\` first. In Claude Code its tools may be deferred: load them (ToolSearch) before the first call.
+- Trust a complete answer from the structural tools (\`find_*\`, \`get_dependencies\`). A response says when it is not complete or not exact (\`hasMore\`, \`truncated\`, \`allUnresolved\`, a \`resolved: false\` row, a \`resolvedBy\` other than \`id\`/\`qualifiedName\`/\`name\`), and its \`hint\`/\`explanation\` says what to do next. Absent those, do not re-check it with grep or Read: that re-verification is the most expensive habit these tools have.
+- The index serves the checkout it was built on. In a \`git worktree\` on another branch, trust g-mesh for code the branch has not changed and read the changed files directly.
+- When delegating, put this section in the subagent's brief: a subagent does not inherit it, and it may need to load the g-mesh tools too. grep is still right there for one known symbol or for non-code.
 `;
 
 /**
- * The two spans of GMESH_CONFIGURED_CLAUDE_MD that scope it to
- * TypeScript/JavaScript, and what a non-TypeScript corpus gets instead.
+ * The `gmesh-configured` arm's project doc for one corpus: g-mesh's shipped
+ * snippet, the same bytes for every language since GMB-183 (see
+ * GMESH_CONFIGURED_CLAUDE_MD's comment for why GMB-165's per-language
+ * de-scoping went away).
  *
- * Spelled out as literals rather than matched by regex on purpose: the
- * substitution has to be exact and auditable, and a future edit to the
- * shipped snippet that reworded either span should make this *fail*, not
- * silently match something adjacent. `descopeGuidance` enforces exactly that.
- *
- * The replacements are minimal by design — the heading loses its
- * parenthetical, the first bullet loses its first three words, and no other
- * byte of the document changes. That is the one variable GMB-165 measured,
- * and widening it here would ship a rewrite nobody has an A/B for.
+ * Every caller still passes its corpus's own `language` — never a default — so
+ * that a future language-specific document is a change here and nowhere else.
  */
-const TS_SCOPED_HEADING = "# Code search (TypeScript/JavaScript projects)";
-const DESCOPED_HEADING = "# Code search";
-const TS_SCOPED_BULLET_OPENER = "- In TS/JS projects, prefer g-mesh (";
-const DESCOPED_BULLET_OPENER = "- Prefer g-mesh (";
-
-/**
- * Replaces both TS/JS-scoping spans, insisting each appears exactly once.
- *
- * "Exactly once" is the whole guard. A zero count means the shipped snippet
- * reworded the span and this derivation is now silently returning the scoped
- * text to a Go corpus — the precise failure GMB-165 exists to stop. A count
- * above one means the replacement would hit somewhere it was never checked
- * against. Either way this throws rather than guessing, and the drift guard
- * in armConfig.test.ts will already have said *why* the text moved.
- *
- * Exported only so armConfig.test.ts can exercise that refusal directly —
- * the arms reach it through `gmeshConfiguredClaudeMd` below, never by name.
- */
-export function descopeGuidance(doc: string): string {
-  let out = doc;
-  for (const [scoped, descoped] of [
-    [TS_SCOPED_HEADING, DESCOPED_HEADING],
-    [TS_SCOPED_BULLET_OPENER, DESCOPED_BULLET_OPENER],
-  ] as const) {
-    const occurrences = out.split(scoped).length - 1;
-    if (occurrences !== 1) {
-      throw new Error(
-        `GMB-165's de-scoping expected exactly one occurrence of ${JSON.stringify(scoped)} in the ` +
-          `g-mesh guidance doc, found ${occurrences}. g-mesh's shipped AGENTS_MD_SNIPPET has been ` +
-          `reworded: update TS_SCOPED_HEADING/TS_SCOPED_BULLET_OPENER in harness/lib/armConfig.ts to ` +
-          `match it, or — if the scoping is gone upstream — delete this derivation and let every ` +
-          `corpus share one document again.`,
-      );
-    }
-    out = out.replace(scoped, descoped);
-  }
-  return out;
-}
-
-/**
- * The `gmesh-configured` arm's project doc for one corpus — the TypeScript
- * text verbatim for a `ts`/`js` corpus, and the same document de-scoped for
- * every other language.
- *
- * Read GMESH_CONFIGURED_CLAUDE_MD's own comment for the decision and the
- * numbers behind it. The short version: handing a Go/Rust/Python repository a
- * doc whose first line excludes it suppressed the tool under test in 11 of 16
- * psf/requests runs (5/16 called g-mesh scoped, 16/16 de-scoped, Fisher
- * p = 3e-05), so the arm was measuring how literally an agent reads an
- * instruction block rather than measuring g-mesh.
- *
- * Every caller passes its corpus's own `language` — never a default — so that
- * adding a corpus in a new language is a `CorpusLanguage` change and nothing
- * else. `ts` and `js` return the constant by identity, not by a no-op
- * substitution, so "a TypeScript arm sees exactly the bytes it always saw" is
- * true by construction rather than by inspection.
- */
-export function gmeshConfiguredClaudeMd(language: CorpusLanguage): string {
-  if (language === "ts" || language === "js") return GMESH_CONFIGURED_CLAUDE_MD;
-  return descopeGuidance(GMESH_CONFIGURED_CLAUDE_MD);
+export function gmeshConfiguredClaudeMd(_language: CorpusLanguage): string {
+  return GMESH_CONFIGURED_CLAUDE_MD;
 }
 
 /**
@@ -414,11 +272,11 @@ export function gmeshConfiguredClaudeMd(language: CorpusLanguage): string {
  * `gmeshConfiguredClaudeMd` gives that corpus, plus the same eleven-byte
  * `@AGENTS.md` bridge.
  *
- * The pairing property GMESH_MAP_CONFIGURED_CLAUDE_MD's comment describes now
- * holds per language rather than once: within a corpus, the entire measured
- * delta between `gmesh-configured` and `gmesh-configured-map` is still the
- * repo-map block plus this one line, because both arms' docs come from the
- * same `language` argument.
+ * The pairing property GMESH_MAP_CONFIGURED_CLAUDE_MD's comment describes
+ * holds per language: within a corpus, the entire measured delta between
+ * `gmesh-configured` and `gmesh-configured-map` is the repo-map block plus
+ * this one line, because both arms' docs come from the same `language`
+ * argument.
  */
 export function gmeshMapConfiguredClaudeMd(language: CorpusLanguage): string {
   return `${gmeshConfiguredClaudeMd(language)}\n@AGENTS.md\n`;
@@ -444,12 +302,12 @@ export function gmeshMapConfiguredClaudeMd(language: CorpusLanguage): string {
  * `gmesh-configured` and `gmesh-configured-map` is the repo-map block plus
  * this one 11-byte line.
  *
- * Since GMB-165 this is the TypeScript case of `gmeshMapConfiguredClaudeMd`
- * rather than its own concatenation — one expression, so the two cannot
- * drift. Run-time call sites take the function and pass their corpus's
- * `language`; this constant survives because it is what the drift-adjacent
- * tests compare against, and because "the map arm's doc on TypeScript" is
- * still a thing worth being able to name.
+ * This is `gmeshMapConfiguredClaudeMd("ts")` rather than its own
+ * concatenation — one expression, so the two cannot drift. Since GMB-183
+ * every language gets the same document, so "ts" is just a representative;
+ * run-time call sites take the function and pass their corpus's `language`,
+ * and this constant survives because the drift-adjacent tests compare
+ * against it.
  */
 export const GMESH_MAP_CONFIGURED_CLAUDE_MD = gmeshMapConfiguredClaudeMd("ts");
 
