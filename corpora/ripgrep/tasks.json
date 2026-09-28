@@ -3,6 +3,7 @@
     "id": "rs-find-impl-sink-trait",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -19,6 +20,7 @@
     "id": "rs-ambiguous-regexmatcher",
     "kind": "find_definition",
     "category": "ambiguous-name",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -35,6 +37,7 @@
     "id": "rs-deps-json-printer-workspace-crates",
     "kind": "get_dependencies",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "parity",
     "target": {
@@ -51,6 +54,7 @@
     "id": "rs-deps-sink-module-incoming",
     "kind": "get_dependencies",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "baseline",
     "target": {
@@ -74,22 +78,24 @@
     "id": "rs-callers-sink-matched",
     "kind": "find_callers",
     "category": "lookup",
+    "tier": "semantic",
     "revealsLocation": false,
     "expectedWinner": "gmesh",
     "target": {
-      "symbol": "matched",
+      "symbol": "sink::Sink::matched",
       "file": "crates/searcher/src/sink.rs"
     },
     "prompt": "In this repository, the `Sink` trait (used to receive search results as a search proceeds) declares a `matched` method, called whenever a match is found. Find every real call site that invokes THIS specific trait method - not any of the several other, unrelated methods elsewhere in the codebase that also happen to be named `matched` on completely different types (for example, path/glob-matching helpers in the ignore crate, or a color-lookup method in the printer crate). List every file with a genuine call site.",
     "oracle": {
       "mode": "judge",
-      "rubric": "The question is which call sites invoke the Sink trait's matched method specifically (declared crates/searcher/src/sink.rs), distinct from several unrelated methods elsewhere in the repo also named 'matched' (e.g. Gitignore::matched and Types::matched in crates/ignore, Override::matched, ColorSpecs::matched in crates/printer/src/color.rs). Ground truth, confirmed both by reading crates/searcher/src source directly and independently via g-mesh's find_callers anchored on the resolved Sink::matched symbol id on this exact pinned revision: there are exactly 3 real call sites, in 2 files. Two are trait-delegation forwards inside crates/searcher/src/sink.rs itself - `impl<'a, S: Sink> Sink for &'a mut S` and `impl<S: Sink + ?Sized> Sink for Box<S>` each forward their own `matched` call straight to the inner Sink. The third and only non-delegating call site is crates/searcher/src/searcher/core.rs's `Core::matched`, which does `self.sink.matched(&self.searcher, &SinkMatch {...})`. A close decoy exists: crates/searcher/src/searcher/glue.rs contains `self.core.matched(self.slice, range)`, which LOOKS like another call site under a naive text search for '.matched(' but is actually a call to a different, unrelated inherent method (`Core::matched` takes different arguments and is one step earlier in the pipeline than `Core::sink_matched` which calls it) - not a call to the Sink trait method at all. PASS only if the answer names crates/searcher/src/sink.rs and crates/searcher/src/searcher/core.rs as (or among) the real call sites, AND does not confidently present crates/searcher/src/searcher/glue.rs as a genuine call site of Sink::matched (mentioning it while correctly noting it's a different method is fine). FAIL if the answer misses both of the two correct files, or confidently lists glue.rs as calling Sink::matched."
+      "rubric": "The question is which call sites invoke the Sink trait's matched method specifically (declared crates/searcher/src/sink.rs), distinct from several unrelated methods elsewhere in the repo also named 'matched' (e.g. Gitignore::matched and Types::matched in crates/ignore, Override::matched, ColorSpecs::matched in crates/printer/src/color.rs). Ground truth, read directly from crates/searcher/src at this exact pinned revision (GMB-160: never from g-mesh output): there are exactly 3 real call sites, in 2 files. Two are trait-delegation forwards inside crates/searcher/src/sink.rs itself - `impl<'a, S: Sink> Sink for &'a mut S` and `impl<S: Sink + ?Sized> Sink for Box<S>` each forward their own `matched` call straight to the inner Sink. The third and only non-delegating call site is crates/searcher/src/searcher/core.rs's `Core::sink_matched` (declared core.rs:522), which does `self.sink.matched(...)` at core.rs:536. Note `Core::matched` (core.rs:99) is NOT that call site: it only forwards to `Core::sink_matched`. A close decoy exists: crates/searcher/src/searcher/glue.rs contains `self.core.matched(self.slice, range)`, which LOOKS like another call site under a naive text search for '.matched(' but is actually a call to a different, unrelated inherent method (`Core::matched` takes different arguments and is one step earlier in the pipeline than `Core::sink_matched` which calls it) - not a call to the Sink trait method at all. PASS only if the answer names crates/searcher/src/sink.rs and crates/searcher/src/searcher/core.rs as (or among) the real call sites, AND does not confidently present crates/searcher/src/searcher/glue.rs as a genuine call site of Sink::matched (mentioning it while correctly noting it's a different method is fine). FAIL if the answer misses both of the two correct files, or confidently lists glue.rs as calling Sink::matched."
     }
   },
   {
     "id": "rs-references-sinkfinish",
     "kind": "find_references",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "target": {
       "symbol": "SinkFinish",
@@ -113,6 +119,7 @@
     "id": "rs-outline-sink-vs-lines",
     "kind": "get_file_outline",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": true,
     "target": {
       "symbol": "",
@@ -133,6 +140,7 @@
     "id": "rs-semantic-detect-binary-content",
     "kind": "search_code",
     "category": "semantic-search",
+    "tier": "structural",
     "revealsLocation": false,
     "expectedWinner": "gmesh",
     "target": {
@@ -148,6 +156,23 @@
       "mustMentionFiles": [
         "crates/searcher/src/searcher/core.rs"
       ]
+    }
+  },
+  {
+    "id": "rs-callers-flag-name-long-dyn",
+    "kind": "find_callers",
+    "category": "scenario",
+    "tier": "semantic",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "flags::Flag::name_long",
+      "file": "crates/core/flags/mod.rs"
+    },
+    "prompt": "In this repository every command-line flag is its own type, and all of them implement one shared trait. A single global table holds them as trait objects rather than as their concrete types, so the code that walks that table works on a flag without ever knowing which flag it is. One of the trait's REQUIRED methods returns a flag's long name. I am about to change that method's signature. Find every place in the repository's own non-test code that calls it, and list the files with the enclosing function for each. I want callers, not implementors - do not list the hundred-odd implementations of the method. Also say what the receiver is at those call sites, and why that means no call site can be attributed to any one flag type.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned checkout by scripts/deriveSemanticOracles.ts, which reports every `.name_long()` call site in the workspace with the enclosing function's signature - not from g-mesh output.\n\n`name_long` is declared 105 times: ONCE as a required method on the `Flag` trait (crates/core/flags/mod.rs), and 104 times as `impl Flag for <flag struct>` bodies in crates/core/flags/defs.rs. Those 104 are implementations, not callers - their bodies are string literals and call nothing.\n\nNon-test call sites: 14, in 8 functions across 6 files, and every single receiver is a trait object:\n  - crates/core/flags/parse.rs - `Parser::new` and `find_similar_names` (both iterate `FLAGS`, declared `pub(super) const FLAGS: &[&dyn Flag]` in defs.rs)\n  - crates/core/flags/doc/man.rs - `generate_flag(flag: &'static dyn Flag, out: &mut String)` (3 sites)\n  - crates/core/flags/doc/help.rs - `generate_long_flag(flag: &dyn Flag, out: &mut String)` (3 sites) and `generate_short_flag(flag: &dyn Flag)` (1 site)\n  - crates/core/flags/complete/bash.rs - `generate` (2 sites)\n  - crates/core/flags/complete/fish.rs - `generate` (1 site)\n  - crates/core/flags/complete/powershell.rs - `generate` (2 sites)\nA further 7 call sites sit in 7 test functions inside defs.rs's own `mod tests`; naming them is neither required nor wrong.\n\nPASS only if the answer (a) names at least 5 of the 6 non-test files above, with a plausible enclosing function for each named file; (b) does NOT present defs.rs's 104 `impl Flag for ...` blocks as call sites of the method; AND (c) states that the receiver at these sites is a trait object - `&dyn Flag`, or an element of the `FLAGS: &[&dyn Flag]` table - so the call is to the trait's own declaration and cannot be attributed to any one concrete flag type. FAIL if the answer names fewer than 4 of the 6 files, if it lists concrete flag structs as callers, or if it gives no account of the receiver."
     }
   }
 ]

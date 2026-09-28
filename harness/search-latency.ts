@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadBenchConfig } from "./lib/benchConfig.js";
 import { resolveWarm } from "./lib/corpusResolver.js";
 import { connectMcpClient } from "./lib/mcpClient.js";
-import { gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { assertGmeshBinaryUsable, gmeshBinaryPath } from "./lib/mcpConfig.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { BenchTask, CorpusEntry, TaskTarget } from "./lib/types.js";
 
@@ -226,12 +226,10 @@ async function measureCorpus(
 }
 
 async function main() {
-  if (!existsSync(gmeshBinaryPath())) {
-    console.error(
-      `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
-        `  cd ../g-mesh/core && cargo build --release\n` +
-        `  cd ../g-mesh/plugins/js-ts && npm install && npm run build`,
-    );
+  try {
+    assertGmeshBinaryUsable();
+  } catch (err) {
+    console.error((err as Error).message);
     process.exit(1);
   }
 

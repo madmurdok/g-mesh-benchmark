@@ -3,36 +3,41 @@
     "id": "gin-find-impl-render",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "semantic",
+    "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
       "symbol": "Render",
       "file": "render/render.go"
     },
-    "prompt": "In this repository, there's an interface responsible for writing a handler's response body to the wire and setting its Content-Type header - every response format the framework supports (JSON, XML, HTML, YAML, and so on) is written through it. Go has no `implements` keyword, so nothing in an implementing type's own text names this interface explicitly. Find every type in the whole repository that satisfies it, and report each type name and the file it's declared in - don't stop at the first package you find some in.",
+    "prompt": "In this repository, there's an interface responsible for writing a handler's response body to the wire and setting its Content-Type header - every response format the framework supports (JSON, XML, HTML, YAML, and so on) is written through it. Go has no `implements` keyword, so nothing in an implementing type's own text names this interface explicitly: a type satisfies it purely by declaring the whole method set it requires. Report every type in the repository that satisfies it, with the file each is declared in. Then report, separately, any method in this repository that carries the same name as the interface's own writing method but belongs to a type that does NOT satisfy the interface, and say what that type is missing. If you come across a compile-time assertion list of implementors, treat it as a claim to check against the method sets rather than as the answer.",
     "oracle": {
-      "mode": "pool",
-      "candidatePool": [
-        "render/json.go",
-        "render/html.go",
-        "render/xml.go",
-        "render/reader.go",
-        "render/protobuf.go",
-        "render/yaml.go",
-        "render/msgpack.go",
-        "render/data.go",
-        "render/bson.go",
-        "render/text.go",
-        "render/redirect.go",
-        "render/toml.go",
-        "context_test.go"
-      ],
-      "minMatches": 8
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned checkout's own source by scripts/deriveSemanticOracles.ts and by nothing g-mesh produced: `render.Render` (render/render.go) requires BOTH `Render(http.ResponseWriter) error` and `WriteContentType(http.ResponseWriter)`, so a type satisfies it iff its method set contains both. Eighteen types do. Seventeen in library code: JSON, IndentedJSON, SecureJSON, JsonpJSON, AsciiJSON and PureJSON (render/json.go); XML (render/xml.go); HTML (render/html.go); YAML (render/yaml.go); TOML (render/toml.go); MsgPack (render/msgpack.go); BSON (render/bson.go); ProtoBuf (render/protobuf.go); Data (render/data.go); String (render/text.go); Reader (render/reader.go); Redirect (render/redirect.go). The eighteenth is the test-only TestRender (context_test.go), a bonus rather than a requirement.\n\nThe discriminating negative: `Context` (context.go) declares `func (c *Context) Render(code int, r render.Render)`. It carries the interface's method NAME and does not satisfy the interface - wrong signature, and no WriteContentType method at all. A lookup keyed on the name `Render` returns it alongside the real implementors; a method-set answer must not.\n\nThe second discriminator: render/render.go's own `var _ Render = (*T)(nil)` assertion block is hand-maintained and is NOT the answer. It lists only 14, omitting BSON, MsgPack and PureJSON (and TestRender), and it additionally lists HTMLDebug and HTMLProduction - which implement HTMLRender, a different interface, and have no Render method at all.\n\nPASS only if the answer (a) names at least 16 of the 17 library implementors AND all three of BSON, MsgPack and PureJSON - the three the assertion block omits, which is what separates an answer computed from method sets from one copied out of that block; AND (b) explicitly states that Context's `Render` method (context.go) is not an implementation of this interface, giving the reason (no WriteContentType, and/or the wrong Render signature). FAIL if the answer lists Context among the implementors, if it presents HTMLDebug or HTMLProduction as implementors of this interface, if it omits any of BSON, MsgPack or PureJSON, or if it never addresses the same-named non-implementor at all."
+    }
+  },
+  {
+    "id": "gin-callers-writeheadernow-dispatch",
+    "kind": "find_callers",
+    "category": "scenario",
+    "tier": "semantic",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "ResponseWriter.WriteHeaderNow",
+      "file": "response_writer.go"
+    },
+    "prompt": "In this repository the HTTP response writer comes in two layers: an exported interface that handlers are given, and an unexported concrete struct the framework mounts behind it. Both declare a method that forces the status line and headers to be written out immediately, and every call site in the repository spells that call identically. I am about to change the concrete struct's version of it. Work out which call sites in the repository's own non-test source actually reach the concrete struct's method, and which ones dispatch through the interface instead - and so would reach any other implementation substituted for it. Name the enclosing function and file for each, and say what in the source decides which group a given call site falls into.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned checkout by scripts/deriveSemanticOracles.ts, which classifies each `<expr>.WriteHeaderNow()` site by the DECLARED type of its receiver - never from g-mesh output.\n\nThe deciding mechanism: `Context` declares two fields side by side in context.go, `Writer ResponseWriter` (the exported interface) and `writermem responseWriter` (the unexported concrete struct). A call written `c.Writer.WriteHeaderNow()` therefore dispatches through the interface; a call written `c.writermem.WriteHeaderNow()` hits the concrete struct directly. The two call sites are identical in shape and differ only in which field they go through.\n\nInterface-dispatched, in non-test source (2): `Context.AbortWithStatus` and `Context.Render`, both context.go, both via `c.Writer`. (The test suite adds eight more such call sites, in eight further functions across context_test.go and response_writer_test.go, reached through `c.Writer` or through a local declared `w := ResponseWriter(writer)`; naming them is neither required nor wrong.)\n\nConcrete-struct, in non-test source (6): `Engine.handleHTTPRequest`, `serveError` and `redirectRequest`, all gin.go, all via `c.writermem`; and `responseWriter.Write`, `responseWriter.WriteString` and `responseWriter.Flush`, all response_writer.go, via the method's own receiver.\n\nPASS only if the answer (a) places BOTH context.go functions (AbortWithStatus and Render) on the interface side; (b) names at least 4 of the 6 concrete-side functions, including at least one of the three in gin.go, and places every one it names on the concrete side; AND (c) states the deciding mechanism - that the group a call site falls into comes from the declared type of the field or receiver the call goes through (Context.Writer is the interface, Context.writermem is the concrete struct), not from anything written at the call site. FAIL if a `c.Writer` call site is presented as reaching the concrete struct, if a `c.writermem` call site is presented as interface dispatch, if the answer merges the two groups into one list of call sites, or if it offers no mechanism."
     }
   },
   {
     "id": "gin-ambiguous-binding",
     "kind": "find_definition",
     "category": "ambiguous-name",
+    "tier": "structural",
     "revealsLocation": false,
     "target": {
       "symbol": "Binding",
@@ -54,6 +59,7 @@
     "id": "gin-scenario-abort-callers",
     "kind": "find_callers",
     "category": "scenario",
+    "tier": "semantic",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -77,6 +83,7 @@
     "id": "gin-callees-dispatch",
     "kind": "find_callees",
     "category": "lookup",
+    "tier": "structural",
     "revealsLocation": false,
     "target": {
       "symbol": "handleHTTPRequest",
@@ -100,6 +107,7 @@
     "id": "gin-deps-render-incoming",
     "kind": "get_dependencies",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -120,6 +128,7 @@
     "id": "gin-semantic-panic-recovery",
     "kind": "search_code",
     "category": "semantic-search",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -141,6 +150,7 @@
     "id": "gin-scenario-handlerfunc-references",
     "kind": "find_references",
     "category": "scenario",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {

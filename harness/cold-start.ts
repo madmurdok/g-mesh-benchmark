@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolveFresh } from "./lib/corpusResolver.js";
 import { LANGUAGE_EXTENSIONS } from "./lib/language.js";
 import { connectMcpClient } from "./lib/mcpClient.js";
-import { gmeshBinaryPath } from "./lib/mcpConfig.js";
+import { assertGmeshBinaryUsable, gmeshBinaryPath } from "./lib/mcpConfig.js";
 import type { CorpusEntry } from "./lib/types.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -117,12 +117,10 @@ async function measureColdStart(corpus: CorpusEntry, timestamp: string): Promise
 }
 
 async function main() {
-  if (!existsSync(gmeshBinaryPath())) {
-    console.error(
-      `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
-        `  cd ../g-mesh/core && cargo build --release\n` +
-        `  cd ../g-mesh/plugins/js-ts && npm install && npm run build`,
-    );
+  try {
+    assertGmeshBinaryUsable();
+  } catch (err) {
+    console.error((err as Error).message);
     process.exit(1);
   }
 

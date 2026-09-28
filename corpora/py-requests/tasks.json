@@ -3,6 +3,7 @@
     "id": "py-ambiguous-close-session",
     "kind": "find_definition",
     "category": "ambiguous-name",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -16,9 +17,44 @@
     }
   },
   {
+    "id": "py-callers-prepare-two-classes",
+    "kind": "find_callers",
+    "category": "ambiguous-name",
+    "tier": "semantic",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "PreparedRequest.prepare",
+      "file": "src/requests/models.py"
+    },
+    "prompt": "In this repository two different classes each declare a method named `prepare`, and they do different things: one builds a brand-new, fully-prepared request object and returns it; the other mutates the object it is called on, filling in its method, URL, headers, body, auth, cookies and hooks. Find every place in the library's own source (under src/ - ignore the test suite) that calls the MUTATING one, naming the function and the file each call sits in. Then say how many callers the other `prepare` has in that same source, and explain what a reader has to resolve in order to tell the two kinds of call site apart, given that they are written identically.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned checkout by scripts/deriveSemanticOracles.ts - which attributes every `<name>.prepare(` site to whichever class last bound `<name>` in the same file - and not from any g-mesh output.\n\nThe mutating `prepare` is `PreparedRequest.prepare` (src/requests/models.py). Under src/ it has exactly TWO callers: `Request.prepare` (src/requests/models.py) and `Session.prepare_request` (src/requests/sessions.py). Both are written the same two lines - `p = PreparedRequest()` followed by `p.prepare(...)`.\n\nThe other `prepare` is `Request.prepare` (src/requests/models.py), which returns a new PreparedRequest. Under src/ it has ZERO callers. Its only appearances elsewhere in the repository are in the test suite and in docstring examples written as `>>> req.prepare()`, which are documentation rather than code.\n\nThe mechanism: nothing at either call site names a class. `p.prepare(...)` carries no type; the receiver `p` is a plain local whose type comes only from its initializer, `p = PreparedRequest()`. Telling a `PreparedRequest.prepare` call from a `Request.prepare` call therefore requires resolving that binding - a text search for `.prepare(` cannot separate them, and neither can the enclosing class (one of the two callers is itself named `prepare`, on the other class).\n\nPASS only if the answer (a) names BOTH `Request.prepare` in src/requests/models.py and `Session.prepare_request` in src/requests/sessions.py as the callers of the mutating `prepare`; (b) states that the other `prepare` has no callers under src/ - mentioning the tests or the docstring examples is fine, presenting either as an src/ caller is not; AND (c) explains that the two are told apart by the receiver local's binding (`p = PreparedRequest()`) rather than by anything written at the call site. FAIL if it names Session.send, Session.request, or an adapter as a caller; if it claims Request.prepare is called from src/; if it lists only one of the two callers; or if it gives no mechanism."
+    }
+  },
+  {
+    "id": "py-callers-register-hook-mixin",
+    "kind": "find_callers",
+    "category": "scenario",
+    "tier": "semantic",
+    "expectedWinner": "gmesh",
+    "revealsLocation": false,
+    "target": {
+      "symbol": "RequestHooksMixin.register_hook",
+      "file": "src/requests/models.py"
+    },
+    "prompt": "In this repository there is a small mixin class that exists only to carry two hook-management methods; nothing ever instantiates it directly. I am about to change the signature of the one that ADDS a hook. Find every place in the library's own source under src/ that calls it - ignore the test suite - and for each one name the function and file, say which class the call is written inside, and say how that class reaches a method it does not declare. Be careful: not every caller reaches it the same way.",
+    "oracle": {
+      "mode": "judge",
+      "rubric": "Ground truth, derived from the pinned checkout by scripts/deriveSemanticOracles.ts - which resolves each `<recv>.register_hook(` receiver either to its enclosing `class` statement (when the receiver is `self`) or to the enclosing `def`'s annotation for that parameter - and never from g-mesh output.\n\n`register_hook` is declared exactly once, on `RequestHooksMixin` (src/requests/models.py). Under src/ it is called from THREE places in TWO files, and they do not all reach it the same way:\n\n1. `Request.__init__` (src/requests/models.py), `self.register_hook(event=k, hook=v)`. `class Request(RequestHooksMixin)` - inherited directly from the mixin.\n2. `PreparedRequest.prepare_hooks` (src/requests/models.py), `self.register_hook(event, hooks[event])`. `class PreparedRequest(RequestEncodingMixin, RequestHooksMixin)` - inherited, from the second of two mixins.\n3. `HTTPDigestAuth.__call__` (src/requests/auth.py), two adjacent lines: `r.register_hook(\"response\", self.handle_401)` and `r.register_hook(\"response\", self.handle_redirect)`. This is the one that is different: `class HTTPDigestAuth(AuthBase)` does NOT inherit the mixin at all. The receiver is the method's own parameter, annotated `def __call__(self, r: PreparedRequest)`, so the call reaches the mixin through PreparedRequest's bases - the annotation is the only thing in the file that says so.\n\nNothing else under src/ mentions `register_hook`, and the mixin's other method, `deregister_hook`, has no callers anywhere in src/.\n\nPASS only if the answer (a) names all three callers with their files - `Request.__init__` and `PreparedRequest.prepare_hooks` in models.py, and `HTTPDigestAuth.__call__` in auth.py; AND (b) states that the auth.py caller does NOT inherit the method, reaching it instead through the type of its `r` parameter (annotated PreparedRequest), as distinct from the two `self` callers that do inherit it. FAIL if the auth.py caller is omitted; if HTTPDigestAuth is described as inheriting from or subclassing the mixin; if the answer names a class that does not call it; or if it treats all three callers as the same case with no distinction drawn."
+    }
+  },
+  {
     "id": "py-find-impl-authbase-transitive",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -35,6 +71,7 @@
     "id": "py-find-impl-supportsread-protocol",
     "kind": "find_implementations",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "parity",
     "revealsLocation": false,
     "target": {
@@ -51,6 +88,7 @@
     "id": "py-references-httpbasicauth",
     "kind": "find_references",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -71,6 +109,7 @@
     "id": "py-scenario-callers-httpadapter-send",
     "kind": "find_callers",
     "category": "scenario",
+    "tier": "semantic",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -87,6 +126,7 @@
     "id": "py-callees-session-send",
     "kind": "find_callees",
     "category": "lookup",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {
@@ -111,6 +151,7 @@
     "id": "py-deps-packages-boundary",
     "kind": "get_dependencies",
     "category": "control",
+    "tier": "structural",
     "expectedWinner": "baseline",
     "revealsLocation": true,
     "target": {
@@ -127,6 +168,7 @@
     "id": "py-semantic-basicauth-header",
     "kind": "search_code",
     "category": "semantic-search",
+    "tier": "structural",
     "expectedWinner": "gmesh",
     "revealsLocation": false,
     "target": {

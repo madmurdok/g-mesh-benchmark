@@ -7,7 +7,12 @@ import {
   computeCategoryTokenTable,
   computeCorrectnessTable,
   computeTaskTable,
+  computeTierTable,
   formatDurationSeconds,
+  formatSpreadComparison,
+  formatTierComparison,
+  formatTokenSpread,
+  formatTokenValues,
   formatTurnsWithToolCalls,
   pairedTokenTotals,
   type Aggregate,
@@ -16,8 +21,9 @@ import {
   type CategoryTokenRow,
   type CorrectnessRow,
   type TaskRow,
+  type TierRow,
 } from "./reportData.js";
-import type { Arm } from "./types.js";
+import type { Arm, Tier } from "./types.js";
 
 /** Exported so lib/sessionReport.ts can share it rather than re-declaring the same five replacements. */
 export function escapeHtml(s: string): string {
@@ -213,23 +219,47 @@ function categoryTokenBreakdownTableHtml(rows: CategoryTokenBreakdownRow[]): str
   return `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Arm</th><th>Input</th><th>Output</th><th>Cache create</th><th>Cache read</th><th>Pairs (n)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+/**
+ * GMB-179: per-tier counterpart to categoryTokenTableHtml, rendered even when
+ * a bucket refuses a comparison (formatTierComparison's "insufficient tasks"
+ * text) — unlike the category table's rows, which simply don't appear for a
+ * category with zero qualifying pairs, a tier row is always shown because its
+ * task count and the refusal itself are part of what this table reports.
+ */
+function tierTableHtml(rows: TierRow[]): string {
+  const body = rows
+    .map((r) => `<tr><td>${escapeHtml(r.tier)}</td><td>${r.taskCount}</td><td>${escapeHtml(formatTierComparison(r.comparison))}</td></tr>`)
+    .join("");
+  return `<div class="table-wrap"><table><thead><tr><th>Tier</th><th>Tasks (n)</th><th>Comparison</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+/**
+ * GMB-117: "Tokens spread"/"Per-rep tokens" replace the old bare
+ * "Tokens best"/"Tokens worst" columns — those carried min/max with nothing
+ * to mark a single-repetition group's identical min/max as a non-interval
+ * (see formatTokenSpread). "Verdict" is task-level, repeated on every arm row
+ * of a task exactly like "Expected winner" already is, and states whether
+ * primary-vs-baseline is a spread-distinguishable difference, within noise,
+ * or n=1-on-both-sides — see compareArmSpreads/formatSpreadComparison.
+ */
 function tokenTableHtml(rows: TaskRow[]): string {
   const cells = (agg: ArmAggregate | null, groupLen: number): string => {
     if (!agg) return groupLen > 0 ? `<td>0/${groupLen}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>` : `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
-    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${agg.bestTokens}</td><td>${agg.worstTokens}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
+    return `<td>${agg.okCount}/${agg.total}</td><td>${fmt0(agg.meanTokens)}</td><td>${escapeHtml(formatTokenSpread(agg.tokenSpread))}</td><td>${escapeHtml(formatTokenValues(agg.tokenSpread))}</td><td>${formatDurationSeconds(agg)}</td><td>${formatTurnsWithToolCalls(agg)}</td><td>${agg.passCount}/${agg.okCount}</td>`;
   };
   const body = rows
-    .map((r) =>
-      r.cells
+    .map((r) => {
+      const verdict = escapeHtml(formatSpreadComparison(r.comparison));
+      return r.cells
         .filter((c) => c.agg || c.groupLength > 0)
         .map(
           (c) =>
-            `<tr><td>${escapeHtml(r.taskId)}</td><td>${escapeHtml(r.expectedWinner)}</td><td>${escapeHtml(c.arm)}</td>${cells(c.agg, c.groupLength)}</tr>`,
+            `<tr><td>${escapeHtml(r.taskId)}</td><td>${escapeHtml(r.expectedWinner)}</td><td>${verdict}</td><td>${escapeHtml(c.arm)}</td>${cells(c.agg, c.groupLength)}</tr>`,
         )
-        .join(""),
-    )
+        .join("");
+    })
     .join("");
-  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens best</th><th>Tokens worst</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Expected winner</th><th>Verdict</th><th>Arm</th><th>Reps (ok/total)</th><th>Tokens mean</th><th>Tokens spread</th><th>Per-rep tokens</th><th>Duration mean</th><th>Turns (tool calls)</th><th>Oracle (pass/ok)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function statTile(label: string, value: string): string {
@@ -239,6 +269,15 @@ function statTile(label: string, value: string): string {
 export interface HtmlReportOptions {
   title: string;
   narrative?: string | null;
+  /**
+   * GMB-179: every task currently in the registry mapped to its `tier` tag
+   * (see report.ts's buildTierByTaskId). Optional — and the tier section is
+   * skipped entirely when omitted — because `tier` isn't recorded on
+   * TokenEconomyRun itself (unlike `category`), so a caller with no registry
+   * access at hand (token-economy.ts's per-run report) has no way to supply
+   * it and must not be forced to.
+   */
+  tierByTaskId?: Map<string, Tier | undefined>;
 }
 
 /**
@@ -252,6 +291,7 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   const correctnessTable = computeCorrectnessTable(runs);
   const categoryTokenTable = computeCategoryTokenTable(runs);
   const categoryTokenBreakdown = computeCategoryTokenBreakdown(runs);
+  const tierTable = opts.tierByTaskId ? computeTierTable(runs, opts.tierByTaskId) : [];
   const taskTable = computeTaskTable(runs);
   // Single source of truth for "which arms exist here" — shared with
   // report.ts/reportData.ts, so charts, legend and tables can never disagree.
@@ -400,6 +440,14 @@ export function renderHtmlReport(runs: TokenEconomyRun[], opts: HtmlReportOption
   <h2>Token type breakdown by category (paired, oracle-passed pairs only)</h2>
   <p class="muted">Same pairs as the table above, split into the four token types Anthropic bills separately instead of summed. Input is noise everywhere (5-15 tokens) since prompt caching absorbs almost everything into cache-create/cache-read. On categories where g-mesh wins (multi-hop, ambiguous-name), baseline typically pays more in BOTH cache-create (each grep/Read round-trip adds fresh, never-cached content) and cache-read (a longer transcript from more turns) — a compounding cost the summed total hides.</p>
   ${categoryTokenBreakdownTableHtml(categoryTokenBreakdown)}
+
+  ${
+    tierTable.length > 0
+      ? `<h2>Token savings by tier (paired, oracle-passed pairs only)</h2>
+  <p class="muted">Which g-mesh capability a task's oracle exercises (GMB-175) — "structural" for a graph-walk answer, "semantic" for one needing search_code's similarity ranking. A bucket with too few tagged tasks refuses a comparison rather than printing a savings % that a couple of tasks can't support as a trend; see reportData.ts's MIN_TIER_TASKS_FOR_VERDICT.</p>
+  ${tierTableHtml(tierTable)}`
+      : ""
+  }
 
   <h2>Mean tokens by task</h2>
   ${legend(arms)}

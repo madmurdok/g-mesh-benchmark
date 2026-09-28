@@ -43,7 +43,7 @@ Follow these in order the first time; after that, jumping straight to
 
 2. **Clone this repo as a sibling of `g-mesh`, not nested inside it.**
    `harness/lib/mcpConfig.ts`'s default binary path
-   (`gmeshBinaryPath()`) resolves to `../../../g-mesh/core/target/release/g-mesh`
+   (`gmeshBinaryPath()`) resolves to `../../../g-mesh/target/release/g-mesh`
    relative to this file — i.e. it expects `g-mesh` and `g-mesh-bench` to sit
    side by side under the same parent directory:
    ```
@@ -58,8 +58,8 @@ Follow these in order the first time; after that, jumping straight to
 3. **Build the g-mesh binary** (only needed once, and again after pulling a
    newer `g-mesh`):
    ```bash
-   cd ../g-mesh/core && cargo build --release
-   cd ../g-mesh/plugins/js-ts && npm install && npm run build
+   cd ../g-mesh && cargo build --release -p g-mesh
+   cd ../g-mesh/plugins/typescript && npm ci && npm run build
    ```
 
 4. **Install this repo's own dependencies:**
@@ -143,7 +143,7 @@ that Windows won't give you for free:
 
 - **The g-mesh binary needs an explicit `.exe` path.**
   `harness/lib/mcpConfig.ts`'s `gmeshBinaryPath()` defaults to
-  `../../../g-mesh/core/target/release/g-mesh`, with no extension. On
+  `../../../g-mesh/target/release/g-mesh`, with no extension. On
   Windows, `cargo build --release` produces `g-mesh.exe`, so that default
   path won't resolve — set `G_MESH_BENCH_BINARY` explicitly:
   ```powershell
@@ -914,3 +914,19 @@ A `seedFiles` destination and a `holdoutFiles` destination can never name the
 same path — `loadTasks` throws at load time if a task's tasks.json does, since
 one means "the agent must never see this" and the other means "the agent must
 see this before it starts," and a single path can't be both.
+
+**A seeded task cannot hide *where* the seed is, whatever its prompt says.**
+`revealsLocation: false` constrains the prompt, and on a seeded task the prompt
+is not the only thing that tells the agent where to look: Claude Code's own
+environment block reports the cwd's git status, and a seed is always either an
+untracked file (a new path) or a modified one (an existing path). Either shows
+up there. Measured in GMB-157: on a task whose prompt said only that
+`tsc --noEmit` failed *somewhere* in the repository, all six runs opened the
+seeded file first or near-first, and four of them said why in their own opening
+sentence — "I'll start by examining the new untracked file", "I'll look at the
+untracked file first", "starting with the recently added/changed files". None
+of them searched. So a seeded task can measure whether an agent can *diagnose*
+a file it has been pointed at; it cannot measure whether an agent can *find*
+the broken file, and a task written to measure the latter will report a pass
+rate that belongs to the former. See
+`docs/results/v0.24.0-gmb157-the-diagnostics-upper-bound.md`.

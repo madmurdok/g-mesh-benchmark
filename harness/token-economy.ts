@@ -31,7 +31,12 @@ import { copyFixtureFiles } from "./lib/fixtureFiles.js";
 import { computeAggregate, computeAnalysis, computeCorrectnessTable, computeTaskTable, pairedTokenTotals } from "./lib/reportData.js";
 import { renderHtmlReport } from "./lib/htmlReport.js";
 import { JUDGE_MAX_BUDGET_USD } from "./lib/judge.js";
-import { SERENA_LAUNCHER_COMMAND, gmeshBinaryPath, kungfuBinaryPath } from "./lib/mcpConfig.js";
+import {
+  SERENA_LAUNCHER_COMMAND,
+  assertGmeshBinaryUsable,
+  gmeshBinaryPath,
+  kungfuBinaryPath,
+} from "./lib/mcpConfig.js";
 import { exitOnDeadArm } from "./lib/mcpHealth.js";
 import { generateNarrative } from "./lib/narrative.js";
 import { checkOracle, reportableMissed } from "./lib/oracleCheck.js";
@@ -1182,12 +1187,10 @@ async function main() {
   // experiences it — `npm run token-economy` to the last line of output —
   // rather than only the part after setup.
   const runStart = performance.now();
-  if (!existsSync(gmeshBinaryPath())) {
-    console.error(
-      `g-mesh binary not found at ${gmeshBinaryPath()}. Build it first:\n` +
-        `  cd ../g-mesh/core && cargo build --release\n` +
-        `  cd ../g-mesh/plugins/js-ts && npm install && npm run build`,
-    );
+  try {
+    assertGmeshBinaryUsable();
+  } catch (err) {
+    console.error((err as Error).message);
     process.exit(1);
   }
 

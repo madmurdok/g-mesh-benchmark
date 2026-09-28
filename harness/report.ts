@@ -15,7 +15,12 @@ import {
   computeSilentMcpArms,
   computeStaleSummary,
   computeTaskTable,
+  computeTierTable,
   formatDurationSeconds,
+  formatSpreadComparison,
+  formatTierComparison,
+  formatTokenSpread,
+  formatTokenValues,
   formatTurnsWithToolCalls,
   loadRuns,
   pairedTokenTotals,
@@ -26,6 +31,7 @@ import { computeSequenceTokenTable, renderSessionHtmlReport } from "./lib/sessio
 import { computeTaskDefHash } from "./lib/taskDefHash.js";
 import { loadRegistry, loadTasks } from "./lib/taskLoader.js";
 import type { SessionEconomyRun } from "./session-economy.js";
+import type { Tier } from "./lib/types.js";
 import type { TokenEconomyRun } from "./token-economy.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -44,6 +50,27 @@ async function buildCurrentHashByTaskId(): Promise<Map<string, string>> {
     const tasks = await loadTasks(corpus.id);
     for (const task of tasks) {
       map.set(task.id, computeTaskDefHash(task));
+    }
+  }
+  return map;
+}
+
+/**
+ * Every task currently in the registry mapped to its `tier` tag (or
+ * `undefined` for an untagged one) — the "ground truth" computeTierTable
+ * groups runs by, since `tier` isn't recorded on TokenEconomyRun itself (see
+ * reportData.ts's computeTierTable doc). Modelled directly on
+ * buildCurrentHashByTaskId above: same registry walk, same reason a per-task
+ * lookup has to be built fresh from corpora/*.json rather than read off a
+ * run record.
+ */
+async function buildTierByTaskId(): Promise<Map<string, Tier | undefined>> {
+  const registry = await loadRegistry();
+  const map = new Map<string, Tier | undefined>();
+  for (const corpus of registry) {
+    const tasks = await loadTasks(corpus.id);
+    for (const task of tasks) {
+      map.set(task.id, task.tier);
     }
   }
   return map;
@@ -131,6 +158,30 @@ function printCategoryTokenBreakdown(runs: TokenEconomyRun[]): void {
     console.log(
       `| ${row.category} | ${row.arm} | ${row.meanInputTokens.toFixed(0)} | ${row.meanOutputTokens.toFixed(0)} | ${row.meanCacheCreationTokens.toFixed(0)} | ${row.meanCacheReadTokens.toFixed(0)} | ${row.pairCount} |`,
     );
+  }
+  console.log("");
+}
+
+/**
+ * Per-tier token savings, printed right after the category breakdown — the
+ * per-tier counterpart GMB-179 adds beside the per-category tables above.
+ * Every tier bucket is printed, including a refusal row for one below
+ * MIN_TIER_TASKS_FOR_VERDICT — GMB-117's rule ("a bucket too small to support
+ * a verdict says so instead of printing one") applies here too, and the whole
+ * point of shipping this table now is that it can print that refusal: as of
+ * this writing the `semantic` bucket has 2 tagged tasks (see
+ * corpora/*.json), below the n=3 floor, so this table shows a refusal
+ * rather than a comparison until GMB-180 adds more.
+ */
+function printTierTable(runs: TokenEconomyRun[], tierByTaskId: Map<string, Tier | undefined>): void {
+  const rows = computeTierTable(runs, tierByTaskId);
+  if (rows.length === 0) return;
+
+  console.log("# Token savings by tier (paired, oracle-passed pairs only)\n");
+  console.log("| Tier | Tasks (n) | Comparison |");
+  console.log("|---|---|---|");
+  for (const row of rows) {
+    console.log(`| ${row.tier} | ${row.taskCount} | ${formatTierComparison(row.comparison)} |`);
   }
   console.log("");
 }
@@ -235,9 +286,15 @@ async function reportTokenEconomy(): Promise<void> {
     if (silentKeys.size > 0) runs = runs.filter((r) => !silentKeys.has(`${String(r.arm)}::${r.corpusId}`));
   }
 
+  // Computed unconditionally (unlike currentHashByTaskId, which only the
+  // --all-less staleness filter needs): tier is registry-derived metadata, not
+  // a staleness check, so it applies to both the filtered and --all run sets.
+  const tierByTaskId = await buildTierByTaskId();
+
   printCorrectness(runs);
   printCategoryTokenSavings(runs);
   printCategoryTokenBreakdown(runs);
+  printTierTable(runs, tierByTaskId);
   if (!useAll) {
     printStaleSummary(stale);
     printMcpUnavailableSummary(mcpUnavailable);
@@ -246,23 +303,32 @@ async function reportTokenEconomy(): Promise<void> {
 
   const taskTable = computeTaskTable(runs);
 
+  // GMB-117: "Tokens spread" and "Per-rep tokens" replace the old bare
+  // "Tokens best"/"Tokens worst" pair — those two columns already carried
+  // min/max but with nothing to stop a single-repetition group (bestTokens
+  // === worstTokens) from reading as a real, if narrow, interval. "Verdict"
+  // is task-level (same text on every arm row of a task, same convention as
+  // "Expected winner") and states whether primary-vs-baseline is a
+  // spread-distinguishable difference, within noise, or n=1-on-both-sides —
+  // see compareArmSpreads.
   console.log("# Token economy report\n");
-  console.log("| Task | Expected winner | Arm | Reps (ok/total) | Tokens mean | Tokens best | Tokens worst | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
-  console.log("|---|---|---|---|---|---|---|---|---|---|---|");
+  console.log("| Task | Expected winner | Verdict | Arm | Reps (ok/total) | Tokens mean | Tokens spread | Per-rep tokens | Cost USD (mean) | Duration mean | Turns (tool calls) | Oracle (pass/ok) |");
+  console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");
 
   // Iterates whichever arms the loaded runs actually contain (see
   // reportData.ts's armsPresent) — 2-arm history prints exactly as before,
   // and a run set that includes gmesh-trusted grows a third row per task.
   for (const row of taskTable) {
+    const verdict = formatSpreadComparison(row.comparison);
     for (const { arm, agg, groupLength: group } of row.cells) {
       if (!agg) {
         if (group > 0) {
-          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
+          console.log(`| ${row.taskId} | ${row.expectedWinner} | ${verdict} | ${arm} | 0/${group} | - | - | - | - | - | - | - |`);
         }
         continue;
       }
       console.log(
-        `| ${row.taskId} | ${row.expectedWinner} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${agg.bestTokens} | ${agg.worstTokens} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
+        `| ${row.taskId} | ${row.expectedWinner} | ${verdict} | ${agg.arm} | ${agg.okCount}/${agg.total} | ${agg.meanTokens.toFixed(0)} | ${formatTokenSpread(agg.tokenSpread)} | ${formatTokenValues(agg.tokenSpread)} | ${agg.meanCostUsd.toFixed(4)} | ${formatDurationSeconds(agg)} | ${formatTurnsWithToolCalls(agg)} | ${agg.passCount}/${agg.okCount} |`,
       );
     }
   }
@@ -290,7 +356,7 @@ async function reportTokenEconomy(): Promise<void> {
     narrativeText = narrative?.text ?? null;
   }
 
-  const html = renderHtmlReport(runs, { title: "g-mesh-bench cumulative report", narrative: narrativeText });
+  const html = renderHtmlReport(runs, { title: "g-mesh-bench cumulative report", narrative: narrativeText, tierByTaskId });
   const htmlDir = path.join(ROOT, "results/html");
   await mkdir(htmlDir, { recursive: true });
   const htmlPath = path.join(htmlDir, "cumulative.html");
