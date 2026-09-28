@@ -21,7 +21,6 @@ import {
   armMcpConfig,
   armPrompt,
   armTools,
-  descopeGuidance,
   gmeshConfiguredClaudeMd,
   gmeshMapConfiguredClaudeMd,
 } from "./armConfig.js";
@@ -471,63 +470,21 @@ test("GMESH_CONFIGURED_CLAUDE_MD stays byte-for-byte in sync with g-mesh's shipp
 });
 
 /**
- * GMB-165's de-scoping, guarded on both sides.
- *
- * The TypeScript side matters most: every historical `gmesh-configured`
- * comparison, and the drift guard above, rest on a `ts`/`js` corpus seeing
- * the shipped bytes and nothing else. The non-TypeScript side matters for the
- * opposite reason — the measurement that motivated the split (5/16 runs
- * called g-mesh with the scoping, 16/16 without it; see
- * docs/results/v0.23.0-gmb165-what-the-scope-line-does.md) is only about
- * those two spans, so anything else changing in the derived doc would make
- * every non-TypeScript number a measurement of something nobody chose.
+ * GMB-183: g-mesh GM-389's snippet names every supported language in its
+ * heading, so GMB-165's per-language de-scoping is gone and every corpus reads
+ * the shipped bytes. These tests pin that: a Go/Rust/Python corpus must not
+ * quietly get a different document from a TypeScript one again.
  */
-const NON_TS_LANGUAGES: readonly CorpusLanguage[] = ["go", "rust", "python"];
+const ALL_LANGUAGES: readonly CorpusLanguage[] = ["ts", "js", "go", "rust", "python"];
 
-test("gmeshConfiguredClaudeMd returns the shipped bytes unchanged for ts and js", () => {
-  for (const language of ["ts", "js"] as const) {
-    assert.equal(gmeshConfiguredClaudeMd(language), GMESH_CONFIGURED_CLAUDE_MD);
-  }
-});
-
-test("gmeshConfiguredClaudeMd de-scopes go/rust/python in exactly two lines and no others", () => {
-  const shipped = GMESH_CONFIGURED_CLAUDE_MD.split("\n");
-  for (const language of NON_TS_LANGUAGES) {
-    const derived = gmeshConfiguredClaudeMd(language).split("\n");
-    assert.equal(derived.length, shipped.length, `${language}: line count changed`);
-    const changed = shipped.flatMap((line, i) => (line === derived[i] ? [] : [i]));
-    assert.deepEqual(changed, [0, 2], `${language}: expected only the heading and the first bullet to change`);
-    assert.equal(derived[0], "# Code search");
-    assert.ok(derived[2]?.startsWith("- Prefer g-mesh ("), `${language}: first bullet not de-scoped`);
-    // The point of the exercise, asserted directly rather than inferred from
-    // the line diff: nothing left in the document tells a Go repo it is out
-    // of scope.
-    assert.ok(!gmeshConfiguredClaudeMd(language).includes("TypeScript/JavaScript projects"));
-    assert.ok(!gmeshConfiguredClaudeMd(language).includes("In TS/JS projects"));
-  }
-});
-
-test("the de-scoped doc keeps every tool-semantics bullet verbatim, TypeScript examples included", () => {
-  // Deliberately spot-checks spans that mention TypeScript *as an example*
-  // rather than as a scope: those are evidence, not a gate, and rewriting
-  // them would be a second, unmeasured change riding along with this one.
-  const derived = gmeshConfiguredClaudeMd("go");
-  for (const span of [
-    "type-only `import type ...`",
-    'it("...", () => { requireTask(...) })',
-    "excalidraw's `pointFrom`",
-    "`AppState` returns `createAppState` at 0.845",
-  ]) {
-    assert.ok(GMESH_CONFIGURED_CLAUDE_MD.includes(span), `fixture span no longer in the shipped doc: ${span}`);
-    assert.ok(derived.includes(span), `de-scoped doc dropped: ${span}`);
+test("gmeshConfiguredClaudeMd returns the shipped bytes unchanged for every language", () => {
+  for (const language of ALL_LANGUAGES) {
+    assert.equal(gmeshConfiguredClaudeMd(language), GMESH_CONFIGURED_CLAUDE_MD, `${language}: doc differs`);
   }
 });
 
 test("the map arm stays its configured arm's doc plus the one @AGENTS.md line, in every language", () => {
-  // The property GMESH_MAP_CONFIGURED_CLAUDE_MD's comment claims, now that
-  // there is more than one configured doc: it has to hold per language, or a
-  // Go `gmesh-configured`/`-map` pair stops measuring the repo map alone.
-  for (const language of ["ts", "js", ...NON_TS_LANGUAGES] as const) {
+  for (const language of ALL_LANGUAGES) {
     const configured = gmeshConfiguredClaudeMd(language);
     const mapped = gmeshMapConfiguredClaudeMd(language);
     assert.ok(mapped.startsWith(configured));
@@ -537,29 +494,8 @@ test("the map arm stays its configured arm's doc plus the one @AGENTS.md line, i
     // twelfth. Asserted as a number as well as a string so a future edit that
     // keeps the text but changes the spacing cannot pass quietly.
     assert.equal(mapped.length - configured.length, 12);
+    assert.equal(mapped, GMESH_MAP_CONFIGURED_CLAUDE_MD, `${language}: map doc differs`);
   }
-  assert.equal(gmeshMapConfiguredClaudeMd("ts"), GMESH_MAP_CONFIGURED_CLAUDE_MD);
-});
-
-test("de-scoping refuses to guess when the shipped snippet reworded a scoping span", () => {
-  // The control for the two tests above: they pass because the substitution
-  // ran, and this is what proves they would not pass if it silently did
-  // nothing. `descopeGuidance` is not exported, so it is exercised through
-  // the same code path the arms use, on a doc whose heading has moved.
-  const reworded = GMESH_CONFIGURED_CLAUDE_MD.replace(
-    "# Code search (TypeScript/JavaScript projects)",
-    "# Code search (TS/JS projects)",
-  );
-  assert.notEqual(reworded, GMESH_CONFIGURED_CLAUDE_MD);
-  assert.throws(
-    () => descopeGuidance(reworded),
-    (err: unknown) => {
-      assert.ok(err instanceof Error);
-      assert.match((err as Error).message, /found 0/);
-      assert.match((err as Error).message, /armConfig\.ts/);
-      return true;
-    },
-  );
 });
 
 test("built-in arms never consult the config: they resolve with no customArms registered at all", () => {

@@ -406,14 +406,13 @@ A default `token-economy` run compares three arms:
 
 - **`gmesh-configured`** — g-mesh's MCP tools plus the CLAUDE.md guidance an
   actual project would have, written into a throwaway clone and auto-loaded by
-  Claude Code. On a `ts`/`js` corpus that is g-mesh's shipped snippet verbatim;
-  on a Go, Rust or Python corpus it is the same document with its two
-  TypeScript-scoping spans removed and nothing else changed, because the
-  scoping ones suppressed the tool under test in 11 of 16 psf/requests runs
-  (`harness/lib/armConfig.ts`'s `gmeshConfiguredClaudeMd`, and
-  `docs/results/v0.23.0-gmb165-what-the-scope-line-does.md` for the numbers).
-  **Any write-up of a non-TypeScript run should say the arm ran that de-scoped
-  derivative rather than g-mesh's shipped text.**
+  Claude Code. It is g-mesh's shipped snippet verbatim for every language
+  (`harness/lib/armConfig.ts`'s `GMESH_CONFIGURED_CLAUDE_MD`, pinned to g-mesh's
+  `AGENTS_MD_SNIPPET` by a drift test). Since g-mesh 3.16 the snippet names
+  every plugin language in its heading. Runs against g-mesh before 3.16 used a
+  derivative for Go, Rust and Python with the two TypeScript-scoping spans
+  removed, because those spans suppressed the tool under test in 11 of 16
+  psf/requests runs (`docs/results/v0.23.0-gmb165-what-the-scope-line-does.md`).
 - **`serena-configured`** — Serena's MCP tools plus the Claude Code hooks
   Serena itself ships, written into its own throwaway clone as
   `.claude/settings.json` (see
